@@ -1,0 +1,4 @@
+# I welcome all robots!
+
+User-agent: *
+Allow: /
