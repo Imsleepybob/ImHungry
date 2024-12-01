@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for
+from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory
 from datetime import datetime, timedelta, date
 from collections import defaultdict
 import calendar
@@ -230,19 +230,19 @@ def current_time():
 
 @app.route('/robots.txt')
 def robots_txt():
-    return send_file('/home/ImHungry/robots.txt')
+    return send_from_directory('static', 'robots.txt')
 
 @app.route('/favicon.svg')
 def favicon():
-    return send_file('/home/ImHungry/favicon.svg')
+    return send_from_directory('static', 'favicon.svg')
 
 @app.route('/favicon.ico')
 def faviconico():
-    return send_file('/home/ImHungry/favicon.svg')
+    return send_from_directory('static', 'favicon.ico')
 
 @app.route('/manifest.json')
 def manifest():
-    return send_file('/home/ImHungry/manifest.json')
+    return send_from_directory('static', 'manifest.json')
 
 if __name__ == "__main__":
     app.run(debug=True)
