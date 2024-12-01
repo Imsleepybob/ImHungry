@@ -238,7 +238,7 @@ def favicon():
 
 @app.route('/favicon.ico')
 def faviconico():
-    return send_from_directory('static', 'favicon.ico')
+    return send_from_directory('static', 'favicon.svg')
 
 @app.route('/manifest.json')
 def manifest():
