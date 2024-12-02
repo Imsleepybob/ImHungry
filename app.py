@@ -81,7 +81,7 @@ def get_week_dates():
     today = datetime.now().date()
     start_of_week = today - timedelta(days=today.weekday()) + timedelta(days=6)
     dates = [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
-    print(f"Today: {today}, Start of week: {start_of_week}, Dates: {dates}")
+    print(f"Today: {today}, Weekday: {today.weekday()}, Start of week: {start_of_week}, Dates: {dates}")
     return dates
 
 def get_month_meals(school_code, region_code):
