@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div id="ios-webapp-guide">
                 <div class="ios-webapp-guide-content">
                     <p>📱 홈 화면에 추가하고 싶으신가요?</p>
-                    <p>아래 <span class="ico_arrowup">공유</span> 버튼을 눌러 "홈 화면에 추가"를 선택하세요!</p>
+                    <p>아래 <span class="share-label">공유</span> 버튼을 눌러 "홈 화면에 추가"를 선택하세요!</p>
                     <button onclick="dismissIOSGuide()">닫기</button>
                 </div>
             </div>
@@ -512,6 +512,25 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 8px 15px;
     border-radius: 5px;
     cursor: pointer;
+    .share-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>');
+    background-size: cover;
+    cursor: pointer;
+}
+
+.share-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 </style>
 </body>
