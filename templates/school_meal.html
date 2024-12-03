@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="ImHungry">
+    <meta name="apple-mobile-web-app-title" content="급식알리미">
     <meta name="description" content="초중고등학교의 급식 조회 사이트입니다.">
     <title>급식알리미 - ImHungry</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -440,8 +440,18 @@ document.addEventListener('DOMContentLoaded', function() {
         guideElement.innerHTML = `
             <div id="ios-webapp-guide">
                 <div class="ios-webapp-guide-content">
-                    <p>📱 홈 화면에 추가하고 싶으신가요?</p>
-                    <p>아래 <span class="share-icon">공유</span> 버튼을 눌러 "홈 화면에 추가"를 선택하세요!</p>
+                    <p>📱 급식알리미를 편하게 이용하고싶으신가요?</p>
+                    <p>하단의 
+                        <span class="share-icon-guide">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="18" cy="5" r="3"></circle>
+                                <circle cx="6" cy="12" r="3"></circle>
+                                <circle cx="18" cy="19" r="3"></circle>
+                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                            </svg>
+                        </span> 
+                        버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
                     <button onclick="dismissIOSGuide()">닫기</button>
                 </div>
             </div>
@@ -504,6 +514,20 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 14px;
 }
 
+#ios-webapp-guide .share-icon-guide {
+    display: inline-block;
+    vertical-align: middle;
+    width: 24px;
+    height: 24px;
+    margin: 0 4px;
+    color: #007bff;
+}
+
+#ios-webapp-guide .share-icon-guide svg {
+    width: 100%;
+    height: 100%;
+}
+
 #ios-webapp-guide button {
     margin-top: 10px;
     background-color: #007bff;
@@ -512,25 +536,6 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 8px 15px;
     border-radius: 5px;
     cursor: pointer;
-    .share-icon {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>');
-    background-size: cover;
-    cursor: pointer;
-}
-
-.share-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
 }
 </style>
 </body>
