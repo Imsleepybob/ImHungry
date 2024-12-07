@@ -6,6 +6,25 @@ import calendar
 import requests
 import logging
 from logging.handlers import RotatingFileHandler
+import sys
+
+logging.getLogger('werkzeug').disabled = True
+
+# 콘솔 출력 비활성화
+sys.stderr = open('/dev/null', 'w')
+sys.stdout = open('/dev/null', 'w')
+
+# 기존 로깅 설정
+logging.basicConfig(level=logging.INFO)
+handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
+handler.setFormatter(logging.Formatter(
+    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+))
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+
+# Flask 앱 설정 시 로그 레벨 조정
+app.logger.setLevel(logging.ERROR)
 
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
