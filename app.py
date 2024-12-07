@@ -253,9 +253,19 @@ handler.setFormatter(logging.Formatter(
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 
+def get_client_ip():
+    # Render에서는 X-Forwarded-For 헤더에 실제 IP가 있습니다
+    if request.headers.getlist("X-Forwarded-For"):
+        client_ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        # 예외적인 경우 대비
+        client_ip = request.remote_addr
+    
+    return client_ip
+
 def log_request(response):
     log_entry = (
-        f"IP: {request.remote_addr}, "
+        f"IP: {get_client_ip()}, "
         f"Method: {request.method}, "
         f"URL: {request.url}, "
         f"User-Agent: {request.user_agent.string}, "
