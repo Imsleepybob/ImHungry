@@ -245,5 +245,29 @@ def faviconico():
 def manifest():
     return send_from_directory('static', 'manifest.json')
 
+logging.basicConfig(level=logging.INFO)
+handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
+handler.setFormatter(logging.Formatter(
+    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+))
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+
+def log_request(response):
+    log_entry = (
+        f"IP: {request.remote_addr}, "
+        f"Method: {request.method}, "
+        f"URL: {request.url}, "
+        f"User-Agent: {request.user_agent.string}, "
+        f"Status: {response.status_code}"
+    )
+    logger.info(log_entry)
+    return response
+
+@app.after_request
+def after_request(response):
+    log_request(response)
+    return response
+
 if __name__ == "__main__":
     app.run(debug=True)
