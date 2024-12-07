@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory
 from datetime import datetime, timedelta, date
 from collections import defaultdict
@@ -7,14 +6,15 @@ import requests
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
+import os
 
-logging.getLogger('werkzeug').disabled = True
+# Flask 앱 초기화를 맨 앞으로 이동
+app = Flask(__name__)
 
-# 콘솔 출력 비활성화
-sys.stderr = open('/dev/null', 'w')
-sys.stdout = open('/dev/null', 'w')
+# 로깅 설정 수정
+logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-# 기존 로깅 설정
+# 콘솔 출력 관련 코드 제거 (보안 및 안정성)
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
 handler.setFormatter(logging.Formatter(
@@ -23,19 +23,10 @@ handler.setFormatter(logging.Formatter(
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 
-# Flask 앱 설정 시 로그 레벨 조정
-app.logger.setLevel(logging.ERROR)
+# API 키는 환경 변수에서 가져오는 것이 좋습니다
+API_KEY = os.environ.get('NEIS_API_KEY', "4e2c538d90ef493c94c6e2d943e756d9")
 
-logging.basicConfig(level=logging.INFO)
-handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
-handler.setFormatter(logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-))
-logger = logging.getLogger(__name__)
-logger.addHandler(handler)
-
-API_KEY = "4e2c538d90ef493c94c6e2d943e756d9"
-
+# 지역 코드 딕셔너리
 regions = {
     "서울": "B10",
     "부산": "C10",
@@ -56,10 +47,12 @@ regions = {
     "제주": "T10"
 }
 
+# 캐시 초기화
 school_cache = {}
 meal_cache = {}
 
 def get_school_code(school_name, region_code):
+    """학교 코드를 가져오는 함수"""
     cache_key = f"{region_code}_{school_name}"
     if cache_key in school_cache:
         return school_cache[cache_key]
@@ -77,7 +70,7 @@ def get_school_code(school_name, region_code):
         response = requests.get(url, params=params, timeout=5)
         data = response.json()
 
-        if "schoolInfo" in data:
+        if "schoolInfo" in data and len(data["schoolInfo"][1]["row"]) > 0:
             school_data = data["schoolInfo"][1]["row"][0]
             school_code = school_data["SD_SCHUL_CODE"]
             school_cache[cache_key] = {
@@ -92,17 +85,20 @@ def get_school_code(school_name, region_code):
     return None
 
 def get_month_dates():
+    """현재 달의 모든 날짜를 가져오는 함수"""
     today = datetime.now().date()
     _, last_day = calendar.monthrange(today.year, today.month)
     return [(date(today.year, today.month, day)).strftime('%Y%m%d') for day in range(1, last_day + 1)]
 
 def get_week_dates():
+    """현재 주의 날짜들을 가져오는 함수"""
     today = datetime.now().date()
-    start_of_week = today - timedelta(days=today.weekday() + 1)
+    start_of_week = today - timedelta(days=today.weekday())
     dates = [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
     return dates
 
 def get_month_meals(school_code, region_code):
+    """학교의 한 달 급식 정보를 가져오는 함수"""
     today = datetime.now()
     cache_key = f"{region_code}_{school_code}_{today.strftime('%Y%m')}"
 
@@ -135,11 +131,10 @@ def get_month_meals(school_code, region_code):
         meal_cache[cache_key] = dict(meals)
         return dict(meals)
     except Exception as e:
-        print(f"Error fetching meals: {e}")  # 디버깅을 위한 에러 로깅 추가
+        logger.error(f"Error fetching meals: {e}")
         return defaultdict(lambda: "급식 정보 없음")
 
-app = Flask(__name__)
-
+# 템플릿 필터: 날짜 포맷팅
 @app.template_filter('format_date')
 def format_date(value):
     date_obj = datetime.strptime(value, "%Y%m%d")
@@ -168,19 +163,22 @@ def index():
             return redirect(url_for('school_meal_view', school_code=school_code))
 
     elif request.method == 'POST':
-        region = request.form['region']
-        school_name = request.form['school_name']
+        region = request.form.get('region')
+        school_name = request.form.get('school_name')
         logger.info(f"Search request - Region: {region}, School: {school_name}")
 
         if not region or not school_name:
             return render_template('school_meal.html', error_message="지역과 학교명을 모두 입력해주세요.", regions=regions)
 
+        if region not in regions:
+            return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
+
         school_info = get_school_code(school_name, regions[region])
         if school_info:
             response = redirect(url_for('school_meal_view', school_code=school_info['code']))
             # 쿠키에 학교 정보 저장 (30일 유효)
-            response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
-            response.set_cookie('school_name', school_info['name'], max_age=60*60*24*30)
+            response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30, httponly=True)
+            response.set_cookie('school_name', school_info['name'], max_age=60*60*24*30, httponly=True)
             return response
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions)
@@ -220,8 +218,8 @@ def school_meal_view(school_code):
     ))
 
     # 응답에도 쿠키 설정 (새로고침해도 유지되도록)
-    resp.set_cookie('school_code', school_code, max_age=60*60*24*30)
-    resp.set_cookie('school_name', school_info['name'], max_age=60*60*24*30)
+    resp.set_cookie('school_code', school_code, max_age=60*60*24*30, httponly=True)
+    resp.set_cookie('school_name', school_info['name'], max_age=60*60*24*30, httponly=True)
     return resp
 
 @app.route('/api/meals/<school_code>/<date>')
@@ -263,14 +261,6 @@ def faviconico():
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
-
-logging.basicConfig(level=logging.INFO)
-handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
-handler.setFormatter(logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-))
-logger = logging.getLogger(__name__)
-logger.addHandler(handler)
 
 def get_client_ip():
     # Render에서는 X-Forwarded-For 헤더에 실제 IP가 있습니다
