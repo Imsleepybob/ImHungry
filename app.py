@@ -19,28 +19,36 @@ BLOCKED_NETWORKS = [
 
 def get_client_ip():
     """
-    클라이언트 IP 주소를 안전하게 가져오는 함수
-    프록시 환경에서도 작동하도록 설계
+    클라이언트의 실제 IP 주소를 반환합니다.
+    X-Forwarded-For 헤더를 우선으로 사용합니다.
     """
-    if request.access_route:
-        # X-Forwarded-For 헤더 등을 고려
+    if request.headers.getlist("X-Forwarded-For"):
+        # X-Forwarded-For 헤더에 포함된 첫 번째 IP를 사용
+        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
+    elif request.access_route:
+        # access_route에 있는 첫 번째 IP
         return request.access_route[0]
-    return request.remote_addr
+    else:
+        # 기본 remote_addr
+        return request.remote_addr
+
 
 def is_ip_blocked(ip_address):
     """
-    IP가 차단된 네트워크에 속하는지 확인하는 함수
+    요청 IP가 차단된 네트워크 대역에 속하는지 확인합니다.
     """
     try:
         client_ip = ipaddress.ip_address(ip_address)
-        
         for blocked_network in BLOCKED_NETWORKS:
-            # CIDR 표기법의 네트워크로 변환
             network = ipaddress.ip_network(blocked_network, strict=False)
-            
-            # 해당 네트워크에 IP가 포함되는지 확인
             if client_ip in network:
                 return True
+        return False
+    except ValueError:
+        # IP 주소가 유효하지 않음
+        app.logger.error(f"Invalid IP address detected: {ip_address}")
+        return False
+
         
         return False
     except ValueError:
@@ -49,12 +57,10 @@ def is_ip_blocked(ip_address):
 
 @app.before_request
 def block_method():
-    """
-    요청 전 IP 차단 미들웨어
-    """
     client_ip = get_client_ip()
+    app.logger.info(f"Client IP detected: {client_ip}")
     if is_ip_blocked(client_ip):
-        app.logger.warning(f'Blocked IP: {client_ip}')
+        app.logger.warning(f"Blocked access attempt from IP: {client_ip}")
         return 'Access Denied', 403
 
 # 추가 로깅 설정 (선택사항)
