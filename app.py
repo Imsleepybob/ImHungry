@@ -8,46 +8,17 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-# ASN 차단 리스트
-BLOCKED_ASNS = [
-    13335,   # Cloudflare, Inc.
-    209242,  # Cloudflare London, LLC
-    395747,  # Cloudflare, Inc.
-    132892,  # Cloudflare, Inc.
-    202623,  # Cloudflare Inc
-    394536,  # Cloudflare, Inc.
-    203898,  # Cloudflare Inc
-    139242,  # Cloudflare Sydney, LLC
-    9318,
-]
-
-def get_ip_asn(ip):
-    try:
-        headers = {
-            'Authorization': 'Bearer 3e104a4c3d'
-        }
-        print(f"Attempting to fetch ASN for IP: {ip}")  # 디버깅용 출력 추가
-        response = requests.get(f'https://imsleepy.pythonanywhere.com/asn-cidr/api/{ip}', headers=headers, timeout=5)
-        print(f"Response status code: {response.status_code}")  # 응답 상태 코드 출력
-        print(f"Response content: {response.text}")  # 응답 내용 출력
-        data = response.json()
-        return data.get('asn')
-    except Exception as e:
-        print(f"Full error details: {e}")  # 전체 에러 출력
-        logger.error(f"ASN lookup failed for IP {ip}: {e}")
-        return None
+BLOCKED_IPS = set([
+    '2a06:98c0:3600::103',
+    '210.94.23.150',
+    # 여기에 의심스러운 IP 추가
+])
 
 @app.before_request
-def block_asn_method():
+def block_method():
     client_ip = get_client_ip()
-    try:
-        asn = get_ip_asn(client_ip)
-        if asn in BLOCKED_ASNS:
-            logger.warning(f"Blocked request from ASN {asn} (IP: {client_ip})")
-            return 'Access Denied', 403
-    except Exception as e:
-        logger.error(f"ASN blocking error: {e}")
-    return None
+    if client_ip in BLOCKED_IPS:
+        return 'Access Denied', 403
 
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
