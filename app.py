@@ -6,6 +6,41 @@ import requests
 import logging
 from logging.handlers import RotatingFileHandler
 
+# ASN 차단 리스트
+BLOCKED_ASNS = [
+    13335,   # Cloudflare, Inc.
+    209242,  # Cloudflare London, LLC
+    395747,  # Cloudflare, Inc.
+    132892,  # Cloudflare, Inc.
+    202623,  # Cloudflare Inc
+    394536,  # Cloudflare, Inc.
+    203898,  # Cloudflare Inc
+    139242,  # Cloudflare Sydney, LLC
+]
+
+def get_ip_asn(ip):
+    try:
+        headers = {
+            'Authorization': 'Bearer 3e104a4c3d'
+        }
+        response = requests.get(f'https://imsleepy.pythonanywhere.com/asn-cidr/api/{ip}', headers=headers, timeout=5)
+        data = response.json()
+        return data.get('asn')
+    except Exception as e:
+        logging.error(f"ASN lookup failed for IP {ip}: {e}")
+        return None
+
+@app.before_request
+def block_asn_method():
+    client_ip = get_client_ip()
+    try:
+        asn = get_ip_asn(client_ip)
+        if asn in BLOCKED_ASNS:
+            logging.warning(f"Blocked request from ASN {asn} (IP: {client_ip})")
+            return 'Access Denied', 403
+    except Exception as e:
+        logging.error(f"ASN blocking error: {e}")
+
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
 handler.setFormatter(logging.Formatter(
