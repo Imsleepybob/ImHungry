@@ -16,6 +16,7 @@ BLOCKED_ASNS = [
     394536,  # Cloudflare, Inc.
     203898,  # Cloudflare Inc
     139242,  # Cloudflare Sydney, LLC
+    9318
 ]
 
 def get_ip_asn(ip):
