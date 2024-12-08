@@ -5,20 +5,66 @@ import calendar
 import requests
 import logging
 from logging.handlers import RotatingFileHandler
+from flask import Flask, request
+import ipaddress
 
 app = Flask(__name__)
 
-BLOCKED_IPS = set([
-    '2a06:98c0:3600::103',
-    '210.94.23.150',
-    # 여기에 의심스러운 IP 추가
-])
+# CIDR 형식의 IP 대역 정의
+BLOCKED_NETWORKS = [
+    '2a06:98c0:3600::/48',
+    '210.94.23.0/24',
+    # 추가적인 차단할 네트워크 대역 입력 가능
+]
+
+def get_client_ip():
+    """
+    클라이언트 IP 주소를 안전하게 가져오는 함수
+    프록시 환경에서도 작동하도록 설계
+    """
+    if request.access_route:
+        # X-Forwarded-For 헤더 등을 고려
+        return request.access_route[0]
+    return request.remote_addr
+
+def is_ip_blocked(ip_address):
+    """
+    IP가 차단된 네트워크에 속하는지 확인하는 함수
+    """
+    try:
+        client_ip = ipaddress.ip_address(ip_address)
+        
+        for blocked_network in BLOCKED_NETWORKS:
+            # CIDR 표기법의 네트워크로 변환
+            network = ipaddress.ip_network(blocked_network, strict=False)
+            
+            # 해당 네트워크에 IP가 포함되는지 확인
+            if client_ip in network:
+                return True
+        
+        return False
+    except ValueError:
+        # 유효하지 않은 IP 주소 처리
+        return False
 
 @app.before_request
 def block_method():
+    """
+    요청 전 IP 차단 미들웨어
+    """
     client_ip = get_client_ip()
-    if client_ip in BLOCKED_IPS:
+    if is_ip_blocked(client_ip):
+        app.logger.warning(f'Blocked IP: {client_ip}')
         return 'Access Denied', 403
+
+# 추가 로깅 설정 (선택사항)
+def setup_logging():
+    handler = logging.FileHandler('ip_block.log')
+    handler.setLevel(logging.WARNING)
+    app.logger.addHandler(handler)
+
+# 로깅 초기화
+setup_logging()
 
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
