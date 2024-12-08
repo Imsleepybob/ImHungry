@@ -6,6 +6,9 @@ import requests
 import logging
 from logging.handlers import RotatingFileHandler
 
+# 기존 코드에 이 부분 추가
+import requests
+
 # ASN 차단 리스트
 BLOCKED_ASNS = [
     13335,   # Cloudflare, Inc.
@@ -16,7 +19,7 @@ BLOCKED_ASNS = [
     394536,  # Cloudflare, Inc.
     203898,  # Cloudflare Inc
     139242,  # Cloudflare Sydney, LLC
-    9318
+    9318,
 ]
 
 def get_ip_asn(ip):
@@ -28,7 +31,7 @@ def get_ip_asn(ip):
         data = response.json()
         return data.get('asn')
     except Exception as e:
-        logging.error(f"ASN lookup failed for IP {ip}: {e}")
+        logger.error(f"ASN lookup failed for IP {ip}: {e}")
         return None
 
 @app.before_request
@@ -37,10 +40,11 @@ def block_asn_method():
     try:
         asn = get_ip_asn(client_ip)
         if asn in BLOCKED_ASNS:
-            logging.warning(f"Blocked request from ASN {asn} (IP: {client_ip})")
+            logger.warning(f"Blocked request from ASN {asn} (IP: {client_ip})")
             return 'Access Denied', 403
     except Exception as e:
-        logging.error(f"ASN blocking error: {e}")
+        logger.error(f"ASN blocking error: {e}")
+    return None
 
 logging.basicConfig(level=logging.INFO)
 handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
