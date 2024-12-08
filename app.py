@@ -6,8 +6,7 @@ import requests
 import logging
 from logging.handlers import RotatingFileHandler
 
-# 기존 코드에 이 부분 추가
-import requests
+app = Flask(__name__)
 
 # ASN 차단 리스트
 BLOCKED_ASNS = [
