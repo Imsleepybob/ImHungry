@@ -1,3 +1,11 @@
 [build]
-  command = "docker build -t flask-app ."
-  publish = "."
+  command = "pip install -r requirements.txt"
+  functions = "netlify/functions"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
