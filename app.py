@@ -5,7 +5,6 @@ import calendar
 import requests
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, request
 import ipaddress
 
 app = Flask(__name__)
@@ -47,12 +46,6 @@ def is_ip_blocked(ip_address):
     except ValueError:
         # IP 주소가 유효하지 않음
         app.logger.error(f"Invalid IP address detected: {ip_address}")
-        return False
-
-        
-        return False
-    except ValueError:
-        # 유효하지 않은 IP 주소 처리
         return False
 
 @app.before_request
@@ -170,21 +163,27 @@ def get_month_meals(school_code, region_code):
         response = requests.get(url, params=params, timeout=5)
         data = response.json()
 
-        meals = defaultdict(lambda: "급식 정보 없음")
+        # 급식 유형별로 구분하여 저장 (1: 조식, 2: 중식, 3: 석식)
+        meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
         if "mealServiceDietInfo" in data:
             for row in data["mealServiceDietInfo"][1]["row"]:
                 date = row["MLSV_YMD"]
                 menu = row["DDISH_NM"].replace("<br/>", "\n")
-                meals[date] = menu
+                meal_type = row["MMEAL_SC_CODE"]
+                
+                if meal_type == "1":  # 조식
+                    meals[date]["breakfast"] = menu
+                elif meal_type == "2":  # 중식
+                    meals[date]["lunch"] = menu
+                elif meal_type == "3":  # 석식
+                    meals[date]["dinner"] = menu
 
         meal_cache[cache_key] = dict(meals)
         return dict(meals)
     except Exception as e:
-        print(f"Error fetching meals: {e}")  # 디버깅을 위한 에러 로깅 추가
-        return defaultdict(lambda: "급식 정보 없음")
-
-app = Flask(__name__)
+        logger.error(f"Error fetching meals: {e}")
+        return defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
 @app.template_filter('format_date')
 def format_date(value):
@@ -253,7 +252,7 @@ def school_meal_view(school_code):
 
     month_meals = get_month_meals(school_code, school_info['region_code'])
     week_dates = get_week_dates()
-    week_meals = {date: month_meals.get(date, "급식 정보 없음") for date in week_dates}
+    week_meals = {date: month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date in week_dates}
 
     resp = make_response(render_template(
         'school_meal.html',
@@ -281,13 +280,36 @@ def get_school_meal(school_code, date):
 
         if school_info:
             month_meals = get_month_meals(school_code, school_info['region_code'])
-            meal = month_meals.get(date, "급식 정보 없음")
+            meal_data = month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
             logger.info(f"Meal request - School: {school_info['name']}, Date: {date}")
-            return jsonify({"meal": meal, "has_meal": meal != "급식 정보 없음"})
-        return jsonify({"meal": "급식 정보가 없습니다.", "has_meal": False})
+            
+            # 급식 정보가 있는지 확인
+            has_meal = (
+                meal_data["breakfast"] != "급식 정보 없음" or
+                meal_data["lunch"] != "급식 정보 없음" or
+                meal_data["dinner"] != "급식 정보 없음"
+            )
+            
+            return jsonify({
+                "breakfast": meal_data["breakfast"],
+                "lunch": meal_data["lunch"],
+                "dinner": meal_data["dinner"],
+                "has_meal": has_meal
+            })
+        return jsonify({
+            "breakfast": "급식 정보 없음",
+            "lunch": "급식 정보 없음", 
+            "dinner": "급식 정보 없음",
+            "has_meal": False
+        })
     except Exception as e:
         logger.error(f"Error in get_meal route: {e}")
-        return jsonify({"meal": "오류가 발생했습니다.", "has_meal": False})
+        return jsonify({
+            "breakfast": "오류가 발생했습니다.", 
+            "lunch": "오류가 발생했습니다.", 
+            "dinner": "오류가 발생했습니다.", 
+            "has_meal": False
+        })
 
 @app.route('/current_time')
 def current_time():
@@ -309,16 +331,6 @@ def faviconico():
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
-
-def get_client_ip():
-    # Render에서는 X-Forwarded-For 헤더에 실제 IP가 있습니다
-    if request.headers.getlist("X-Forwarded-For"):
-        client_ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        # 예외적인 경우 대비
-        client_ip = request.remote_addr
-    
-    return client_ip
 
 def log_request(response):
     log_entry = (
