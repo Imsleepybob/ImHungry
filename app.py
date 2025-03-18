@@ -165,7 +165,7 @@ def get_month_meals(school_code, region_code):
         # 급식 유형별로 구분하여 저장 (1: 조식, 2: 중식, 3: 석식)
         meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
-        if "mealServiceDietInfo" in data:
+    if "mealServiceDietInfo" in data:
         for row in data["mealServiceDietInfo"][1]["row"]:
             date = row["MLSV_YMD"]
             # Clean up the menu text by replacing "<br/>" with newlines and removing "y" suffixes
