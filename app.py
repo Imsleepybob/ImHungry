@@ -167,10 +167,10 @@ def get_month_meals(school_code, region_code):
 
         if "mealServiceDietInfo" in data:
             for row in data["mealServiceDietInfo"][1]["row"]:
-            date = row["MLSV_YMD"]
-            # Clean up the menu text by replacing "<br/>" with newlines and removing "y" suffixes
-            menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
-            meal_type = row["MMEAL_SC_CODE"]
+                date = row["MLSV_YMD"]
+                # Clean up the menu text by replacing "<br/>" with newlines and removing "y" suffixes
+                menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
+                meal_type = row["MMEAL_SC_CODE"]
                 
                 if meal_type == "1":  # 조식
                     meals[date]["breakfast"] = menu
