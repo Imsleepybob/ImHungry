@@ -12,7 +12,6 @@ app = Flask(__name__)
 # CIDR 형식의 IP 대역 정의
 BLOCKED_NETWORKS = [
     '2a06:98c0:3600::/48',
-    '210.94.23.0/24',
     # 추가적인 차단할 네트워크 대역 입력 가능
 ]
 
@@ -167,10 +166,11 @@ def get_month_meals(school_code, region_code):
         meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
         if "mealServiceDietInfo" in data:
-            for row in data["mealServiceDietInfo"][1]["row"]:
-                date = row["MLSV_YMD"]
-                menu = row["DDISH_NM"].replace("<br/>", "\n")
-                meal_type = row["MMEAL_SC_CODE"]
+        for row in data["mealServiceDietInfo"][1]["row"]:
+            date = row["MLSV_YMD"]
+            # Clean up the menu text by replacing "<br/>" with newlines and removing "y" suffixes
+            menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
+            meal_type = row["MMEAL_SC_CODE"]
                 
                 if meal_type == "1":  # 조식
                     meals[date]["breakfast"] = menu
