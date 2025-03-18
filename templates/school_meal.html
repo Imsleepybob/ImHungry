@@ -22,525 +22,365 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}">
 <link rel="apple-touch-startup-image" href="{{ url_for('static', filename='startup-iphone-14-pro-max.png') }}"
 media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="manifest" href="/manifest.json">
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
-crossorigin="anonymous"></script>
-<style>
-table {
-width: 100%;
-border-collapse: collapse;
-margin-top: 20px;
-}
-th, td {
-border: 1px solid #ddd;
-padding: 8px;
-text-align: center;
-}
-th {
-background-color: #f2f2f2;
-}
-tr:nth-child(even) {
-background-color: #f9f9f9;
-}
-tr:hover {
-background-color: #f1f1f1;
-}
-caption {
-font-size: 1.5em;
-margin: 10px 0;
-}
-.no-info {
-text-align: center;
-font-size: 1.2em;
-color: #666;
-margin-top: 20px;
-}
-
-.modal {
-display: none;
-position: fixed;
-z-index: 1;
-left: 0;
-top: 0;
-width: 100%;
-height: 100%;
-overflow: auto;
-background-color: rgba(0,0,0,0.4);
-}
-.modal-content {
-background-color: #fefefe;
-margin: 15% auto;
-padding: 20px;
-border: 1px solid #888;
-width: 80%;
-}
-.close {
-color: #aaa;
-float: right;
-font-size: 28px;
-font-weight: bold;
-}
-.close:hover,
-.close:focus {
-color: black;
-text-decoration: none;
-cursor: pointer;
-}
-
-.header-logo svg {
-width: 32px;
-height: 32px;
-}
-
-.month-table {
-display: none;
-margin-top: 20px;
-}
-.show-month {
-display: table;
-}
-.toggle-month-btn {
-display: block;
-margin: 20px auto;
-padding: 10px 20px;
-background-color: #007bff;
-color: white;
-border: none;
-border-radius: 4px;
-cursor: pointer;
-}
-.toggle-month-btn:hover {
-background-color: #0056b3;
-}
-.error-message {
-color: red;
-text-align: center;
-margin: 20px 0;
-font-weight: bold;
-}
-</style>
 </head>
 <body>
 <header class="main-header">
-<div class="logo">
-<a href="/">
-<img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
-</a>
-</div>
-<button class="notification-btn" onclick="openNotificationModal()">🔔</button>
+  <div class="logo">
+    <a href="/">
+      <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+    </a>
+  </div>
+  <button class="notification-btn" id="notification-btn">🔔</button>
 </header>
 
 <div id="notification-modal" class="modal">
-<div class="modal-content">
-<span class="close" onclick="closeNotificationModal()">&times;</span>
-<h2>알림 설정</h2>
-<form id="notification-form">
-<label for="notification-time">알림 시각</label>
-<input type="time" id="notification-time" name="notification-time" required>
-<button type="submit">저장</button>
-</form>
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>알림 설정</h2>
+    <form id="notification-form">
+      <label for="notification-time">알림 시각</label>
+      <input type="time" id="notification-time" name="notification-time" required>
+      <button type="submit" class="submit-btn">저장</button>
+    </form>
+  </div>
 </div>
+
+<div class="container">
+  <div class="header-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+      <g stroke-linecap="round" stroke-linejoin="round">
+        <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path>
+        <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path>
+        <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path>
+        <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path>
+      </g>
+    </svg>
+  </div>
+
+  <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
+    <div class="form-group">
+      <label for="region">지역 선택</label>
+      <select id="region" name="region" class="form-control">
+        <option value="" disabled selected>지역 선택</option>
+        {% for region_code, region_name in regions.items() %}
+        <option value="{{ region_code }}" {% if region == region_code %}selected{% endif %}>{{ region_code }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="school_name">학교 이름 입력</label>
+      <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name }}" required class="form-control">
+    </div>
+
+    <button type="submit" class="submit-btn">검색</button>
+  </form>
+
+  <div id="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>급식 정보를 가져오는 중...</p>
+  </div>
+
+  {% if error_message %}
+  <div class="error-message">{{ error_message }}</div>
+  {% endif %}
+
+  {% if school_name %}
+  <div class="meal-container">
+    <h2 class="school-title">{{ school_name }} 급식 정보</h2>
+    {% if week_meals %}
+    <!-- 주간 급식 테이블 -->
+    <div class="meal-card week-meal">
+      <h3 class="meal-title">이번 주 급식 정보🍗</h3>
+      <div class="meal-table-container">
+        <table class="meal-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>급식 메뉴</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for date, meal in week_meals.items() %}
+            <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="menu-cell">{{ meal }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
+
+    <!-- 월간 급식 테이블 -->
+    <div class="meal-card month-meal" id="monthTable">
+      <h3 class="meal-title">이번 달 급식 정보🍱</h3>
+      <div class="meal-table-container">
+        <table class="meal-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>급식 메뉴</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for date, meal in month_meals.items() %}
+            <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="menu-cell">{{ meal }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="no-info">급식 정보가 없습니다.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div id="ios-webapp-guide">
+  <div class="ios-webapp-guide-content">
+    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
+    <p>하단의 
+      <span class="share-icon-guide">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+          <polyline points="16 6 12 2 8 6"></polyline>
+          <line x1="12" y1="2" x2="12" y2="15"></line>
+        </svg>
+      </span> 
+      버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
+    </p>
+    <button onclick="dismissIOSGuide()" class="dismiss-btn">닫기</button>
+  </div>
 </div>
 
 <script>
-function openNotificationModal() {
-document.getElementById('notification-modal').style.display = 'block';
-}
-
-function closeNotificationModal() {
-document.getElementById('notification-modal').style.display = 'none';
-}
-
-document.getElementById('notification-form').onsubmit = function(event) {
-event.preventDefault();
-var time = document.getElementById('notification-time').value;
-
-const savedSchoolCode = localStorage.getItem('school_code');
-const savedRegionCode = localStorage.getItem('region_code');
-const savedSchoolName = localStorage.getItem('school_name');
-
-if (!savedSchoolCode || !savedRegionCode || !savedSchoolName) {
-alert('먼저 학교를 검색하고 선택해주세요.');
-return;
-}
-
-if (time) {
-localStorage.setItem('notificationTime', time);
-alert('알림이 저장되었습니다.');
-closeNotificationModal();
-scheduleNotification(time);
-}
-}
-
-function scheduleNotification(time) {
-if (!('Notification' in window)) {
-console.log('이 브라우저는 알림을 지원하지 않습니다.');
-return;
-}
-
-const checkAndSendNotification = async () => {
-try {
-const response = await fetch('/current_time');
-const data = await response.json();
-const serverTime = new Date(data.current_time);
-const targetTime = new Date(serverTime);
-const [hours, minutes] = time.split(':');
-targetTime.setHours(hours, minutes, 0, 0);
-
-if (targetTime < serverTime) {
-targetTime.setDate(targetTime.getDate() + 1);
-}
-
-const delay = targetTime.getTime() - serverTime.getTime();
-
-setTimeout(async () => {
-await sendNotification();
-checkAndSendNotification();
-}, delay);
-} catch (error) {
-console.error('알림 스케줄링 중 오류:', error);
-}
-};
-
-checkAndSendNotification();
-}
-
-async function sendNotification() {
-if (Notification.permission !== 'granted') {
-const permission = await Notification.requestPermission();
-if (permission !== 'granted') return;
-}
-
-const schoolCode = localStorage.getItem('school_code');
-const regionCode = localStorage.getItem('region_code');
-const schoolName = localStorage.getItem('school_name');
-
-if (!schoolCode || !regionCode || !schoolName) {
-console.log('학교 정보가 저장되지 않았습니다.');
-return;
-}
-
-try {
-const timeResponse = await fetch('/current_time');
-const timeData = await timeResponse.json();
-const serverDate = new Date(timeData.current_time);
-const dateString = serverDate.toISOString().slice(0, 10).replace(/-/g, '');
-
-const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
-const mealData = await mealResponse.json();
-
-if (mealData.has_meal) {
-const meal = mealData.meal.length > 100
-? mealData.meal.substring(0, 100) + '...'
-: mealData.meal;
-
-const notification = new Notification(`${schoolName} 오늘의 급식 🍗`, {
-body: meal,
-icon: "{{ url_for('favicon') }}",
-tag: dateString // 중복 알림 방지
-});
-
-notification.onclick = function(event) {
-event.preventDefault();
-window.open(`/meal/${schoolCode}`);
-};
-}
-} catch (error) {
-console.error('알림 전송 중 오류:', error);
-}
-}
-
-document.addEventListener('DOMContentLoaded', async () => {
-if ('Notification' in window) {
-const permission = await Notification.requestPermission();
-if (permission === 'granted') {
-const savedTime = localStorage.getItem('notificationTime');
-const savedSchoolCode = localStorage.getItem('school_code');
-const savedRegionCode = localStorage.getItem('region_code');
-
-if (savedTime && savedSchoolCode && savedRegionCode) {
-scheduleNotification(savedTime);
-}
-}
-}
-});
-</script>
-
-<div class="header-logo">
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
-<g stroke-linecap="round" stroke-linejoin="round">
-<path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path>
-<path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path>
-<path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path>
-<path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path>
-</g>
-</svg>
-</div>
-<form method="POST" action="{{ url_for('index') }}" id="regionForm">
-<label for="region">지역 선택</label>
-<select id="region" name="region">
-<option value="" disabled selected>지역 선택</option>
-{% for region_code, region_name in regions.items() %}
-<option value="{{ region_code }}" {% if region == region_code %}selected{% endif %}>{{ region_code }}</option>
-{% endfor %}
-</select>
-
-<label for="school_name">학교 이름 입력</label>
-<input type="text" id="school_name" name="school_name" value="{{ school_name if school_name }}" required>
-
-<button type="submit">검색</button>
-</form>
-<script>
+// 지역 및 학교 선택 로직
 document.getElementById('regionForm').addEventListener('submit', function(event) {
-var region = document.getElementById("region");
-var schoolName = document.getElementById("school_name");
+  var region = document.getElementById("region");
+  var schoolName = document.getElementById("school_name");
 
-if (region.value === "") {
-event.preventDefault();
-alert("지역을 선택해주세요.");
-region.focus();
-return;
-}
+  if (region.value === "") {
+    event.preventDefault();
+    alert("지역을 선택해주세요.");
+    region.focus();
+    return;
+  }
 
-localStorage.setItem('region_code', region.value);
-localStorage.setItem('school_name', schoolName.value);
+  localStorage.setItem('region_code', region.value);
+  localStorage.setItem('school_name', schoolName.value);
+  document.getElementById('loading').style.display = 'flex';
 });
 
-document.querySelector('form').onsubmit = function() {
-document.getElementById('loading').style.display = 'block';
-}
-</script>
-<div id="loading" style="display: none; text-align: center; margin: 20px;">
-<div class="spinner"></div>
-<p>급식 정보를 가져오는 중...</p>
-</div>
-<style>
-.spinner {
-border: 4px solid #f3f3f3;
-border-top: 4px solid #3498db;
-border-radius: 50%;
-width: 40px;
-height: 40px;
-animation: spin 1s linear infinite;
-margin: 20px auto;
-}
+// 알림 모달 관련 로직
+const notificationBtn = document.getElementById('notification-btn');
+const notificationModal = document.getElementById('notification-modal');
+const closeBtn = document.querySelector('.close');
 
-@keyframes spin {
-0% { transform: rotate(0deg); }
-100% { transform: rotate(360deg); }
-}
-</style>
-
-<script>
-document.querySelector('form').onsubmit = function() {
-document.getElementById('loading').style.display = 'block';
-}
-</script>
-
-{% if error_message %}
-<div class="error-message">{{ error_message }}</div>
-{% endif %}
-
-{% if school_name %}
-<h2>{{ school_name }} 급식 정보</h2>
-{% if week_meals %}
-<!-- 주간 급식 테이블 -->
-<table class="week-table">
-<caption>이번 주 급식 정보🍗</caption>
-<thead>
-<tr>
-<th>날짜</th>
-<th>급식 메뉴</th>
-</tr>
-</thead>
-<tbody>
-{% for date, meal in week_meals.items() %}
-<tr>
-<td>{{ date | format_date }}</td>
-<td>{{ meal }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-
-<button class="toggle-month-btn" onclick="toggleMonthTable()">▼ 월간 급식표 보기</button>
-
-<!-- 월간 급식 테이블 -->
-<table class="month-table" id="monthTable">
-<caption>이번 달 급식 정보🍱</caption>
-<thead>
-<tr>
-<th>날짜</th>
-<th>급식 메뉴</th>
-</tr>
-</thead>
-<tbody>
-{% for date, meal in month_meals.items() %}
-<tr>
-<td>{{ date | format_date }}</td>
-<td>{{ meal }}</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% else %}
-<div class="no-info">급식 정보가 없습니다.</div>
-{% endif %}
-{% endif %}
-
-<script>
-let isMonthTableVisible = false;
-
-function toggleMonthTable() {
-const monthTable = document.getElementById('monthTable');
-const toggleBtn = document.getElementById('toggleMonthBtn');
-
-isMonthTableVisible = !isMonthTableVisible;
-
-if (isMonthTableVisible) {
-monthTable.style.display = 'table';
-toggleBtn.innerHTML = '▲ 월간 급식표 접기';
-toggleBtn.classList.add('active');
-} else {
-monthTable.style.display = 'none';
-toggleBtn.innerHTML = '▼ 월간 급식표 보기';
-toggleBtn.classList.remove('active');
-}
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-const monthTable = document.getElementById('monthTable');
-if (monthTable) {
-monthTable.style.display = 'none';
-}
+notificationBtn.addEventListener('click', function() {
+  notificationModal.style.display = 'block';
 });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+
+closeBtn.addEventListener('click', function() {
+  notificationModal.style.display = 'none';
+});
+
+window.addEventListener('click', function(event) {
+  if (event.target == notificationModal) {
+    notificationModal.style.display = 'none';
+  }
+});
+
+// 알림 설정 로직
+document.getElementById('notification-form').onsubmit = function(event) {
+  event.preventDefault();
+  var time = document.getElementById('notification-time').value;
+
+  const savedSchoolCode = localStorage.getItem('school_code');
+  const savedRegionCode = localStorage.getItem('region_code');
+  const savedSchoolName = localStorage.getItem('school_name');
+
+  if (!savedSchoolCode || !savedRegionCode || !savedSchoolName) {
+    alert('먼저 학교를 검색하고 선택해주세요.');
+    return;
+  }
+
+  if (time) {
+    localStorage.setItem('notificationTime', time);
+    alert('알림이 저장되었습니다.');
+    notificationModal.style.display = 'none';
+    scheduleNotification(time);
+  }
+};
+
+// 알림 스케줄링 로직
+function scheduleNotification(time) {
+  if (!('Notification' in window)) {
+    console.log('이 브라우저는 알림을 지원하지 않습니다.');
+    return;
+  }
+
+  const checkAndSendNotification = async () => {
+    try {
+      const response = await fetch('/current_time');
+      const data = await response.json();
+      const serverTime = new Date(data.current_time);
+      const targetTime = new Date(serverTime);
+      const [hours, minutes] = time.split(':');
+      targetTime.setHours(hours, minutes, 0, 0);
+
+      if (targetTime < serverTime) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+
+      const delay = targetTime.getTime() - serverTime.getTime();
+
+      setTimeout(async () => {
+        await sendNotification();
+        checkAndSendNotification();
+      }, delay);
+    } catch (error) {
+      console.error('알림 스케줄링 중 오류:', error);
+    }
+  };
+
+  checkAndSendNotification();
+}
+
+// 알림 전송 로직
+async function sendNotification() {
+  if (Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+  }
+
+  const schoolCode = localStorage.getItem('school_code');
+  const regionCode = localStorage.getItem('region_code');
+  const schoolName = localStorage.getItem('school_name');
+
+  if (!schoolCode || !regionCode || !schoolName) {
+    console.log('학교 정보가 저장되지 않았습니다.');
+    return;
+  }
+
+  try {
+    const timeResponse = await fetch('/current_time');
+    const timeData = await timeResponse.json();
+    const serverDate = new Date(timeData.current_time);
+    const dateString = serverDate.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
+    const mealData = await mealResponse.json();
+
+    if (mealData.has_meal) {
+      const meal = mealData.meal.length > 100
+        ? mealData.meal.substring(0, 100) + '...'
+        : mealData.meal;
+
+      const notification = new Notification(`${schoolName} 오늘의 급식 🍗`, {
+        body: meal,
+        icon: "/favicon.svg",
+        tag: dateString // 중복 알림 방지
+      });
+
+      notification.onclick = function(event) {
+        event.preventDefault();
+        window.open(`/meal/${schoolCode}`);
+      };
+    }
+  } catch (error) {
+    console.error('알림 전송 중 오류:', error);
+  }
+}
+
+// 월간 급식표 토글 로직
+const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+const monthTable = document.getElementById('monthTable');
+
+if (toggleMonthBtn && monthTable) {
+  let isMonthTableVisible = false;
+  monthTable.style.display = 'none';
+
+  toggleMonthBtn.addEventListener('click', function() {
+    isMonthTableVisible = !isMonthTableVisible;
+
+    if (isMonthTableVisible) {
+      monthTable.style.display = 'block';
+      toggleMonthBtn.innerHTML = '▲ 월간 급식표 접기';
+      toggleMonthBtn.classList.add('active');
+      
+      // 스크롤 애니메이션
+      monthTable.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      monthTable.style.display = 'none';
+      toggleMonthBtn.innerHTML = '▼ 월간 급식표 보기';
+      toggleMonthBtn.classList.remove('active');
+    }
+  });
+}
+
+// iOS 가이드 로직
 function isIOS() {
-return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
 function isSafari() {
-return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 }
 
 function shouldShowGuide() {
-return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.standalone;
+  return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.standalone;
 }
 
-function createIOSGuide() {
-if (!shouldShowGuide()) return;
-
-const guideElement = document.createElement('div');
-guideElement.innerHTML = `
-           <div id="ios-webapp-guide">
-               <div class="ios-webapp-guide-content">
-                    <p>📱 급식알리미를 편하게 이용하고싶으신가요?</p>
-                    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-                   <p>하단의 
-                       <span class="share-icon-guide">
-                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="18" cy="5" r="3"></circle>
-                                <circle cx="6" cy="12" r="3"></circle>
-                                <circle cx="18" cy="19" r="3"></circle>
-                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                            </svg>
-    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-    <polyline points="16 6 12 2 8 6"/>
-    <line x1="12" y1="2" x2="12" y2="15"/>
-</svg>
-                       </span> 
-                       버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
-                   <button onclick="dismissIOSGuide()">닫기</button>
-               </div>
-           </div>
-       `;
-document.body.insertAdjacentElement('afterbegin', guideElement);
-
-setTimeout(() => {
-const guide = document.getElementById('ios-webapp-guide');
-if (guide) {
-guide.style.opacity = '1';
-guide.style.transform = 'translateX(-50%) translateY(0)';
-}
-}, 100);
+function dismissIOSGuide() {
+  const guideElement = document.getElementById('ios-webapp-guide');
+  if (guideElement) {
+    guideElement.style.opacity = '0';
+    guideElement.style.transform = 'translateX(-50%) translateY(-100%)';
+    setTimeout(() => {
+      guideElement.style.display = 'none';
+      localStorage.setItem('ios-webapp-guide-shown', 'true');
+    }, 300);
+  }
 }
 
-window.dismissIOSGuide = function() {
-const guideElement = document.getElementById('ios-webapp-guide');
-if (guideElement) {
-guideElement.style.opacity = '0';
-guideElement.style.transform = 'translateX(-50%) translateY(-100%)';
-setTimeout(() => {
-guideElement.remove();
-localStorage.setItem('ios-webapp-guide-shown', 'true');
-}, 300);
-}
-}
+// 페이지 로드 시 iOS 가이드 표시
+document.addEventListener('DOMContentLoaded', function() {
+  if (shouldShowGuide()) {
+    const guideElement = document.getElementById('ios-webapp-guide');
+    if (guideElement) {
+      setTimeout(() => {
+        guideElement.style.opacity = '1';
+        guideElement.style.transform = 'translateX(-50%) translateY(0)';
+      }, 1000);
+    }
+  }
+  
+  // 알림 권한 요청
+  if ('Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        const savedTime = localStorage.getItem('notificationTime');
+        const savedSchoolCode = localStorage.getItem('school_code');
+        const savedRegionCode = localStorage.getItem('region_code');
 
-createIOSGuide();
+        if (savedTime && savedSchoolCode && savedRegionCode) {
+          scheduleNotification(savedTime);
+        }
+      }
+    });
+  }
+  
+  // 로딩 표시 초기화
+  document.getElementById('loading').style.display = 'none';
 });
 </script>
-
-<style>
-#ios-webapp-guide {
-position: fixed;
-top: 10px;
-left: 50%;
-transform: translateX(-50%) translateY(-100%);
-width: 90%;
-max-width: 350px;
-background-color: rgba(255, 255, 255, 0.95);
-border-radius: 10px;
-box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-z-index: 9999;
-padding: 15px;
-text-align: center;
-border: 1px solid #e0e0e0;
-opacity: 0;
-transition: all 0.3s ease;
-}
-
-#ios-webapp-guide .ios-webapp-guide-content {
-display: flex;
-flex-direction: column;
-align-items: center;
-}
-
-#ios-webapp-guide p {
-margin: 10px 0;
-color: #333;
-font-size: 14px;
-}
-
-#ios-webapp-guide .share-icon-guide {
-display: inline-block;
-vertical-align: middle;
-width: 24px;
-height: 24px;
-margin: 0 4px;
-color: #007bff;
-}
-
-#ios-webapp-guide .share-icon-guide svg {
-width: 100%;
-height: 100%;
-}
-
-#ios-webapp-guide button {
-margin-top: 10px;
-background-color: #007bff;
-color: white;
-border: none;
-padding: 8px 15px;
-border-radius: 5px;
-cursor: pointer;
-}
-</style>
 </body>
 </html>
