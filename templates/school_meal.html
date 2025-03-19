@@ -152,37 +152,37 @@ media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-
         </tr>
       </thead>
       <tbody>
-        {% for date, meal in week_meals.items() %}
-  <tr class="meal-row">
-    <td class="date-cell">{{ date | format_date }}</td>
-    <td class="menu-cell">
-      {% if meal.breakfast != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>아침</strong>
-        <p>{{ meal.breakfast | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.lunch != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>점심</strong>
-        <p>{{ meal.lunch | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.dinner != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>저녁</strong>
-        <p>{{ meal.dinner | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
-      <div class="no-meal">급식 정보 없음</div>
-      {% endif %}
-    </td>
-  </tr>
-{% endfor %}
+        {% for date, meal in month_meals.items() %}
+        <tr class="meal-row">
+          <td class="date-cell">{{ date | format_date }}</td>
+          <td class="menu-cell">
+            {% if meal.breakfast != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>아침</strong>
+              <p>{{ meal.breakfast | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.lunch != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>점심</strong>
+              <p>{{ meal.lunch | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.dinner != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>저녁</strong>
+              <p>{{ meal.dinner | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
+            <div class="no-meal">급식 정보 없음</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
