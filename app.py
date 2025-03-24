@@ -143,10 +143,9 @@ def get_week_dates():
     dates = [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
     return dates
 
-cache_key = f"{region_code}_{school_code}_{start_date}_{end_date}"
-
 def get_month_meals(school_code, region_code):
     today = datetime.now()
+    cache_key = f"{region_code}_{school_code}_{start_date}_{end_date}"
     year_month = today.strftime('%Y%m')
     start_date = f"{year_month}01"
     _, last_day = calendar.monthrange(today.year, today.month)
