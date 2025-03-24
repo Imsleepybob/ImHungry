@@ -138,13 +138,17 @@ def get_month_dates():
 
 def get_week_dates():
     today = datetime.now().date()
-    start_of_week = today - timedelta(days=today.weekday() + 1)
+    days_since_sunday = today.weekday() + 1 if today.weekday() < 6 else 0
+    start_of_week = today - timedelta(days=days_since_sunday)
     dates = [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
     return dates
 
 def get_month_meals(school_code, region_code):
     today = datetime.now()
-    cache_key = f"{region_code}_{school_code}_{today.strftime('%Y%m')}"
+    year_month = today.strftime('%Y%m')
+    start_date = f"{year_month}01"
+    _, last_day = calendar.monthrange(today.year, today.month)
+    end_date = f"{year_month}{last_day:02d}"
 
     if cache_key in meal_cache:
         return meal_cache[cache_key]
@@ -157,7 +161,8 @@ def get_month_meals(school_code, region_code):
         "pSize": 100,
         "ATPT_OFCDC_SC_CODE": region_code,
         "SD_SCHUL_CODE": school_code,
-        "MLSV_YMD": today.strftime("%Y%m")
+        "MLSV_YMD": start_date,
+        "MLSV_TO_YMD": end_date
     }
 
     try:
