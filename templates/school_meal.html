@@ -101,92 +101,47 @@ media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-
               <th>급식 메뉴</th>
             </tr>
           </thead>
-<tbody>
-  {% for date, meal in week_meals.items() %}
-  <tr class="meal-row">
-    <td class="date-cell">{{ date | format_date }}</td>
-    <td class="menu-cell">
-      {% if meal.breakfast != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>아침</strong>
-        <p>{{ meal.breakfast | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.lunch != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>점심</strong>
-        <p>{{ meal.lunch | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.dinner != "급식 정보 없음" %}
-      <div class="meal-type">
-        <strong>저녁</strong>
-        <p>{{ meal.dinner | safe }}</p>
-      </div>
-      {% endif %}
-      
-      {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
-      <div class="no-meal">급식 정보 없음</div>
-      {% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
+          <tbody>
+            {% for date, meal in week_meals.items() %}
+            <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="menu-cell">{{ meal }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
       </div>
-      {% endif %}
     </div>
 
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
 
-<!-- 월간 급식 테이블 -->
-<div class="meal-card month-meal" id="monthTable">
-  <h3 class="meal-title">이번 달 급식 정보🍱</h3>
-  <div class="meal-table-container">
-    <table class="meal-table">
-      <thead>
-        <tr>
-          <th>날짜</th>
-          <th>급식 메뉴</th>
-        </tr>
-      </thead>
-<tbody>
-  {% for date, meal in month_meals.items() %}
-  <tr class="meal-row">
-    <td class="date-cell">{{ date | format_date }}</td>
-    <td class="menu-cell">
-      {% if meal.breakfast != "급식 정보 없음" %}
-      <div class="meal-section">
-        <div class="meal-label">아침</div>
-        <div class="meal-content">{{ meal.breakfast | safe }}</div>
+    <!-- 월간 급식 테이블 -->
+    <div class="meal-card month-meal" id="monthTable">
+      <h3 class="meal-title">이번 달 급식 정보🍱</h3>
+      <div class="meal-table-container">
+        <table class="meal-table">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>급식 메뉴</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for date, meal in month_meals.items() %}
+            <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="menu-cell">{{ meal }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-      {% endif %}
-      
-      {% if meal.lunch != "급식 정보 없음" %}
-      <div class="meal-section">
-        <div class="meal-label">점심</div>
-        <div class="meal-content">{{ meal.lunch | safe }}</div>
-      </div>
-      {% endif %}
-      
-      {% if meal.dinner != "급식 정보 없음" %}
-      <div class="meal-section">
-        <div class="meal-label">저녁</div>
-        <div class="meal-content">{{ meal.dinner | safe }}</div>
-      </div>
-      {% endif %}
-      
-      {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
-      <div>급식 정보 없음</div>
-      {% endif %}
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
-    </table>
+    </div>
+    {% else %}
+    <div class="no-info">급식 정보가 없습니다.</div>
+    {% endif %}
   </div>
+  {% endif %}
 </div>
 
 <div id="ios-webapp-guide">
