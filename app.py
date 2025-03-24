@@ -145,11 +145,12 @@ def get_week_dates():
 
 def get_month_meals(school_code, region_code):
     today = datetime.now()
-    cache_key = f"{region_code}_{school_code}_{start_date}_{end_date}"
     year_month = today.strftime('%Y%m')
     start_date = f"{year_month}01"
     _, last_day = calendar.monthrange(today.year, today.month)
     end_date = f"{year_month}{last_day:02d}"
+    
+    cache_key = f"{region_code}_{school_code}_{start_date}_{end_date}"
 
     if cache_key in meal_cache:
         return meal_cache[cache_key]
