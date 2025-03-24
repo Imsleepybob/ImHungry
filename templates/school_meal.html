@@ -486,9 +486,16 @@ if (toggleMonthBtn && monthTable) {
   });
 }
 
-// iOS 가이드 로직
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+function isIOSDevice() {
+  // 표준 iOS 기기 감지
+  const isStandardIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  
+  // iPad OS 13+ 감지 (데스크톱 모드 사용)
+  const isPadOS = navigator.maxTouchPoints > 0 && 
+                  /Macintosh/.test(navigator.userAgent) && 
+                  'ontouchend' in document;
+                  
+  return isStandardIOS || isPadOS;
 }
 
 function isSafari() {
@@ -541,6 +548,34 @@ document.addEventListener('DOMContentLoaded', function() {
   // 로딩 표시 초기화
   document.getElementById('loading').style.display = 'none';
 });
+  
+  // 클라이언트 시간대 기준으로 오늘 날짜 가져오기
+function getTodayDate() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}`;
+}
+
+// 클라이언트 시간대 기준으로 현재 주의 날짜 계산
+function getCurrentWeekDates() {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0: 일요일, 6: 토요일
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - dayOfWeek); // 일요일로 이동
+    
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        weekDates.push(`${yyyy}${mm}${dd}`);
+    }
+    return weekDates;
+}
 </script>
 </body>
 </html>
