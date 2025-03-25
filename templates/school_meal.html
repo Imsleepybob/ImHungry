@@ -39,76 +39,8 @@ media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-
     <span class="close">&times;</span>
     <h2>알림 설정</h2>
     <form id="notification-form">
-      <div class="meal-notification-group">
-        <h3>알림 시간 설정</h3>
-        <div class="notification-time-setting">
-          <div class="meal-toggle">
-            <label>
-              <input type="checkbox" id="breakfast-toggle" name="breakfast-toggle" class="meal-toggle-input">
-              <span class="toggle-label">아침</span>
-            </label>
-            <input type="time" id="breakfast-time" name="breakfast-time" class="time-input" value="07:30">
-          </div>
-          
-          <div class="meal-toggle">
-            <label>
-              <input type="checkbox" id="lunch-toggle" name="lunch-toggle" class="meal-toggle-input" checked>
-              <span class="toggle-label">점심</span>
-            </label>
-            <input type="time" id="lunch-time" name="lunch-time" class="time-input" value="11:30">
-          </div>
-          
-          <div class="meal-toggle">
-            <label>
-              <input type="checkbox" id="dinner-toggle" name="dinner-toggle" class="meal-toggle-input">
-              <span class="toggle-label">저녁</span>
-            </label>
-            <input type="time" id="dinner-time" name="dinner-time" class="time-input" value="17:30">
-          </div>
-        </div>
-      </div>
-      
-      <div class="day-notification-group">
-        <h3>요일 설정</h3>
-        <div class="day-toggle-container">
-          <label class="day-toggle">
-            <input type="checkbox" id="sunday-toggle" name="day-toggle" value="0">
-            <span>일</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="monday-toggle" name="day-toggle" value="1" checked>
-            <span>월</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="tuesday-toggle" name="day-toggle" value="2" checked>
-            <span>화</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="wednesday-toggle" name="day-toggle" value="3" checked>
-            <span>수</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="thursday-toggle" name="day-toggle" value="4" checked>
-            <span>목</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="friday-toggle" name="day-toggle" value="5" checked>
-            <span>금</span>
-          </label>
-          <label class="day-toggle">
-            <input type="checkbox" id="saturday-toggle" name="day-toggle" value="6">
-            <span>토</span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="notification-options">
-        <label class="option-toggle">
-          <input type="checkbox" id="skip-empty-toggle" name="skip-empty-toggle" checked>
-          <span>급식 정보가 없는 날에는 알림 보내지 않기</span>
-        </label>
-      </div>
-      
+      <label for="notification-time">알림 시각</label>
+      <input type="time" id="notification-time" name="notification-time" required>
       <button type="submit" class="submit-btn">저장</button>
     </form>
   </div>
@@ -169,48 +101,94 @@ media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-
               <th>급식 메뉴</th>
             </tr>
           </thead>
-          <tbody>
-            {% for date, meal in week_meals.items() %}
-            <tr class="meal-row">
-              <td class="date-cell">{{ date | format_date }}</td>
-              <td class="menu-cell">{{ meal }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
+<tbody>
+  {% for date, meal in week_meals.items() %}
+  <tr class="meal-row">
+    <td class="date-cell">{{ date | format_date }}</td>
+    <td class="menu-cell">
+      {% if meal.breakfast != "급식 정보 없음" %}
+      <div class="meal-type">
+        <strong>아침</strong>
+        <p>{{ meal.breakfast | safe }}</p>
+      </div>
+      {% endif %}
+      
+      {% if meal.lunch != "급식 정보 없음" %}
+      <div class="meal-type">
+        <strong>점심</strong>
+        <p>{{ meal.lunch | safe }}</p>
+      </div>
+      {% endif %}
+      
+      {% if meal.dinner != "급식 정보 없음" %}
+      <div class="meal-type">
+        <strong>저녁</strong>
+        <p>{{ meal.dinner | safe }}</p>
+      </div>
+      {% endif %}
+      
+      {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
+      <div class="no-meal">급식 정보 없음</div>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</tbody>
         </table>
       </div>
     </div>
 
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
 
-    <!-- 월간 급식 테이블 -->
-    <div class="meal-card month-meal" id="monthTable">
-      <h3 class="meal-title">이번 달 급식 정보🍱</h3>
-      <div class="meal-table-container">
-        <table class="meal-table">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>급식 메뉴</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for date, meal in month_meals.items() %}
-            <tr class="meal-row">
-              <td class="date-cell">{{ date | format_date }}</td>
-              <td class="menu-cell">{{ meal }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% else %}
-    <div class="no-info">급식 정보가 없습니다.</div>
-    {% endif %}
+{% if month_meals %}
+<!-- 월간 급식 테이블 -->
+<div class="meal-card month-meal" id="monthTable">
+  <h3 class="meal-title">이번 달 급식 정보🍱</h3>
+  <div class="meal-table-container">
+    <table class="meal-table">
+      <thead>
+        <tr>
+          <th>날짜</th>
+          <th>급식 메뉴</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for date, meal in month_meals.items() %}
+        <tr class="meal-row">
+          <td class="date-cell">{{ date | format_date }}</td>
+          <td class="menu-cell">
+            {% if meal.breakfast != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>아침</strong>
+              <p>{{ meal.breakfast | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.lunch != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>점심</strong>
+              <p>{{ meal.lunch | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.dinner != "급식 정보 없음" %}
+            <div class="meal-type">
+              <strong>저녁</strong>
+              <p>{{ meal.dinner | safe }}</p>
+            </div>
+            {% endif %}
+            
+            {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}
+            <div class="no-meal">급식 정보 없음</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  {% endif %}
 </div>
+{% endif %}
 
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
@@ -266,199 +244,107 @@ window.addEventListener('click', function(event) {
   }
 });
 
-// 알림 설정 저장 로직
+// 알림 설정 로직
 document.getElementById('notification-form').onsubmit = function(event) {
   event.preventDefault();
-  
+  var time = document.getElementById('notification-time').value;
+
   const savedSchoolCode = localStorage.getItem('school_code');
+  const savedRegionCode = localStorage.getItem('region_code');
   const savedSchoolName = localStorage.getItem('school_name');
 
-  if (!savedSchoolCode || !savedSchoolName) {
+  if (!savedSchoolCode || !savedRegionCode || !savedSchoolName) {
     alert('먼저 학교를 검색하고 선택해주세요.');
     return;
   }
-  
-  // 알림 설정 정보 수집
-  const notificationSettings = {
-    meals: {
-      breakfast: {
-        enabled: document.getElementById('breakfast-toggle').checked,
-        time: document.getElementById('breakfast-time').value
-      },
-      lunch: {
-        enabled: document.getElementById('lunch-toggle').checked,
-        time: document.getElementById('lunch-time').value
-      },
-      dinner: {
-        enabled: document.getElementById('dinner-toggle').checked,
-        time: document.getElementById('dinner-time').value
-      }
-    },
-    days: [
-      document.getElementById('sunday-toggle').checked,
-      document.getElementById('monday-toggle').checked,
-      document.getElementById('tuesday-toggle').checked,
-      document.getElementById('wednesday-toggle').checked,
-      document.getElementById('thursday-toggle').checked,
-      document.getElementById('friday-toggle').checked,
-      document.getElementById('saturday-toggle').checked
-    ],
-    skipEmpty: document.getElementById('skip-empty-toggle').checked
-  };
-  
-  // 로컬 스토리지에 설정 저장
-  localStorage.setItem('notificationSettings', JSON.stringify(notificationSettings));
-  
-  alert('알림 설정이 저장되었습니다.');
-  notificationModal.style.display = 'none';
-  
-  // 기존 알림 스케줄 초기화 후 새로운 설정으로 알림 설정
-  resetNotificationSchedule();
-  scheduleNotifications(notificationSettings);
+
+  if (time) {
+    localStorage.setItem('notificationTime', time);
+    alert('알림이 저장되었습니다.');
+    notificationModal.style.display = 'none';
+    scheduleNotification(time);
+  }
 };
 
-// 기존 알림 스케줄 취소
-function resetNotificationSchedule() {
-  // 기존 타이머 ID가 있으면 제거
-  const timerIds = JSON.parse(localStorage.getItem('notificationTimerIds') || '[]');
-  timerIds.forEach(id => clearTimeout(id));
-  localStorage.setItem('notificationTimerIds', '[]');
-}
-
-// 알림 스케줄 설정
-function scheduleNotifications(settings) {
+// 알림 스케줄링 로직
+function scheduleNotification(time) {
   if (!('Notification' in window)) {
     console.log('이 브라우저는 알림을 지원하지 않습니다.');
     return;
   }
-  
-  // 알림 권한 요청
-  Notification.requestPermission().then(permission => {
-    if (permission !== 'granted') {
-      console.log('알림 권한이 거부되었습니다.');
-      return;
-    }
-    
-    const timerIds = [];
-    const schoolCode = localStorage.getItem('school_code');
-    
-    // 각 식사 시간별 알림 설정
-    for (const [mealType, mealSetting] of Object.entries(settings.meals)) {
-      if (mealSetting.enabled) {
-        const timerId = scheduleNextMealNotification(mealType, mealSetting.time, settings.days, settings.skipEmpty, schoolCode);
-        if (timerId) timerIds.push(timerId);
-      }
-    }
-    
-    localStorage.setItem('notificationTimerIds', JSON.stringify(timerIds));
-  });
-}
 
-// 다음 식사 알림 스케줄 설정
-function scheduleNextMealNotification(mealType, timeStr, enabledDays, skipEmpty, schoolCode) {
-  const now = new Date();
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  
-  const targetTime = new Date(now);
-  targetTime.setHours(hours, minutes, 0, 0);
-  
-  // 이미 지난 시간이면 다음 날로 설정
-  if (targetTime <= now) {
-    targetTime.setDate(targetTime.getDate() + 1);
-  }
-  
-  // 활성화된 요일인지 확인 및 조정
-  while (!enabledDays[targetTime.getDay()]) {
-    targetTime.setDate(targetTime.getDate() + 1);
-  }
-  
-  const delay = targetTime.getTime() - now.getTime();
-  
-  // 지정된 시간에 알림 보내기
-  const timerId = setTimeout(async () => {
-    // 날짜 형식 변환 (YYYYMMDD)
-    const dateString = targetTime.toISOString().slice(0, 10).replace(/-/g, '');
-    
+  const checkAndSendNotification = async () => {
     try {
-      // 급식 정보 가져오기
-      const response = await fetch(`/api/meals/${schoolCode}/${dateString}`);
-      const mealData = await response.json();
-      
-      const mealContent = mealType === 'breakfast' ? mealData.breakfast : 
-                          mealType === 'lunch' ? mealData.lunch : mealData.dinner;
-      
-      // 급식 정보가 있는지 확인
-      const hasMeal = mealContent !== "급식 정보 없음";
-      
-      // 급식 정보가 있거나, 없어도 알림을 보내도록 설정된 경우
-      if (hasMeal || !skipEmpty) {
-        const schoolName = localStorage.getItem('school_name');
-        const mealTypeText = mealType === 'breakfast' ? '아침' : 
-                            mealType === 'lunch' ? '점심' : '저녁';
-        
-        // 알림 내용 생성
-        let notificationTitle = `${schoolName} ${targetTime.getMonth()+1}/${targetTime.getDate()} ${mealTypeText} 급식`;
-        let notificationBody = hasMeal ? 
-                              (mealContent.length > 100 ? mealContent.substring(0, 100) + '...' : mealContent) : 
-                              '오늘은 급식이 없습니다.';
-        
-        // 알림 보내기
-        const notification = new Notification(notificationTitle, {
-          body: notificationBody,
-          icon: "/favicon.svg",
-          tag: `${dateString}_${mealType}`
-        });
-        
-        notification.onclick = function(event) {
-          event.preventDefault();
-          window.open(`/meal/${schoolCode}`);
-        };
+      const response = await fetch('/current_time');
+      const data = await response.json();
+      const serverTime = new Date(data.current_time);
+      const targetTime = new Date(serverTime);
+      const [hours, minutes] = time.split(':');
+      targetTime.setHours(hours, minutes, 0, 0);
+
+      if (targetTime < serverTime) {
+        targetTime.setDate(targetTime.getDate() + 1);
       }
-      
-      // 다음 알림 스케줄 설정
-      scheduleNextMealNotification(mealType, timeStr, enabledDays, skipEmpty, schoolCode);
-      
+
+      const delay = targetTime.getTime() - serverTime.getTime();
+
+      setTimeout(async () => {
+        await sendNotification();
+        checkAndSendNotification();
+      }, delay);
     } catch (error) {
-      console.error('알림 처리 중 오류:', error);
-      // 오류가 발생해도 다음 알림은 계속 스케줄
-      scheduleNextMealNotification(mealType, timeStr, enabledDays, skipEmpty, schoolCode);
+      console.error('알림 스케줄링 중 오류:', error);
     }
-  }, delay);
-  
-  return timerId;
+  };
+
+  checkAndSendNotification();
 }
 
-// 페이지 로드시 저장된 알림 설정 불러오기
-document.addEventListener('DOMContentLoaded', function() {
-  const savedSettings = localStorage.getItem('notificationSettings');
-  if (savedSettings) {
-    const settings = JSON.parse(savedSettings);
-    
-    // 폼에 저장된 설정 적용
-    document.getElementById('breakfast-toggle').checked = settings.meals.breakfast.enabled;
-    document.getElementById('breakfast-time').value = settings.meals.breakfast.time;
-    document.getElementById('lunch-toggle').checked = settings.meals.lunch.enabled;
-    document.getElementById('lunch-time').value = settings.meals.lunch.time;
-    document.getElementById('dinner-toggle').checked = settings.meals.dinner.enabled;
-    document.getElementById('dinner-time').value = settings.meals.dinner.time;
-    
-    // 요일 설정 적용
-    document.getElementById('sunday-toggle').checked = settings.days[0];
-    document.getElementById('monday-toggle').checked = settings.days[1];
-    document.getElementById('tuesday-toggle').checked = settings.days[2];
-    document.getElementById('wednesday-toggle').checked = settings.days[3];
-    document.getElementById('thursday-toggle').checked = settings.days[4];
-    document.getElementById('friday-toggle').checked = settings.days[5];
-    document.getElementById('saturday-toggle').checked = settings.days[6];
-    
-    document.getElementById('skip-empty-toggle').checked = settings.skipEmpty;
-    
-    // 저장된 설정으로 알림 스케줄 다시 설정
-    if (localStorage.getItem('school_code')) {
-      scheduleNotifications(settings);
-    }
+// 알림 전송 로직
+async function sendNotification() {
+  if (Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
   }
-});
+
+  const schoolCode = localStorage.getItem('school_code');
+  const regionCode = localStorage.getItem('region_code');
+  const schoolName = localStorage.getItem('school_name');
+
+  if (!schoolCode || !regionCode || !schoolName) {
+    console.log('학교 정보가 저장되지 않았습니다.');
+    return;
+  }
+
+  try {
+    const timeResponse = await fetch('/current_time');
+    const timeData = await timeResponse.json();
+    const serverDate = new Date(timeData.current_time);
+    const dateString = serverDate.toISOString().slice(0, 10).replace(/-/g, '');
+
+    const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
+    const mealData = await mealResponse.json();
+
+    if (mealData.has_meal) {
+      const meal = mealData.meal.length > 100
+        ? mealData.meal.substring(0, 100) + '...'
+        : mealData.meal;
+
+      const notification = new Notification(`${schoolName} 오늘의 급식 🍗`, {
+        body: meal,
+        icon: "/favicon.svg",
+        tag: dateString // 중복 알림 방지
+      });
+
+      notification.onclick = function(event) {
+        event.preventDefault();
+        window.open(`/meal/${schoolCode}`);
+      };
+    }
+  } catch (error) {
+    console.error('알림 전송 중 오류:', error);
+  }
+}
 
 // 월간 급식표 토글 로직
 const toggleMonthBtn = document.getElementById('toggleMonthBtn');
@@ -486,16 +372,9 @@ if (toggleMonthBtn && monthTable) {
   });
 }
 
-function isIOSDevice() {
-  // 표준 iOS 기기 감지
-  const isStandardIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  
-  // iPad OS 13+ 감지 (데스크톱 모드 사용)
-  const isPadOS = navigator.maxTouchPoints > 0 && 
-                  /Macintosh/.test(navigator.userAgent) && 
-                  'ontouchend' in document;
-                  
-  return isStandardIOS || isPadOS;
+// iOS 가이드 로직
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 }
 
 function isSafari() {
@@ -548,34 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // 로딩 표시 초기화
   document.getElementById('loading').style.display = 'none';
 });
-  
-  // 클라이언트 시간대 기준으로 오늘 날짜 가져오기
-function getTodayDate() {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}${mm}${dd}`;
-}
-
-// 클라이언트 시간대 기준으로 현재 주의 날짜 계산
-function getCurrentWeekDates() {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0: 일요일, 6: 토요일
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - dayOfWeek); // 일요일로 이동
-    
-    const weekDates = [];
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        weekDates.push(`${yyyy}${mm}${dd}`);
-    }
-    return weekDates;
-}
 </script>
 </body>
 </html>
