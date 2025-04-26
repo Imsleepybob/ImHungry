@@ -351,8 +351,7 @@ def after_request(response):
 
 @app.route("/It's Christmas Time Again.mp3")
 def namufile1():
-    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return send_from_directory(parent_dir, "It's Christmas Time Again.mp3")
+    return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
 if __name__ == "__main__":
     app.run(debug=True)
