@@ -170,232 +170,270 @@
     </div>
 
 <script>
-// 지역 및 학교 선택 로직 (수정: region_code 대신 region_name 사용 고려)
-document.getElementById('regionForm').addEventListener('submit', function(event) {
-    var regionSelect = document.getElementById("region");
-    var schoolNameInput = document.getElementById("school_name");
+    // --- Flask에서 전달된 데이터 ---
+    const regions_data = {{ regions | tojson | safe }};
 
-    if (regionSelect.value === "") {
-        event.preventDefault();
-        alert("지역을 선택해주세요.");
-        regionSelect.focus();
-        return;
+    // --- 헬퍼 함수 ---
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null; // 쿠키가 없을 경우 null 반환
     }
-    // localStorage 저장은 Flask에서 쿠키로 처리하므로 JS에서는 로딩만 표시
-    localStorage.setItem('school_name', schoolNameInput.value);
-    localStorage.setItem('region_name', regionSelect.value); // 지역 이름 저장
-    document.getElementById('loading').style.display = 'flex';
-});
 
-// 알림 모달 관련 로직
-const notificationBtn = document.getElementById('notification-btn');
-const notificationModal = document.getElementById('notification-modal');
-const closeBtn = document.querySelector('.close');
-notificationBtn.addEventListener('click', () => {
-    loadNotificationSettings(); // 모달 열 때 설정 로드
-    notificationModal.style.display = 'block';
-});
-closeBtn.addEventListener('click', () => { notificationModal.style.display = 'none'; });
-window.addEventListener('click', (event) => {
-    if (event.target == notificationModal) { notificationModal.style.display = 'none'; }
-});
-
-// 설정 로드 함수
-function loadNotificationSettings() {
-    const settings = JSON.parse(localStorage.getItem('notificationSettings')) || {};
-    document.getElementById('breakfast-enable').checked = settings.breakfast?.enabled || false;
-    document.getElementById('breakfast-time').value = settings.breakfast?.time || '07:00';
-    document.getElementById('lunch-enable').checked = settings.lunch?.enabled || false;
-    document.getElementById('lunch-time').value = settings.lunch?.time || '12:00';
-    document.getElementById('dinner-enable').checked = settings.dinner?.enabled || false;
-    document.getElementById('dinner-time').value = settings.dinner?.time || '18:00';
-    const days = settings.days || [1, 2, 3, 4, 5]; // 기본 월~금
-    document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
-        cb.checked = days.includes(parseInt(cb.value));
-    });
-}
-
-// 알림 설정 저장 (수정됨)
-document.getElementById('notification-form').onsubmit = function(event) {
-    event.preventDefault();
-    const schoolCode = getCookie('school_code'); // 쿠키에서 학교 코드 가져오기
-    if (!schoolCode) {
-        alert('먼저 학교를 검색해주세요.');
-        return;
+    function isIOS() {
+        return [ 'iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod' ]
+               .includes(navigator.platform) || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
     }
-    const selectedDays = Array.from(document.querySelectorAll('.day-setting input:checked'))
-                              .map(cb => parseInt(cb.value));
-    const settings = {
-        breakfast: {
-            enabled: document.getElementById('breakfast-enable').checked,
-            time: document.getElementById('breakfast-time').value
-        },
-        lunch: {
-            enabled: document.getElementById('lunch-enable').checked,
-            time: document.getElementById('lunch-time').value
-        },
-        dinner: {
-            enabled: document.getElementById('dinner-enable').checked,
-            time: document.getElementById('dinner-time').value
-        },
-        days: selectedDays
-    };
-    localStorage.setItem('notificationSettings', JSON.stringify(settings));
-    alert('알림이 저장되었습니다.');
-    notificationModal.style.display = 'none';
-    requestAndScheduleNotifications(); // 저장 후 즉시 스케줄링
-};
 
-let notificationTimeouts = [];
-function clearNotificationTimeouts() {
-    notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-    notificationTimeouts = [];
-}
-
-async function requestAndScheduleNotifications() {
-    if (!('Notification' in window)) {
-        alert('이 브라우저는 알림을 지원하지 않습니다.');
-        return;
+    function isSafari() {
+        return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     }
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-        scheduleNextNotifications();
-    } else {
-        alert('알림 권한이 필요합니다.');
+
+    function shouldShowGuide() {
+        return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone;
     }
-}
 
-async function scheduleNextNotifications() {
-    clearNotificationTimeouts();
-    const settings = JSON.parse(localStorage.getItem('notificationSettings'));
-    const schoolCode = getCookie('school_code'); // 쿠키 사용
+    function dismissIOSGuide() {
+        const guideElement = document.getElementById('ios-webapp-guide');
+        if (guideElement) {
+            guideElement.style.opacity = '0';
+            guideElement.style.transform = 'translateX(-50%) translateY(100%)'; // 아래로 사라지게 수정
+            setTimeout(() => {
+                guideElement.style.display = 'none';
+                localStorage.setItem('ios-webapp-guide-shown', 'true');
+            }, 500); // 트랜지션 시간과 맞춤
+        }
+    }
 
-    if (!settings || !schoolCode) return;
-
-    try {
-        const response = await fetch('/current_time');
-        const data = await response.json();
-        const now = new Date(data.current_time); // 서버 KST 기준
-
-        const mealTypes = ['breakfast', 'lunch', 'dinner'];
-
-        mealTypes.forEach(mealType => {
-            if (settings[mealType]?.enabled && settings[mealType]?.time) {
-                const [hours, minutes] = settings[mealType].time.split(':');
-
-                settings.days.forEach(dayOfWeek => { // 0=Sun, 1=Mon...
-                    let nextTime = new Date(now);
-                    nextTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-                    let currentDay = now.getDay();
-                    let dayDiff = dayOfWeek - currentDay;
-                    if (dayDiff < 0) {
-                        dayDiff += 7;
-                    }
-                    
-                    nextTime.setDate(now.getDate() + dayDiff);
-
-                    // 이미 지난 시간이면 다음 주로 설정
-                    if (nextTime <= now) {
-                        nextTime.setDate(nextTime.getDate() + 7);
-                    }
-
-                    const delay = nextTime.getTime() - now.getTime();
-
-                    if (delay > 0) {
-                        console.log(`Scheduling ${mealType} for ${nextTime}`);
-                        const timeoutId = setTimeout(async () => {
-                            await sendNotification(mealType, nextTime);
-                            scheduleNextNotifications(); // 다음 알림 재스케줄
-                        }, delay);
-                        notificationTimeouts.push(timeoutId);
-                    }
-                });
-            }
+    function loadNotificationSettings() {
+        const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}'); // '{}' 사용
+        document.getElementById('breakfast-enable').checked = settings.breakfast?.enabled || false;
+        document.getElementById('breakfast-time').value = settings.breakfast?.time || '07:00';
+        document.getElementById('lunch-enable').checked = settings.lunch?.enabled || false;
+        document.getElementById('lunch-time').value = settings.lunch?.time || '12:00';
+        document.getElementById('dinner-enable').checked = settings.dinner?.enabled || false;
+        document.getElementById('dinner-time').value = settings.dinner?.time || '18:00';
+        const days = settings.days || [1, 2, 3, 4, 5]; // 기본 월~금
+        document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
+            cb.checked = days.includes(parseInt(cb.value));
         });
-    } catch (error) { console.error('알림 스케줄링 오류:', error); }
-}
+    }
 
-async function sendNotification(mealType, notificationDate) {
-    if (Notification.permission !== 'granted') return;
+    let notificationTimeouts = [];
+    function clearNotificationTimeouts() {
+        notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        notificationTimeouts = [];
+    }
 
-    const schoolCode = getCookie('school_code');
-    const schoolName = getCookie('school_name');
-    if (!schoolCode || !schoolName) return;
-
-    try {
-        const dateString = notificationDate.toISOString().slice(0, 10).replace(/-/g, '');
-        const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
-        const mealData = await mealResponse.json();
-
-        const mealContent = mealData[mealType];
-        if (mealContent && mealContent !== "급식 정보 없음") {
-            const meal = mealContent.length > 80 ? mealContent.substring(0, 80) + '...' : mealContent;
-            const titleMap = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
-            
-            new Notification(`${schoolName} 오늘의 ${titleMap[mealType]} 🍗`, {
-                body: meal,
-                icon: "{{ url_for('favicon') }}",
-                tag: `${dateString}-${mealType}`
-            }).onclick = (event) => {
-                event.preventDefault();
-                window.open(`/meal/${schoolCode}`, '_blank');
-            };
-        } else {
-            console.log(`No ${mealType} for ${dateString}, skipping notification.`);
+    async function requestAndScheduleNotifications() {
+        if (!('Notification' in window)) {
+            alert('이 브라우저는 알림을 지원하지 않습니다.');
+            return;
         }
-    } catch (error) { console.error('알림 전송 오류:', error); }
-}
-
-// 월간 급식표 토글 로직
-const toggleMonthBtn = document.getElementById('toggleMonthBtn');
-const monthTable = document.getElementById('monthTable');
-if (toggleMonthBtn && monthTable) {
-    toggleMonthBtn.addEventListener('click', function() {
-        const isHidden = monthTable.style.display === 'none';
-        monthTable.style.display = isHidden ? 'block' : 'none';
-        toggleMonthBtn.innerHTML = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
-        if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth' });
-    });
-}
-
-// iOS 가이드 로직 (수정됨)
-function isIOS() {
-    return [ 'iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod' ]
-           .includes(navigator.platform) || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-}
-function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent); }
-function shouldShowGuide() { return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone; }
-function dismissIOSGuide() { /* ... 닫기 로직 ... */ }
-
-// 쿠키 가져오기 헬퍼 함수
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
-
-// 페이지 로드 시
-document.addEventListener('DOMContentLoaded', function() {
-    if (shouldShowGuide()) { /* ... 가이드 표시 로직 ... */ }
-    
-    // 알림 권한 확인 및 스케줄링
-    if ('Notification' in window && Notification.permission === 'granted') {
-        const settings = localStorage.getItem('notificationSettings');
-        if (settings && getCookie('school_code')) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
             scheduleNextNotifications();
+        } else {
+            alert('알림 권한이 필요합니다. 설정을 확인해주세요.');
         }
     }
-    document.getElementById('loading').style.display = 'none';
 
-    // 쿠키나 localStorage에서 학교 정보 로드하여 폼 채우기 (선택사항)
-    const savedSchool = localStorage.getItem('school_name') || getCookie('school_name');
-    const savedRegion = localStorage.getItem('region_name') || // 지역 이름 사용
-                        Object.keys(regions).find(key => regions[key] === getCookie('region_code'));
-    if(savedSchool) document.getElementById('school_name').value = savedSchool;
-    if(savedRegion) document.getElementById('region').value = savedRegion;
+    async function scheduleNextNotifications() {
+        clearNotificationTimeouts();
+        const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
+        const schoolCode = getCookie('school_code');
 
-});
+        if (!settings || !schoolCode) return;
+
+        try {
+            const response = await fetch('/current_time');
+            const data = await response.json();
+            const now = new Date(data.current_time);
+
+            const mealTypes = ['breakfast', 'lunch', 'dinner'];
+
+            mealTypes.forEach(mealType => {
+                if (settings[mealType]?.enabled && settings[mealType]?.time) {
+                    const [hours, minutes] = settings[mealType].time.split(':');
+
+                    settings.days.forEach(dayOfWeek => {
+                        let nextTime = new Date(now);
+                        nextTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+                        let currentDay = now.getDay();
+                        let dayDiff = dayOfWeek - currentDay;
+                        if (dayDiff < 0) { dayDiff += 7; }
+
+                        nextTime.setDate(now.getDate() + dayDiff);
+
+                        if (nextTime <= now) { nextTime.setDate(nextTime.getDate() + 7); }
+
+                        const delay = nextTime.getTime() - now.getTime();
+
+                        if (delay > 0) {
+                            console.log(`Scheduling ${mealType} for ${nextTime}`);
+                            const timeoutId = setTimeout(async () => {
+                                await sendNotification(mealType, nextTime);
+                                scheduleNextNotifications();
+                            }, delay);
+                            notificationTimeouts.push(timeoutId);
+                        }
+                    });
+                }
+            });
+        } catch (error) { console.error('알림 스케줄링 오류:', error); }
+    }
+
+    async function sendNotification(mealType, notificationDate) {
+        if (Notification.permission !== 'granted') return;
+
+        const schoolCode = getCookie('school_code');
+        const schoolName = getCookie('school_name');
+        if (!schoolCode || !schoolName) return;
+
+        try {
+            const dateString = notificationDate.toISOString().slice(0, 10).replace(/-/g, '');
+            const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
+            const mealData = await mealResponse.json();
+
+            const mealContent = mealData[mealType];
+            if (mealContent && mealContent !== "급식 정보 없음") {
+                const meal = mealContent.length > 80 ? mealContent.substring(0, 80) + '...' : mealContent;
+                const titleMap = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
+
+                new Notification(`${schoolName} 오늘의 ${titleMap[mealType]} 🍗`, {
+                    body: meal,
+                    icon: "{{ url_for('favicon') }}",
+                    tag: `${dateString}-${mealType}`
+                }).onclick = (event) => {
+                    event.preventDefault();
+                    window.open(`/meal/${schoolCode}`, '_blank');
+                };
+            } else {
+                console.log(`No ${mealType} for ${dateString}, skipping notification.`);
+            }
+        } catch (error) { console.error('알림 전송 오류:', error); }
+    }
+
+
+    // --- DOMContentLoaded 이벤트 리스너 ---
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- 요소 선택 ---
+        const notificationBtn = document.getElementById('notification-btn');
+        const notificationModal = document.getElementById('notification-modal');
+        const closeBtn = document.querySelector('#notification-modal .close'); // 좀 더 명확한 선택자
+        const regionForm = document.getElementById('regionForm');
+        const regionSelect = document.getElementById("region");
+        const schoolNameInput = document.getElementById("school_name");
+        const loadingDiv = document.getElementById('loading');
+        const notificationForm = document.getElementById('notification-form');
+        const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+        const monthTable = document.getElementById('monthTable');
+        const iosGuide = document.getElementById('ios-webapp-guide');
+        // iOS 가이드 닫기 버튼은 HTML에 onclick이 있으므로, JS에서 따로 추가하지 않거나 onclick을 제거하고 여기서 추가합니다.
+        // 여기서는 onclick을 유지한다고 가정합니다. 필요시 아래 주석 해제:
+        // const dismissBtn = document.querySelector('#ios-webapp-guide .dismiss-btn');
+        // if(dismissBtn) dismissBtn.addEventListener('click', dismissIOSGuide);
+
+
+        // --- 이벤트 리스너 등록 ---
+        if (notificationBtn && notificationModal && closeBtn) {
+            notificationBtn.addEventListener('click', () => {
+                console.log("알림 버튼 클릭됨!"); // 디버깅 로그
+                loadNotificationSettings();
+                notificationModal.style.display = 'block';
+                console.log("모달 display: block 설정됨."); // 디버깅 로그
+            });
+
+            closeBtn.addEventListener('click', () => {
+                notificationModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target == notificationModal) {
+                    notificationModal.style.display = 'none';
+                }
+            });
+        } else {
+            console.error("알림 모달 관련 요소를 찾을 수 없습니다!"); // 오류 로그
+        }
+
+        if (regionForm) {
+            regionForm.addEventListener('submit', function(event) {
+                if (regionSelect.value === "") {
+                    event.preventDefault();
+                    alert("지역을 선택해주세요.");
+                    regionSelect.focus();
+                    return;
+                }
+                localStorage.setItem('school_name', schoolNameInput.value);
+                localStorage.setItem('region_name', regionSelect.value);
+                loadingDiv.style.display = 'flex';
+            });
+        }
+
+        if (notificationForm) {
+            notificationForm.onsubmit = function(event) {
+                event.preventDefault();
+                const schoolCode = getCookie('school_code');
+                if (!schoolCode) {
+                    alert('먼저 학교를 검색해주세요.');
+                    return;
+                }
+                const selectedDays = Array.from(document.querySelectorAll('.day-setting input:checked'))
+                                          .map(cb => parseInt(cb.value));
+                const settings = {
+                    breakfast: { enabled: document.getElementById('breakfast-enable').checked, time: document.getElementById('breakfast-time').value },
+                    lunch: { enabled: document.getElementById('lunch-enable').checked, time: document.getElementById('lunch-time').value },
+                    dinner: { enabled: document.getElementById('dinner-enable').checked, time: document.getElementById('dinner-time').value },
+                    days: selectedDays
+                };
+                localStorage.setItem('notificationSettings', JSON.stringify(settings));
+                alert('알림이 저장되었습니다.');
+                notificationModal.style.display = 'none';
+                requestAndScheduleNotifications();
+            };
+        }
+
+        if (toggleMonthBtn && monthTable) {
+            toggleMonthBtn.addEventListener('click', function() {
+                const isHidden = monthTable.style.display === 'none';
+                monthTable.style.display = isHidden ? 'block' : 'none';
+                toggleMonthBtn.innerHTML = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
+                if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+
+        // --- 초기화 및 실행 ---
+        if (iosGuide && shouldShowGuide()) {
+            setTimeout(() => {
+                iosGuide.style.opacity = '1';
+                iosGuide.style.transform = 'translateX(-50%) translateY(0)';
+            }, 1000);
+        }
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const settings = localStorage.getItem('notificationSettings');
+            if (settings && getCookie('school_code')) {
+                scheduleNextNotifications();
+            }
+        }
+
+        if(loadingDiv) loadingDiv.style.display = 'none';
+
+        const savedSchool = localStorage.getItem('school_name') || getCookie('school_name');
+        const regionCode = getCookie('region_code');
+        let savedRegion = localStorage.getItem('region_name');
+
+        if (!savedRegion && regionCode && regions_data) {
+             savedRegion = Object.keys(regions_data).find(key => regions_data[key] === regionCode);
+        }
+
+        if(savedSchool && schoolNameInput) schoolNameInput.value = savedSchool;
+        if(savedRegion && regionSelect) regionSelect.value = savedRegion;
+
+    }); // --- DOMContentLoaded 끝 ---
 </script>
 </body>
 </html>
