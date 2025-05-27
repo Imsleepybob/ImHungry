@@ -1,25 +1,22 @@
 from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory
-from datetime import datetime, timedelta, date, timezone # timezone 추가
+from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict
 import calendar
 import requests
 import logging
 from logging.handlers import RotatingFileHandler
 import ipaddress
+from urllib.parse import quote, unquote
 
 app = Flask(__name__)
 
-# CIDR 형식의 IP 대역 정의
+# --- IP 차단 설정 ---
 BLOCKED_NETWORKS = [
     '2a06:98c0:3600::/48',
     # 추가적인 차단할 네트워크 대역 입력 가능
 ]
 
 def get_client_ip():
-    """
-    클라이언트의 실제 IP 주소를 반환합니다.
-    X-Forwarded-For 헤더를 우선으로 사용합니다.
-    """
     if request.headers.getlist("X-Forwarded-For"):
         return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
     elif request.access_route:
@@ -27,11 +24,7 @@ def get_client_ip():
     else:
         return request.remote_addr
 
-
 def is_ip_blocked(ip_address):
-    """
-    요청 IP가 차단된 네트워크 대역에 속하는지 확인합니다.
-    """
     try:
         client_ip = ipaddress.ip_address(ip_address)
         for blocked_network in BLOCKED_NETWORKS:
@@ -46,42 +39,51 @@ def is_ip_blocked(ip_address):
 @app.before_request
 def block_method():
     client_ip = get_client_ip()
-    app.logger.info(f"Client IP detected: {client_ip}")
+    # app.logger.info(f"Client IP detected: {client_ip}") # 너무 많은 로그를 생성할 수 있으므로 필요시 주석 해제
     if is_ip_blocked(client_ip):
         app.logger.warning(f"Blocked access attempt from IP: {client_ip}")
         return 'Access Denied', 403
 
+# --- 로깅 설정 ---
 def setup_logging():
-    handler = logging.FileHandler('ip_block.log')
-    handler.setLevel(logging.WARNING)
-    app.logger.addHandler(handler)
+    # 기본 로거 설정
+    logging.basicConfig(level=logging.INFO)
+    # 파일 핸들러 설정 (앱 로그)
+    handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3, encoding='utf-8')
+    handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    ))
+    # IP 차단 로그 핸들러
+    ip_handler = logging.FileHandler('ip_block.log', encoding='utf-8')
+    ip_handler.setLevel(logging.WARNING)
+    ip_handler.setFormatter(logging.Formatter(
+         '[%(asctime)s] %(levelname)s: %(message)s'
+    ))
+
+    # 앱 로거 가져오기 및 핸들러 추가
+    logger = logging.getLogger(__name__)
+    logger.addHandler(handler)
+    logger.addHandler(ip_handler)
+    app.logger.addHandler(handler) # Flask 기본 로거에도 추가
+    app.logger.addHandler(ip_handler)
 
 setup_logging()
 
-logging.basicConfig(level=logging.INFO)
-handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3)
-handler.setFormatter(logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-))
-logger = logging.getLogger(__name__)
-logger.addHandler(handler)
-
-API_KEY = "4e2c538d90ef493c94c6e2d943e756d9"
-
+# --- NEIS API 및 기본 설정 ---
+API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
+KST = timezone(timedelta(hours=9))
 regions = {
     "서울": "B10", "부산": "C10", "대구": "D10", "인천": "E10", "광주": "F10",
     "대전": "G10", "울산": "H10", "세종": "I10", "경기": "J10", "강원": "K10",
     "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
     "경남": "S10", "제주": "T10"
 }
-
 school_cache = {}
 meal_cache = {}
 
-# KST 시간대 정의 (UTC+9)
-KST = timezone(timedelta(hours=9))
-
+# --- 핵심 함수 ---
 def get_school_code(school_name, region_code):
+    """학교 이름과 지역 코드로 NEIS API에서 학교 코드와 전체 이름을 조회합니다."""
     cache_key = f"{region_code}_{school_name}"
     if cache_key in school_cache:
         return school_cache[cache_key]
@@ -93,38 +95,42 @@ def get_school_code(school_name, region_code):
     }
     try:
         response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status() # HTTP 오류 발생 시 예외 발생
+        response.raise_for_status()
         data = response.json()
 
-        if "schoolInfo" in data and data["schoolInfo"][1]["row"]:
+        if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
             school_data = data["schoolInfo"][1]["row"][0]
-            school_code = school_data["SD_SCHUL_CODE"]
+            school_code_val = school_data["SD_SCHUL_CODE"]
+            full_school_name = school_data["SCHUL_NM"]
             school_cache[cache_key] = {
-                'code': school_code,
-                'name': school_data["SCHUL_NM"],
+                'code': school_code_val,
+                'name': full_school_name,
                 'region_code': region_code
             }
+            # 입력 이름과 다른 경우에도 캐시 (예: 양정고 -> 양정고등학교)
+            school_cache[f"{region_code}_{full_school_name}"] = school_cache[cache_key]
             return school_cache[cache_key]
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching school code (Request): {e}")
+        app.logger.error(f"Error fetching school code (Request) for {school_name}: {e}")
     except Exception as e:
-        logger.error(f"Error fetching school code (General): {e}")
+        app.logger.error(f"Error fetching school code (General) for {school_name}: {e}")
     return None
 
 def get_month_dates():
-    today = datetime.now(KST).date() # KST 기준
+    """현재 KST 기준 월의 모든 날짜를 YYYYMMDD 형식으로 반환합니다."""
+    today = datetime.now(KST).date()
     _, last_day = calendar.monthrange(today.year, today.month)
     return [(date(today.year, today.month, day)).strftime('%Y%m%d') for day in range(1, last_day + 1)]
 
 def get_week_dates():
-    today = datetime.now(KST).date() # KST 기준
-    # 일요일(6)이 주의 시작이 되도록 계산 (today.weekday() 월요일=0, ..., 일요일=6)
+    """현재 KST 기준 주의 모든 날짜(일~토)를 YYYYMMDD 형식으로 반환합니다."""
+    today = datetime.now(KST).date()
     start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
-    dates = [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
-    return dates
+    return [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
 
 def get_month_meals(school_code, region_code):
-    today = datetime.now(KST) # KST 기준
+    """NEIS API에서 해당 월의 급식 정보를 가져옵니다."""
+    today = datetime.now(KST)
     month_str = today.strftime("%Y%m")
     cache_key = f"{region_code}_{school_code}_{month_str}"
 
@@ -135,17 +141,16 @@ def get_month_meals(school_code, region_code):
     params = {
         "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
         "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code,
-        "MLSV_YMD": month_str # 해당 월 전체 조회
+        "MLSV_YMD": month_str
     }
+    meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
     try:
         response = requests.get(url, params=params, timeout=5)
         response.raise_for_status()
         data = response.json()
 
-        meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
-
-        if "mealServiceDietInfo" in data:
+        if "mealServiceDietInfo" in data and data.get("mealServiceDietInfo")[1].get("row"):
             for row in data["mealServiceDietInfo"][1]["row"]:
                 date_str = row["MLSV_YMD"]
                 menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
@@ -158,11 +163,13 @@ def get_month_meals(school_code, region_code):
         meal_cache[cache_key] = dict(meals)
         return dict(meals)
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching meals (Request): {e}")
+        app.logger.error(f"Error fetching meals (Request) for {school_code}: {e}")
     except Exception as e:
-        logger.error(f"Error fetching meals (General): {e}")
-    return defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
+        app.logger.error(f"Error fetching meals (General) for {school_code}: {e}")
+    return dict(meals) # 오류 발생 시에도 빈 dict 반환
 
+
+# --- 템플릿 필터 및 컨텍스트 프로세서 ---
 @app.template_filter('format_date')
 def format_date(value):
     try:
@@ -176,140 +183,121 @@ def format_date(value):
 
 @app.context_processor
 def inject_today_date():
-    today_date = datetime.now(KST).strftime("%Y%m%d") # KST 기준
-    return dict(today_date=today_date)
+    return dict(today_date=datetime.now(KST).strftime("%Y%m%d"))
 
+# --- 라우트 (Routes) ---
 @app.route("/", methods=["GET", "POST"])
 def index():
+    error_message = request.args.get('error_message')
+    region_cookie = request.cookies.get('region_name')
+    school_name_encoded = request.cookies.get('school_name')
+    school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
+
     if request.method == 'GET':
         school_code = request.cookies.get('school_code')
-        school_name = request.cookies.get('school_name')
-        region_code_saved = request.cookies.get('region_code') # 지역 코드도 확인
-
-        if school_code and school_name and region_code_saved:
-            # 캐시에 정보가 없으면 API를 통해 다시 가져오도록 유도하거나,
-            # 리다이렉트 시 필요한 정보를 넘겨줄 수 있도록 처리
-            if not any(info.get('code') == school_code for info in school_cache.values()):
-                 # 캐시에 없으면 검색 페이지로 (또는 API 호출)
-                 logger.info(f"School info for {school_code} not in cache, showing index.")
-                 return render_template('school_meal.html', regions=regions)
-
-            logger.info(f"Redirecting to saved school: {school_name} ({school_code})")
+        if school_code and school_name_cookie:
+            app.logger.info(f"Redirecting to saved school: {school_name_cookie} ({school_code})")
             return redirect(url_for('school_meal_view', school_code=school_code))
 
     elif request.method == 'POST':
-        region_name = request.form['region'] # 폼에서는 지역 이름(예: "서울")을 받음
-        school_name = request.form['school_name']
-        logger.info(f"Search request - Region: {region_name}, School: {school_name}")
+        region_name = request.form['region']
+        school_name_input = request.form['school_name']
+        app.logger.info(f"Search request - Region: {region_name}, School: {school_name_input}")
 
-        if not region_name or not school_name:
+        if not region_name or not school_name_input:
             return render_template('school_meal.html', error_message="지역과 학교명을 모두 입력해주세요.", regions=regions)
 
-        region_code = regions.get(region_name) # 이름으로 코드 조회
+        region_code = regions.get(region_name)
         if not region_code:
             return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
 
-        school_info = get_school_code(school_name, region_code)
+        school_info = get_school_code(school_name_input, region_code)
         if school_info:
             response = make_response(redirect(url_for('school_meal_view', school_code=school_info['code'])))
             response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
-            response.set_cookie('school_name', school_info['name'], max_age=60*60*24*30)
-            response.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30) # 지역 코드도 저장
+            response.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
+            response.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
+            response.set_cookie('region_name', region_name, max_age=60*60*24*30)
             return response
         else:
-            return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name) # 검색어 유지
+            return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
 
-    return render_template('school_meal.html', regions=regions)
-
+    return render_template('school_meal.html', regions=regions, error_message=error_message, region=region_cookie, school_name=school_name_cookie)
 
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
+    school_name_encoded = request.cookies.get('school_name')
+    region_code = request.cookies.get('region_code')
+
+    if not school_name_encoded or not region_code:
+        return redirect(url_for('index', error_message="학교 정보가 만료되었거나 없습니다. 다시 검색해주세요."))
+
+    school_name = unquote(school_name_encoded)
     school_info = None
+
+    # 캐시에서 먼저 찾아보기
     for info in school_cache.values():
         if info.get('code') == school_code:
             school_info = info
             break
 
-    # 캐시에 없으면 쿠키를 사용하고, 그래도 없으면 에러 처리 또는 기본값
+    # 캐시에 없으면 API 호출 시도
     if not school_info:
-        school_name = request.cookies.get('school_name')
-        region_code = request.cookies.get('region_code')
-        if school_name and region_code:
-             # 캐시에 없으면 API를 통해 다시 가져오거나, 최소 정보로 구성
-             school_info = get_school_code(school_name, region_code)
-             if not school_info : # 그래도 못찾으면 에러
-                 logger.warning(f"Could not find school info for {school_code} even with cookies.")
-                 return redirect(url_for('index', error_message="학교 정보를 다시 검색해주세요."))
-        else:
-            logger.warning(f"No cache or cookie found for {school_code}.")
-            return redirect(url_for('index', error_message="학교 정보를 다시 검색해주세요."))
+        school_info = get_school_code(school_name, region_code)
 
+    # API 호출도 실패하면 쿠키 정보로 최소 구성
+    if not school_info:
+        school_info = {'code': school_code, 'name': school_name, 'region_code': region_code}
+        app.logger.warning(f"Using fallback school info for {school_code}")
 
-    month_meals = get_month_meals(school_code, school_info['region_code'])
-    week_dates = get_week_dates()
-    week_meals = {date: month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date in week_dates}
-
-    # 월간 급식표를 위해 전체 월 데이터를 전달
-    all_month_dates = get_month_dates()
-    full_month_meals = {date: month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date in all_month_dates}
+    month_meals_data = get_month_meals(school_code, school_info['region_code'])
+    week_dates_list = get_week_dates()
+    week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
+    month_dates_list = get_month_dates()
+    full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
 
     resp = make_response(render_template(
         'school_meal.html',
         regions=regions,
         school_name=school_info['name'],
         school_code=school_code,
-        week_meals=week_meals,
-        month_meals=full_month_meals, # 월간 데이터 전달
+        week_meals=week_meals_data,
+        month_meals=full_month_meals_data,
         loading=False,
-        region=next((name for name, code in regions.items() if code == school_info['region_code']), None) # 지역 이름 전달
+        region=next((name for name, code in regions.items() if code == school_info['region_code']), None)
     ))
 
-    resp.set_cookie('school_code', school_code, max_age=60*60*24*30)
-    resp.set_cookie('school_name', school_info['name'], max_age=60*60*24*30)
+    # 쿠키 갱신 (인코딩)
+    resp.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
+    resp.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
     resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
+    region_name_cookie = request.cookies.get('region_name')
+    if region_name_cookie:
+        resp.set_cookie('region_name', region_name_cookie, max_age=60*60*24*30)
+
     return resp
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
+    """API: 특정 학교, 특정 날짜의 급식 정보를 반환합니다."""
+    region_code = request.cookies.get('region_code') # 알림용 API이므로 쿠키에 의존
+    if not region_code:
+        return jsonify({"error": "Region code missing in cookies"}), 400
+
     try:
-        school_info = None
-        for info in school_cache.values():
-            if info.get('code') == school_code:
-                school_info = info
-                break
-
-        # 캐시에 없으면 쿠키에서 지역 코드 가져오기 (API 호출에 필요)
-        if not school_info:
-             region_code = request.cookies.get('region_code')
-             if region_code:
-                 school_info = {'code': school_code, 'region_code': region_code} # 임시 정보
-             else:
-                 logger.error(f"Region code not found for {school_code} in API call.")
-                 return jsonify({"error": "Region code missing"}), 400
-
-
-        # API 호출 시에는 특정 날짜가 아닌 월 단위로 데이터를 가져와 캐시/사용
-        month = date[:6] # YYYYMM
-        month_meals = get_month_meals(school_code, school_info['region_code'])
+        month_meals = get_month_meals(school_code, region_code)
         meal_data = month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
-
-        logger.info(f"API Meal request - School: {school_code}, Date: {date}")
-
-        return jsonify({
-            "breakfast": meal_data["breakfast"],
-            "lunch": meal_data["lunch"],
-            "dinner": meal_data["dinner"],
-        })
+        return jsonify(meal_data)
     except Exception as e:
-        logger.error(f"Error in get_school_meal route: {e}")
+        app.logger.error(f"Error in get_school_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
-
 
 @app.route('/current_time')
 def current_time():
-    now = datetime.now(KST) # KST 기준
-    return jsonify({'current_time': now.isoformat()})
+    """KST 기준 현재 시간을 반환합니다."""
+    return jsonify({'current_time': datetime.now(KST).isoformat()})
 
+# --- 정적 파일 및 기타 라우트 ---
 @app.route('/robots.txt')
 def robots_txt():
     return send_from_directory(app.static_folder, 'robots.txt')
@@ -320,30 +308,29 @@ def favicon():
 
 @app.route('/favicon.ico')
 def faviconico():
-    return send_from_directory(app.static_folder, 'favicon.svg')
+    return send_from_directory(app.static_folder, 'favicon.svg') # svg로 통일 또는 ico 파일 준비
 
 @app.route('/manifest.json')
 def manifest():
-    return send_from_directory(app.static_folder, 'manifest.json')
-
-def log_request(response):
-    log_entry = (
-        f"IP: {get_client_ip()}, "
-        f"Method: {request.method}, "
-        f"URL: {request.url}, "
-        f"User-Agent: {request.user_agent.string}, "
-        f"Status: {response.status_code}"
-    )
-    logger.info(log_entry)
-    return response
-
-@app.after_request
-def after_request_func(response):
-    return log_request(response)
+    return send_from_directory('static', 'manifest.json')
 
 @app.route("/It's Christmas Time Again.mp3")
 def namufile1():
     return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
+# --- 응답 로깅 ---
+@app.after_request
+def after_request_func(response):
+    log_entry = (
+        f"IP: {get_client_ip()}, "
+        f"Method: {request.method}, "
+        f"URL: {request.url}, "
+        f"Status: {response.status_code}"
+        # f"User-Agent: {request.user_agent.string}" # 너무 길면 주석 처리
+    )
+    app.logger.info(log_entry)
+    return response
+
+# --- 앱 실행 ---
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
