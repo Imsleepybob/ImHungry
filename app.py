@@ -331,7 +331,7 @@ def after_request_func(response):
     app.logger.info(log_entry)
     return response
 
-STATIC_DIR = os.path.join(app.root_path, 'static')
+STATIC_DIR = app.root_path
 
 @app.route('/namuboardsharebutton-user.js')
 def serve_tampermonkey_script():
@@ -340,7 +340,7 @@ def serve_tampermonkey_script():
     except FileNotFoundError:
         return "스크립트 파일을 찾을 수 없습니다.", 404
     except Exception as e:
-        print(f"Error serving script: {e}")
+        app.logger.error(f"Error serving script: {e}")
         return "스크립트를 제공하는 중 오류가 발생했습니다.", 500
 
 # --- 앱 실행 ---
