@@ -7,6 +7,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import ipaddress
 from urllib.parse import quote, unquote
+import os
 
 app = Flask(__name__)
 
@@ -44,30 +45,103 @@ def block_method():
         app.logger.warning(f"Blocked access attempt from IP: {client_ip}")
         return 'Access Denied', 403
 
-# --- 로깅 설정 ---
+# --- 로깅 설정 (확장) ---
+# 로그 파일 경로 설정 (프로젝트 루트 디렉토리)
+ACCESS_LOG_PATH = os.path.join(os.getcwd(), 'access.log')
+APP_LOG_PATH = os.path.join(os.getcwd(), 'app.log')
+IP_BLOCK_LOG_PATH = os.path.join(os.getcwd(), 'ip_block.log')
+
+# 커스텀 로그 포맷터
+class AccessLogFormatter(logging.Formatter):
+    def format(self, record):
+        # request 객체에서 정보 추출
+        record.remote_addr = getattr(record, 'remote_addr', 'N/A')
+        record.user_agent = getattr(record, 'user_agent', 'N/A')
+        record.method = getattr(record, 'method', 'N/A')
+        record.path = getattr(record, 'path', 'N/A')
+        record.status = getattr(record, 'status', 'N/A')
+        record.referrer = getattr(record, 'referrer', 'N/A')
+        return super().format(record)
+
 def setup_logging():
+    """로깅 시스템 초기화"""
     # 기본 로거 설정
     logging.basicConfig(level=logging.INFO)
-    # 파일 핸들러 설정 (앱 로그)
-    handler = RotatingFileHandler('app.log', maxBytes=10000, backupCount=3, encoding='utf-8')
-    handler.setFormatter(logging.Formatter(
+    
+    # 1. 앱 로그 핸들러 (기본 앱 로그)
+    app_handler = RotatingFileHandler(
+        APP_LOG_PATH, 
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5, 
+        encoding='utf-8'
+    )
+    app_handler.setFormatter(logging.Formatter(
         '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     ))
-    # IP 차단 로그 핸들러
-    ip_handler = logging.FileHandler('ip_block.log', encoding='utf-8')
+    
+    # 2. 접속 로그 핸들러 (새로 추가)
+    access_handler = RotatingFileHandler(
+        ACCESS_LOG_PATH,
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    access_formatter = AccessLogFormatter(
+        '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
+    )
+    access_handler.setFormatter(access_formatter)
+    
+    # 3. IP 차단 로그 핸들러
+    ip_handler = logging.FileHandler(IP_BLOCK_LOG_PATH, encoding='utf-8')
     ip_handler.setLevel(logging.WARNING)
     ip_handler.setFormatter(logging.Formatter(
          '[%(asctime)s] %(levelname)s: %(message)s'
     ))
 
-    # 앱 로거 가져오기 및 핸들러 추가
+    # 로거들 설정
     logger = logging.getLogger(__name__)
-    logger.addHandler(handler)
+    logger.addHandler(app_handler)
     logger.addHandler(ip_handler)
-    app.logger.addHandler(handler) # Flask 기본 로거에도 추가
+    
+    # Flask 기본 로거에 핸들러 추가
+    app.logger.addHandler(app_handler)
     app.logger.addHandler(ip_handler)
+    
+    # 접속 로그용 별도 로거 생성
+    access_logger = logging.getLogger('access')
+    access_logger.setLevel(logging.INFO)
+    access_logger.addHandler(access_handler)
+    
+    # 중복 로그 방지
+    access_logger.propagate = False
+    
+    return access_logger
 
-setup_logging()
+# 접속 로거 초기화
+access_logger = setup_logging()
+
+# 접속 로그 기록 함수
+def log_access_request(status_code=200):
+    """접속 로그를 기록합니다."""
+    try:
+        # 실제 IP 주소 추출 (프록시 뒤에 있는 경우 고려)
+        real_ip = get_client_ip()
+        
+        # 로그 레코드 생성
+        extra_info = {
+            'remote_addr': real_ip or 'Unknown',
+            'user_agent': request.headers.get('User-Agent', 'Unknown')[:200],  # UA는 200자로 제한
+            'method': request.method,
+            'path': request.path,
+            'status': status_code,
+            'referrer': request.headers.get('Referer', 'N/A')[:100]  # Referrer는 100자로 제한
+        }
+        
+        # 접속 로그 기록
+        access_logger.info('Access log', extra=extra_info)
+        
+    except Exception as e:
+        app.logger.error(f"접속 로그 기록 중 오류 발생: {e}")
 
 # --- NEIS API 및 기본 설정 ---
 API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
@@ -318,19 +392,7 @@ def manifest():
 def namufile1():
     return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
-# --- 응답 로깅 ---
-@app.after_request
-def after_request_func(response):
-    log_entry = (
-        f"IP: {get_client_ip()}, "
-        f"Method: {request.method}, "
-        f"URL: {request.url}, "
-        f"Status: {response.status_code}"
-        # f"User-Agent: {request.user_agent.string}" # 너무 길면 주석 처리
-    )
-    app.logger.info(log_entry)
-    return response
-
+# --- 탬퍼몽키 스크립트 ---
 STATIC_DIR = app.root_path
 
 @app.route('/namuboardextension.user.js')
@@ -343,6 +405,138 @@ def serve_tampermonkey_script():
         app.logger.error(f"Error serving script: {e}")
         return "서버 오류. 사토 발제 바랍니다.", 500
 
+# --- 로그 확인용 엔드포인트 (개발/디버깅용) ---
+@app.route('/logs/access')
+def view_access_logs():
+    """접속 로그 확인 (개발용, 프로덕션에서는 환경 변수로 제어)"""
+    if not app.debug and os.environ.get('ENABLE_LOG_VIEW') != 'true':
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(ACCESS_LOG_PATH):
+            with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines()[-50:]  # 최근 50줄만 표시
+            return f'<h2>접속 로그 (최근 50건)</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return '접속 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'접속 로그 파일 읽기 오류: {e}'
+
+@app.route('/logs/app')
+def view_app_logs():
+    """앱 로그 확인 (개발용)"""
+    if not app.debug and os.environ.get('ENABLE_LOG_VIEW') != 'true':
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(APP_LOG_PATH):
+            with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines()[-50:]  # 최근 50줄만 표시
+            return f'<h2>앱 로그 (최근 50건)</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return '앱 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'앱 로그 파일 읽기 오류: {e}'
+
+@app.route('/stats')
+def view_stats():
+    """접속 통계"""
+    if not app.debug and os.environ.get('ENABLE_STATS') != 'true':
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if not os.path.exists(ACCESS_LOG_PATH):
+            return '접속 로그 파일이 없습니다.'
+        
+        stats = {
+            'total_requests': 0,
+            'unique_ips': set(),
+            'status_codes': {},
+            'popular_paths': {},
+            'user_agents': {}
+        }
+        
+        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                if 'IP:' in line:
+                    stats['total_requests'] += 1
+                    
+                    # IP 추출
+                    try:
+                        ip_start = line.find('IP: ') + 4
+                        ip_end = line.find(' -', ip_start)
+                        if ip_end > ip_start:
+                            ip = line[ip_start:ip_end]
+                            stats['unique_ips'].add(ip)
+                    except:
+                        pass
+                    
+                    # 상태 코드 추출
+                    try:
+                        status_start = line.find('Status: ') + 8
+                        status_end = line.find(' -', status_start)
+                        if status_end == -1:
+                            status_end = len(line)
+                        status = line[status_start:status_end].strip()
+                        stats['status_codes'][status] = stats['status_codes'].get(status, 0) + 1
+                    except:
+                        pass
+                    
+                    # 경로 추출
+                    try:
+                        path_start = line.find('Path: ') + 6
+                        path_end = line.find(' -', path_start)
+                        if path_end > path_start:
+                            path = line[path_start:path_end]
+                            stats['popular_paths'][path] = stats['popular_paths'].get(path, 0) + 1
+                    except:
+                        pass
+        
+        stats['unique_ips'] = len(stats['unique_ips'])
+        
+        return f'''
+        <h2>접속 통계</h2>
+        <p>총 요청 수: {stats['total_requests']}</p>
+        <p>고유 IP 수: {stats['unique_ips']}</p>
+        
+        <h3>상태 코드별 통계:</h3>
+        <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in stats['status_codes'].items()])}</ul>
+        
+        <h3>인기 경로 (Top 10):</h3>
+        <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in sorted(stats['popular_paths'].items(), key=lambda x: x[1], reverse=True)[:10]])}</ul>
+        '''
+        
+    except Exception as e:
+        return f'통계 생성 오류: {e}'
+
+# --- 응답 로깅 (기존 + 접속 로그) ---
+@app.after_request
+def after_request_func(response):
+    # 기존 앱 로그
+    log_entry = (
+        f"IP: {get_client_ip()}, "
+        f"Method: {request.method}, "
+        f"URL: {request.url}, "
+        f"Status: {response.status_code}"
+        # f"User-Agent: {request.user_agent.string}" # 너무 길면 주석 처리
+    )
+    app.logger.info(log_entry)
+    
+    # 새로운 접속 로그
+    log_access_request(response.status_code)
+    
+    return response
+
 # --- 앱 실행 ---
 if __name__ == "__main__":
-    app.run(debug=False) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
+    # 로그 파일 경로 정보 출력
+    app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
+    app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
+    app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
+    
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
+else:
+    # Render 등 호스팅 서비스에서 실행될 때도 로그 경로 출력
+    app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
+    app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
+    app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
