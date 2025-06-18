@@ -333,10 +333,10 @@ def after_request_func(response):
 
 STATIC_DIR = app.root_path
 
-@app.route('/namuboardsharebutton-user.js')
+@app.route('/namuboardextension.user.js')
 def serve_tampermonkey_script():
     try:
-        return send_from_directory(STATIC_DIR, 'namuboardsharebutton-user.js', mimetype='application/javascript')
+        return send_from_directory(STATIC_DIR, 'namuboardextension.user.js', mimetype='application/javascript')
     except FileNotFoundError:
         return "파일 오류. 사토 발제 바랍니다.", 404
     except Exception as e:
