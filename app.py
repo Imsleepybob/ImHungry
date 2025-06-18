@@ -338,10 +338,10 @@ def serve_tampermonkey_script():
     try:
         return send_from_directory(STATIC_DIR, 'namuboardsharebutton-user.js', mimetype='application/javascript')
     except FileNotFoundError:
-        return "스크립트 파일을 찾을 수 없습니다.", 404
+        return "파일 오류. 사토 발제 바랍니다.", 404
     except Exception as e:
         app.logger.error(f"Error serving script: {e}")
-        return "스크립트를 제공하는 중 오류가 발생했습니다.", 500
+        return "서버 오류. 사토 발제 바랍니다.", 500
 
 # --- 앱 실행 ---
 if __name__ == "__main__":
