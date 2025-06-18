@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         나무위키 게시판 공유 링크 복사 알림
+// @name         나무위키 게시판 공유 링크 복사 알림 기능
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  나무위키 게시판 공유 아이콘 마우스 포인터 변경 처리, 링크 복사 시 알림 표시
