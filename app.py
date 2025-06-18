@@ -345,4 +345,4 @@ def serve_tampermonkey_script():
 
 # --- 앱 실행 ---
 if __name__ == "__main__":
-    app.run(debug=True) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
+    app.run(debug=False) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
