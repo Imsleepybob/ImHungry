@@ -8,6 +8,7 @@ from logging.handlers import RotatingFileHandler
 import ipaddress
 from urllib.parse import quote, unquote
 import os
+import re # For regex to clean user agent
 
 app = Flask(__name__)
 
@@ -60,7 +61,6 @@ def is_admin_ip(ip_address):
 @app.before_request
 def block_method():
     client_ip = get_client_ip()
-    # app.logger.info(f"Client IP detected: {client_ip}") # 너무 많은 로그를 생성할 수 있으므로 필요시 주석 해제
     if is_ip_blocked(client_ip):
         app.logger.warning(f"Blocked access attempt from IP: {client_ip}")
         return 'Access Denied', 403
@@ -70,6 +70,7 @@ def block_method():
 ACCESS_LOG_PATH = os.path.join(os.getcwd(), 'access.log')
 APP_LOG_PATH = os.path.join(os.getcwd(), 'app.log')
 IP_BLOCK_LOG_PATH = os.path.join(os.getcwd(), 'ip_block.log')
+NAMUBOARD_LOG_PATH = os.path.join(os.getcwd(), 'namuboard.log') # New log file for namuboardextension
 
 # 커스텀 로그 포맷터
 class AccessLogFormatter(logging.Formatter):
@@ -99,7 +100,7 @@ def setup_logging():
         '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     ))
     
-    # 2. 접속 로그 핸들러 (새로 추가)
+    # 2. 접속 로그 핸들러
     access_handler = RotatingFileHandler(
         ACCESS_LOG_PATH,
         maxBytes=10*1024*1024,  # 10MB
@@ -115,9 +116,21 @@ def setup_logging():
     ip_handler = logging.FileHandler(IP_BLOCK_LOG_PATH, encoding='utf-8')
     ip_handler.setLevel(logging.WARNING)
     ip_handler.setFormatter(logging.Formatter(
-         '[%(asctime)s] %(levelname)s: %(message)s'
+            '[%(asctime)s] %(levelname)s: %(message)s'
     ))
 
+    # 4. NamuBoard Extension 전용 로그 핸들러 (새로 추가)
+    namuboard_handler = RotatingFileHandler(
+        NAMUBOARD_LOG_PATH,
+        maxBytes=5*1024*1024, # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    namuboard_formatter = logging.Formatter(
+        '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Referrer: %(referrer)s'
+    )
+    namuboard_handler.setFormatter(namuboard_formatter)
+    
     # 로거들 설정
     logger = logging.getLogger(__name__)
     logger.addHandler(app_handler)
@@ -132,36 +145,64 @@ def setup_logging():
     access_logger.setLevel(logging.INFO)
     access_logger.addHandler(access_handler)
     
+    # NamuBoard Extension 로그용 별도 로거 생성
+    namuboard_logger = logging.getLogger('namuboard')
+    namuboard_logger.setLevel(logging.INFO)
+    namuboard_logger.addHandler(namuboard_handler)
+
     # 중복 로그 방지
     access_logger.propagate = False
-    
-    return access_logger
+    namuboard_logger.propagate = False # Prevent duplicate logging for namuboard
+
+    return access_logger, namuboard_logger
 
 # 접속 로거 초기화
-access_logger = setup_logging()
+access_logger, namuboard_logger = setup_logging()
+
+# User-Agent 클리닝 함수
+def clean_user_agent(user_agent_string):
+    if not user_agent_string:
+        return 'Unknown'
+    # Remove common prefixes like "Mozilla/5.0", "AppleWebKit/" etc.
+    cleaned_ua = re.sub(r'^(Mozilla/\d\.\d\s\(.*\)|AppleWebKit/\d+\.\d+\s\(.*\)|KHTML,\s*like\s*Gecko\s*|Chrome/\d+\.\d+\.\d+\.\d+\s*|Safari/\d+\.\d+\s*|Edge/\d+\.\d+\s*|Firefox/\d+\.\d+\s*)+', '', user_agent_string).strip()
+    return cleaned_ua[:200] # Ensure it's still capped at 200 characters
 
 # 접속 로그 기록 함수
 def log_access_request(status_code=200):
     """접속 로그를 기록합니다."""
+    # Only log GET and POST requests with status 200 or 206
+    if request.method in ['GET', 'POST'] and status_code in [200, 206]:
+        try:
+            real_ip = get_client_ip()
+            
+            extra_info = {
+                'remote_addr': real_ip or 'Unknown',
+                'user_agent': clean_user_agent(request.headers.get('User-Agent', 'Unknown')),
+                'method': request.method,
+                'path': request.path,
+                'status': status_code,
+                'referrer': request.headers.get('Referer', 'N/A')[:100]
+            }
+            
+            access_logger.info('Access log', extra=extra_info)
+            
+        except Exception as e:
+            app.logger.error(f"접속 로그 기록 중 오류 발생: {e}")
+
+# NamuBoard Extension 접속 로그 기록 함수
+def log_namuboard_access_request():
+    """/namuboardextension.user.js 접근 로그를 기록합니다."""
     try:
-        # 실제 IP 주소 추출 (프록시 뒤에 있는 경우 고려)
         real_ip = get_client_ip()
-        
-        # 로그 레코드 생성
         extra_info = {
             'remote_addr': real_ip or 'Unknown',
-            'user_agent': request.headers.get('User-Agent', 'Unknown')[:200],  # UA는 200자로 제한
-            'method': request.method,
-            'path': request.path,
-            'status': status_code,
-            'referrer': request.headers.get('Referer', 'N/A')[:100]  # Referrer는 100자로 제한
+            'user_agent': clean_user_agent(request.headers.get('User-Agent', 'Unknown')),
+            'referrer': request.headers.get('Referer', 'N/A')[:100]
         }
-        
-        # 접속 로그 기록
-        access_logger.info('Access log', extra=extra_info)
-        
+        namuboard_logger.info('NamuBoard Extension Access', extra=extra_info)
     except Exception as e:
-        app.logger.error(f"접속 로그 기록 중 오류 발생: {e}")
+        app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
+
 
 # --- NEIS API 및 기본 설정 ---
 API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
@@ -269,7 +310,7 @@ def format_date(value):
     try:
         date_obj = datetime.strptime(value, "%Y%m%d")
         korean_day_names = {'Monday': '월', 'Tuesday': '화', 'Wednesday': '수',
-                           'Thursday': '목', 'Friday': '금', 'Saturday': '토', 'Sunday': '일'}
+                            'Thursday': '목', 'Friday': '금', 'Saturday': '토', 'Sunday': '일'}
         day_name = calendar.day_name[date_obj.weekday()]
         return f"{date_obj.strftime('%Y년 %m월 %d일')} ({korean_day_names[day_name]})"
     except ValueError:
@@ -417,6 +458,7 @@ STATIC_DIR = app.root_path
 
 @app.route('/namuboardextension.user.js')
 def serve_tampermonkey_script():
+    log_namuboard_access_request() # Log this specific access
     try:
         return send_from_directory(STATIC_DIR, 'namuboardextension.user.js', mimetype='application/javascript')
     except FileNotFoundError:
@@ -439,8 +481,8 @@ def view_access_logs():
     try:
         if os.path.exists(ACCESS_LOG_PATH):
             with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
-                lines = f.readlines()[-50:]  # 최근 50줄만 표시
-            return f'<h2>접속 로그 (최근 50건)</h2><pre>{"".join(lines)}</pre>'
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>접속 로그</h2><pre>{"".join(lines)}</pre>'
         else:
             return '접속 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
@@ -459,12 +501,32 @@ def view_app_logs():
     try:
         if os.path.exists(APP_LOG_PATH):
             with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
-                lines = f.readlines()[-50:]  # 최근 50줄만 표시
-            return f'<h2>앱 로그 (최근 50건)</h2><pre>{"".join(lines)}</pre>'
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>앱 로그</h2><pre>{"".join(lines)}</pre>'
         else:
             return '앱 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'앱 로그 파일 읽기 오류: {e}'
+
+@app.route('/logs/namuboard')
+def view_namuboard_logs():
+    """NamuBoard Extension 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to namuboard logs from IP: {client_ip}")
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(NAMUBOARD_LOG_PATH):
+            with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>NamuBoard Extension 로그</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
 
 @app.route('/stats')
 def view_stats():
@@ -544,18 +606,18 @@ def view_stats():
 # --- 응답 로깅 (기존 + 접속 로그) ---
 @app.after_request
 def after_request_func(response):
-    # 기존 앱 로그
+    # 기존 앱 로그 (모든 요청에 대해 기록)
     log_entry = (
         f"IP: {get_client_ip()}, "
         f"Method: {request.method}, "
         f"URL: {request.url}, "
         f"Status: {response.status_code}"
-        # f"User-Agent: {request.user_agent.string}" # 너무 길면 주석 처리
     )
     app.logger.info(log_entry)
     
-    # 새로운 접속 로그
-    log_access_request(response.status_code)
+    # 새로운 접속 로그 (HEAD 요청 제외, 200/206 상태 코드만)
+    if request.method != 'HEAD':
+        log_access_request(response.status_code)
     
     return response
 
@@ -565,6 +627,7 @@ if __name__ == "__main__":
     app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
     app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
+    app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
     app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
     
     app.run(debug=False)
