@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory
+
+from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory, abort
 from datetime import datetime, timedelta, date, timezone
-from collections import defaultdict
+from collections import defaultdict, deque
 import calendar
 import requests
 import logging
@@ -8,9 +9,80 @@ from logging.handlers import RotatingFileHandler
 import ipaddress
 from urllib.parse import quote, unquote
 import os
-import re # For regex to clean user agent
+import re
+import time
+import json
+from functools import wraps
 
 app = Flask(__name__)
+
+# --- 보안 설정 ---
+# IP 블랙리스트 파일 경로
+BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
+SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
+
+# Rate limiting을 위한 메모리 저장소 (프로덕션에서는 Redis 권장)
+request_counts = defaultdict(deque)
+failed_attempts = defaultdict(int)
+blocked_ips = set()
+
+# 보안 설정
+SECURITY_CONFIG = {
+    'rate_limit_window': 60,  # 1분
+    'rate_limit_requests': 20,  # 1분에 20개 요청까지
+    'failed_attempt_threshold': 5,  # 5회 실패시 차단
+    'auto_block_duration': 3600,  # 1시간 자동 차단
+    'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
+    'path_traversal_protection': True,  # 경로 탐색 공격 차단
+}
+
+# 의심스러운 패턴들
+SUSPICIOUS_PATTERNS = {
+    'paths': [
+        r'\.php$', r'wp-', r'admin', r'login', r'\.env', r'config',
+        r'\.git', r'\.sql', r'backup', r'shell', r'cmd', r'eval',
+        r'\.xml$', r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'
+    ],
+    'user_agents': [
+        r'bot', r'crawler', r'spider', r'scanner', r'nikto',
+        r'sqlmap', r'nmap', r'masscan', r'zap', r'burp'
+    ],
+    'parameters': [
+        r'union.*select', r'<script', r'javascript:', r'eval\(',
+        r'exec\(', r'system\(', r'\.\./', r'etc/passwd'
+    ]
+}
+
+def load_ip_blacklist():
+    """IP 블랙리스트 파일에서 CIDR 목록 로드"""
+    blacklist = []
+    try:
+        if os.path.exists(BLACKLIST_FILE):
+            with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        try:
+                            # CIDR 형식 검증
+                            ipaddress.ip_network(line, strict=False)
+                            blacklist.append(line)
+                        except ValueError:
+                            app.logger.warning(f"Invalid CIDR format in blacklist: {line}")
+    except Exception as e:
+        app.logger.error(f"Error loading IP blacklist: {e}")
+    return blacklist
+
+def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
+    """새로운 IP/CIDR을 블랙리스트에 추가"""
+    try:
+        with open(BLACKLIST_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"{ip_or_cidr}  # {reason} - {datetime.now()}\n")
+        app.logger.info(f"Added to blacklist: {ip_or_cidr} - {reason}")
+    except Exception as e:
+        app.logger.error(f"Error saving to blacklist: {e}")
+
+# 블랙리스트 로드
+BLOCKED_NETWORKS = load_ip_blacklist()
 
 # --- IP 차단 설정 ---
 BLOCKED_NETWORKS = [
@@ -22,7 +94,6 @@ BLOCKED_NETWORKS = [
 ADMIN_WHITELIST = [
     '210.94.23.150/32',
     '118.221.147.88/32',
-    # 추가 관리자 IP 입력 가능
 ]
 
 def get_client_ip():
@@ -34,8 +105,15 @@ def get_client_ip():
         return request.remote_addr
 
 def is_ip_blocked(ip_address):
+    """IP가 차단 목록에 있는지 확인"""
     try:
         client_ip = ipaddress.ip_address(ip_address)
+        
+        # 동적 차단 목록 확인
+        if ip_address in blocked_ips:
+            return True
+            
+        # 정적 블랙리스트 확인
         for blocked_network in BLOCKED_NETWORKS:
             network = ipaddress.ip_network(blocked_network, strict=False)
             if client_ip in network:
@@ -43,7 +121,7 @@ def is_ip_blocked(ip_address):
         return False
     except ValueError:
         app.logger.error(f"Invalid IP address detected: {ip_address}")
-        return False
+        return True  # 잘못된 IP는 차단
 
 def is_admin_ip(ip_address):
     """관리자 IP 화이트리스트 확인"""
@@ -55,15 +133,150 @@ def is_admin_ip(ip_address):
                 return True
         return False
     except ValueError:
-        app.logger.error(f"Invalid IP address for admin check: {ip_address}")
         return False
 
+def is_rate_limited(ip_address):
+    """Rate limiting 확인"""
+    now = time.time()
+    window_start = now - SECURITY_CONFIG['rate_limit_window']
+    
+    # 오래된 요청 제거
+    while request_counts[ip_address] and request_counts[ip_address][0] < window_start:
+        request_counts[ip_address].popleft()
+    
+    # 현재 요청 추가
+    request_counts[ip_address].append(now)
+    
+    # Rate limit 확인
+    if len(request_counts[ip_address]) > SECURITY_CONFIG['rate_limit_requests']:
+        return True
+    
+    return False
+
+def is_suspicious_request():
+    """의심스러운 요청 패턴 탐지"""
+    suspicion_score = 0
+    reasons = []
+    
+    # 1. 경로 검사
+    path = request.path.lower()
+    for pattern in SUSPICIOUS_PATTERNS['paths']:
+        if re.search(pattern, path, re.IGNORECASE):
+            suspicion_score += 10
+            reasons.append(f"Suspicious path: {pattern}")
+    
+    # 2. User-Agent 검사
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if not user_agent or len(user_agent) < 10:
+        suspicion_score += 5
+        reasons.append("Missing or short User-Agent")
+    
+    for pattern in SUSPICIOUS_PATTERNS['user_agents']:
+        if re.search(pattern, user_agent, re.IGNORECASE):
+            suspicion_score += 15
+            reasons.append(f"Suspicious User-Agent: {pattern}")
+    
+    # 3. 쿼리 파라미터 검사
+    query_string = request.query_string.decode('utf-8', errors='ignore').lower()
+    for pattern in SUSPICIOUS_PATTERNS['parameters']:
+        if re.search(pattern, query_string, re.IGNORECASE):
+            suspicion_score += 20
+            reasons.append(f"Suspicious parameter: {pattern}")
+    
+    # 4. HTTP 메소드 검사 (웹사이트 특성상 GET, POST만 허용)
+    if request.method not in ['GET', 'POST', 'HEAD']:
+        suspicion_score += 10
+        reasons.append(f"Suspicious method: {request.method}")
+    
+    # 5. 존재하지 않는 확장자 요청
+    if path.endswith(('.php', '.asp', '.jsp', '.cgi')) and not path.startswith('/api/'):
+        suspicion_score += 15
+        reasons.append("Non-existent extension request")
+    
+    return suspicion_score >= 10, suspicion_score, reasons
+
+def log_security_incident(ip, incident_type, details, suspicion_score=0):
+    """보안 사고 로깅"""
+    security_logger = logging.getLogger('security')
+    security_logger.warning(
+        f"SECURITY INCIDENT - IP: {ip}, Type: {incident_type}, "
+        f"Score: {suspicion_score}, Details: {details}, "
+        f"UA: {request.headers.get('User-Agent', 'N/A')[:100]}, "
+        f"Path: {request.path}, Method: {request.method}"
+    )
+
+def auto_block_ip(ip, reason, duration=None):
+    """IP를 자동으로 일정 시간 차단"""
+    if duration is None:
+        duration = SECURITY_CONFIG['auto_block_duration']
+    
+    blocked_ips.add(ip)
+    log_security_incident(ip, "AUTO_BLOCK", f"{reason} - Duration: {duration}s")
+    
+    # 영구 블랙리스트에 추가 (높은 위험도인 경우)
+    failed_attempts[ip] += 1
+    if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
+        save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
+
 @app.before_request
-def block_method():
+def security_check():
+    """종합 보안 검사"""
     client_ip = get_client_ip()
+    
+    # 1. 관리자 IP는 모든 검사 통과
+    if is_admin_ip(client_ip):
+        return
+    
+    # 2. IP 차단 확인
     if is_ip_blocked(client_ip):
-        app.logger.warning(f"Blocked access attempt from IP: {client_ip}")
-        return 'Access Denied', 403
+        log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
+        abort(403)
+    
+    # 3. Rate limiting 확인
+    if is_rate_limited(client_ip):
+        log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
+        auto_block_ip(client_ip, "Rate limit exceeded", 300)  # 5분 임시 차단
+        abort(429)
+    
+    # 4. 의심스러운 요청 패턴 확인
+    is_suspicious, suspicion_score, reasons = is_suspicious_request()
+    if is_suspicious:
+        log_security_incident(client_ip, "SUSPICIOUS_PATTERN", 
+                            f"Reasons: {', '.join(reasons)}", suspicion_score)
+        
+        # 점수가 높으면 자동 차단
+        if suspicion_score >= 20:
+            auto_block_ip(client_ip, f"High suspicion score: {suspicion_score}")
+            abort(403)
+        elif suspicion_score >= 15:
+            # 중간 점수는 404로 응답 (존재하지 않는 것처럼)
+            abort(404)
+    
+    # 5. 경로 탐색 공격 방지
+    if SECURITY_CONFIG['path_traversal_protection']:
+        if '../' in request.path or '..\\' in request.path:
+            log_security_incident(client_ip, "PATH_TRAVERSAL", request.path)
+            auto_block_ip(client_ip, "Path traversal attempt")
+            abort(403)
+
+# 보안 로거 설정
+def setup_security_logging():
+    security_logger = logging.getLogger('security')
+    security_handler = RotatingFileHandler(
+        os.path.join(os.getcwd(), 'security.log'),
+        maxBytes=10*1024*1024,
+        backupCount=5,
+        encoding='utf-8'
+    )
+    security_handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s: %(message)s'
+    ))
+    security_logger.addHandler(security_handler)
+    security_logger.setLevel(logging.WARNING)
+    security_logger.propagate = False
+
+# 로깅 설정
+setup_security_logging()
 
 # --- 로깅 설정 (확장) ---
 # 로그 파일 경로 설정 (프로젝트 루트 디렉토리)
@@ -603,6 +816,51 @@ def view_stats():
     except Exception as e:
         return f'통계 생성 오류: {e}'
 
+@app.route('/security/status')
+def security_status():
+    """보안 상태 확인 (관리자만)"""
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    
+    status = {
+        'blocked_networks_count': len(BLOCKED_NETWORKS),
+        'temporarily_blocked_ips': len(blocked_ips),
+        'failed_attempts': dict(failed_attempts),
+        'active_connections': len(request_counts),
+        'security_config': SECURITY_CONFIG
+    }
+    
+    return jsonify(status)
+
+# 블랙리스트 관리 엔드포인트
+@app.route('/security/blacklist/add', methods=['POST'])
+def add_to_blacklist():
+    """블랙리스트에 IP/CIDR 추가 (관리자만)"""
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    
+    data = request.get_json()
+    ip_or_cidr = data.get('ip_or_cidr')
+    reason = data.get('reason', 'Manual addition')
+    
+    if not ip_or_cidr:
+        return jsonify({'error': 'IP or CIDR required'}), 400
+    
+    try:
+        # 형식 검증
+        ipaddress.ip_network(ip_or_cidr, strict=False)
+        save_to_blacklist(ip_or_cidr, reason)
+        
+        # 메모리 목록도 업데이트
+        global BLOCKED_NETWORKS
+        BLOCKED_NETWORKS = load_ip_blacklist()
+        
+        return jsonify({'success': True, 'message': f'Added {ip_or_cidr} to blacklist'})
+    except ValueError as e:
+        return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
+        
 # --- 응답 로깅 (기존 + 접속 로그) ---
 @app.after_request
 def after_request_func(response):
@@ -629,5 +887,14 @@ if __name__ == "__main__":
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
     app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
     app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
+        # 블랙리스트 파일 생성 (없는 경우)
+    if not os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'w', encoding='utf-8') as f:
+            f.write("# IP Blacklist - CIDR format\n")
+            f.write("# Example: 192.168.1.0/24\n")
+            f.write("# 52.178.178.217/32  # Example blocked IP\n")
+    
+    app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks")
+    app.logger.info(f"Security config: {SECURITY_CONFIG}")
     
     app.run(debug=False)
