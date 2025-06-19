@@ -17,6 +17,13 @@ BLOCKED_NETWORKS = [
     # 추가적인 차단할 네트워크 대역 입력 가능
 ]
 
+# --- 관리자 IP 화이트리스트 ---
+ADMIN_WHITELIST = [
+    '210.94.23.150/32',
+    '118.221.147.88/32',
+    # 추가 관리자 IP 입력 가능
+]
+
 def get_client_ip():
     if request.headers.getlist("X-Forwarded-For"):
         return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
@@ -35,6 +42,19 @@ def is_ip_blocked(ip_address):
         return False
     except ValueError:
         app.logger.error(f"Invalid IP address detected: {ip_address}")
+        return False
+
+def is_admin_ip(ip_address):
+    """관리자 IP 화이트리스트 확인"""
+    try:
+        client_ip = ipaddress.ip_address(ip_address)
+        for admin_network in ADMIN_WHITELIST:
+            network = ipaddress.ip_network(admin_network, strict=False)
+            if client_ip in network:
+                return True
+        return False
+    except ValueError:
+        app.logger.error(f"Invalid IP address for admin check: {ip_address}")
         return False
 
 @app.before_request
@@ -408,8 +428,12 @@ def serve_tampermonkey_script():
 # --- 로그 확인용 엔드포인트 (개발/디버깅용) ---
 @app.route('/logs/access')
 def view_access_logs():
-    """접속 로그 확인 (개발용, 프로덕션에서는 환경 변수로 제어)"""
-    if not app.debug and os.environ.get('ENABLE_LOG_VIEW') != 'true':
+    """접속 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
         return "접근 권한이 없습니다.", 403
     
     try:
@@ -424,8 +448,12 @@ def view_access_logs():
 
 @app.route('/logs/app')
 def view_app_logs():
-    """앱 로그 확인 (개발용)"""
-    if not app.debug and os.environ.get('ENABLE_LOG_VIEW') != 'true':
+    """앱 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
         return "접근 권한이 없습니다.", 403
     
     try:
@@ -440,8 +468,12 @@ def view_app_logs():
 
 @app.route('/stats')
 def view_stats():
-    """접속 통계"""
-    if not app.debug and os.environ.get('ENABLE_STATS') != 'true':
+    """접속 통계 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_STATS') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to stats from IP: {client_ip}")
         return "접근 권한이 없습니다.", 403
     
     try:
@@ -533,10 +565,6 @@ if __name__ == "__main__":
     app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
     app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
+    app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
     
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) # 개발 시에는 True, 배포 시에는 False 및 WSGI 서버 사용
-else:
-    # Render 등 호스팅 서비스에서 실행될 때도 로그 경로 출력
-    app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
-    app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
-    app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
+    app.run(debug=False)
