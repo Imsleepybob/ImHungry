@@ -11,6 +11,7 @@ body {
     padding: 20px;
 }
 
+/* 헤더 스타일 */
 .main-header {
     display: flex;
     justify-content: space-between;
@@ -39,6 +40,7 @@ body {
     transform: scale(1.05);
 }
 
+/* 내비게이션 스타일 */
 .main-nav {
     display: flex;
 }
@@ -73,6 +75,7 @@ body {
     width: 100%;
 }
 
+/* 알림 버튼 스타일 */
 .notification-btn {
     position: fixed;
     top: 20px;
@@ -100,6 +103,7 @@ body {
     box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
 }
 
+/* 로고 스타일 */
 .header-logo {
     margin: 20px auto;
     text-align: center;
@@ -115,6 +119,7 @@ body {
     height: auto;
 }
 
+/* 검색 폼 스타일 */
 .search-form {
     margin: 20px auto;
     background-color: #ffffff;
@@ -180,6 +185,7 @@ input[type="text"]:focus, select:focus {
     box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
+/* 모달 스타일 */
 .modal {
     display: none;
     position: fixed;
@@ -232,6 +238,7 @@ input[type="text"]:focus, select:focus {
     cursor: pointer;
 }
 
+/* 급식 테이블 스타일 - 현대적인 디자인 */
 .meal-container {
     padding: 10px 0;
     max-width: 850px;
@@ -345,6 +352,7 @@ input[type="text"]:focus, select:focus {
     border-bottom: 1px solid #e9ecef;
 }
 
+/* 월간 급식표 토글 버튼 */
 .toggle-month-btn {
     display: block;
     margin: 0 auto 30px;
@@ -376,6 +384,7 @@ input[type="text"]:focus, select:focus {
     background-color: #0056b3;
 }
 
+/* 로딩 애니메이션 */
 .loading-container {
     display: none;
     flex-direction: column;
@@ -399,6 +408,7 @@ input[type="text"]:focus, select:focus {
     100% { transform: rotate(360deg); }
 }
 
+/* iOS 웹앱 가이드 */
 #ios-webapp-guide {
     position: fixed;
     bottom: 20px;
@@ -445,6 +455,7 @@ input[type="text"]:focus, select:focus {
     background-color: rgba(255, 255, 255, 0.3);
 }
 
+/* 오류 메시지 */
 .error-message {
     background-color: #fee;
     color: #e55;
@@ -462,6 +473,7 @@ input[type="text"]:focus, select:focus {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* 입력 시간 스타일 */
 input[type="time"] {
     padding: 12px;
     border: 1px solid #ddd;
@@ -481,21 +493,26 @@ input[type="time"]:focus {
     background-color: #fff;
 }
 
+/* 반응형 스타일 */
 @media (max-width: 767px) {
     .meal-table th, .meal-table td {
         padding: 12px 10px;
         font-size: 14px;
     }
+    
     .school-title {
         font-size: 1.5rem;
     }
+    
     .meal-title {
         font-size: 1.2rem;
     }
+    
     .meal-card {
         padding: 15px;
         border-radius: 12px;
     }
+    
     .notification-btn {
         top: 10px;
         right: 10px;
@@ -503,6 +520,7 @@ input[type="time"]:focus {
         height: 38px;
         font-size: 16px;
     }
+    
     .menu-toggle {
         display: block;
         background: none;
@@ -510,6 +528,7 @@ input[type="time"]:focus {
         font-size: 24px;
         cursor: pointer;
     }
+    
     .main-nav {
         display: none;
         position: absolute;
@@ -522,24 +541,30 @@ input[type="time"]:focus {
         border-radius: 0 0 12px 12px;
         overflow: hidden;
     }
+    
     .main-nav.active {
         display: block;
         animation: slideDown 0.3s ease;
     }
+    
     @keyframes slideDown {
         from { transform: translateY(-20px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
+    
     .main-nav ul {
         flex-direction: column;
         width: 100%;
     }
+    
     .main-nav ul li {
         border-bottom: 1px solid #eee;
     }
+    
     .main-nav ul li:last-child {
         border-bottom: none;
     }
+    
     .main-nav ul li a {
         display: block;
         padding: 15px;
@@ -547,15 +572,18 @@ input[type="time"]:focus {
         color: #333;
         transition: all 0.2s ease;
     }
+    
     .main-nav ul li a:hover {
         background-color: #f5f9ff;
         padding-left: 20px;
     }
+    
     .form-group {
         margin-bottom: 15px;
     }
 }
 
+/* 식단 세부 항목 스타일링 */
 .menu-cell {
     position: relative;
 }
@@ -566,6 +594,7 @@ input[type="time"]:focus {
     position: relative;
 }
 
+/* 알레르기 정보 표시 (숫자가 있는 경우) */
 .menu-cell span[data-allergy] {
     position: relative;
     cursor: pointer;
@@ -586,6 +615,7 @@ input[type="time"]:focus {
     text-decoration: underline;
 }
 
+/* 메뉴 호버 효과 */
 .menu-highlight {
     display: inline-block;
     margin: 2px 0;
@@ -601,6 +631,7 @@ input[type="time"]:focus {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
+/* 애니메이션 효과 */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -610,7 +641,7 @@ input[type="time"]:focus {
 .school-title {
     animation: pulse 2s infinite;
 }
-
+/* 알림 모달 추가 스타일 */
 .notification-setting .meal-time-setting {
     display: flex;
     align-items: center;
@@ -619,7 +650,7 @@ input[type="time"]:focus {
 
 .notification-setting .meal-time-setting label {
     margin: 0 10px;
-    width: 40px;
+    width: 40px; /* 고정 너비 */
     font-weight: 500;
 }
 
@@ -630,9 +661,9 @@ input[type="time"]:focus {
 }
 
 .notification-setting .meal-time-setting input[type="time"] {
-    flex: 1;
+    flex: 1; /* 남은 공간 차지 */
     padding: 8px;
-    margin-bottom: 0;
+    margin-bottom: 0; /* 아래 여백 제거 */
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 15px;
@@ -656,13 +687,13 @@ input[type="time"]:focus {
 .day-setting div {
     display: flex;
     justify-content: space-around;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
 }
 
-.day-setting div > span {
+.day-setting div > span { /* 각 요일 항목을 감싸는 span 등 사용 시 */
     display: inline-flex;
     align-items: center;
-    margin-bottom: 5px;
+    margin-bottom: 5px; /* 줄바꿈 시 간격 */
 }
 
 .day-setting input[type="checkbox"] {
@@ -703,123 +734,9 @@ input[type="time"]:focus {
 }
 .meal-type p {
     display: inline;
-    white-space: pre-line;
+    white-space: pre-line; /* 줄바꿈 적용 */
 }
 .no-meal {
     color: #888;
     font-style: italic;
-}
-
-.site-header {
-    background-color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    padding: 0 20px;
-    position: sticky;
-    top: 0;
-    z-index: 900;
-}
-
-.header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 64px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.site-header .logo a {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    color: #383747;
-    font-weight: bold;
-    font-size: 20px;
-    gap: 10px;
-}
-
-.site-header .logo img {
-    height: 32px;
-}
-
-.main-content {
-    padding-top: 40px;
-    padding-bottom: 40px;
-}
-
-.intro-text {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.intro-text h1 {
-    font-size: 2.2em;
-    color: #383747;
-    margin-bottom: 10px;
-}
-
-.intro-text p {
-    font-size: 1.1em;
-    color: #666;
-}
-
-.page-content {
-    background-color: #fff;
-    padding: 30px 40px;
-    border-radius: 12px;
-    margin-top: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.07);
-}
-.page-content h1 {
-    border-bottom: 2px solid #faa41a;
-    padding-bottom: 15px;
-    margin-top: 0;
-}
-.page-content h3 {
-    margin-top: 30px;
-    border-left: 4px solid #faa41a;
-    padding-left: 10px;
-}
-.page-content p, .page-content li {
-    line-height: 1.7;
-}
-
-.site-footer {
-    background-color: #333;
-    color: #ccc;
-    padding: 40px 20px;
-    text-align: center;
-}
-
-.footer-container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.footer-links {
-    margin-bottom: 20px;
-}
-
-.footer-links a {
-    color: #ccc;
-    text-decoration: none;
-    margin: 0 15px;
-    font-size: 14px;
-    transition: color 0.2s ease;
-}
-
-.footer-links a:hover {
-    color: white;
-}
-
-.footer-links a strong {
-    color: white;
-    font-weight: 500;
-}
-
-.copyright {
-    font-size: 0.9em;
-    margin: 0;
-    color: #888;
 }
