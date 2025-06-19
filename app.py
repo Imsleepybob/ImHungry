@@ -56,21 +56,23 @@ SUSPICIOUS_PATTERNS = {
 def load_ip_blacklist():
     """IP 블랙리스트 파일에서 CIDR 목록 로드"""
     blacklist = []
-    try:
-        if os.path.exists(BLACKLIST_FILE):
-            with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#'):
-                        try:
-                            # CIDR 형식 검증
-                            ipaddress.ip_network(line, strict=False)
-                            blacklist.append(line)
-                        except ValueError:
-                            app.logger.warning(f"Invalid CIDR format in blacklist: {line}")
-    except Exception as e:
-        app.logger.error(f"Error loading IP blacklist: {e}")
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                # 1) 앞뒤 공백 제거
+                line = line.strip()
+                # 2) 빈 줄 또는 주석(#로 시작)은 건너뜀
+                if not line or line.startswith('#'):
+                    continue
+                # 3) '#' 뒤 주석 제거
+                cidr_part = line.split('#', 1)[0].strip()
+                try:
+                    ipaddress.ip_network(cidr_part, strict=False)
+                    blacklist.append(cidr_part)
+                except ValueError:
+                    app.logger.warning(f"Invalid CIDR format in blacklist: {line}")
     return blacklist
+
 
 def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
     """새로운 IP/CIDR을 블랙리스트에 추가"""
