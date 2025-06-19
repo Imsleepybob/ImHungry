@@ -84,12 +84,6 @@ def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
 # 블랙리스트 로드
 BLOCKED_NETWORKS = load_ip_blacklist()
 
-# --- IP 차단 설정 ---
-BLOCKED_NETWORKS = [
-    '2a06:98c0:3600::/48',
-    # 추가적인 차단할 네트워크 대역 입력 가능
-]
-
 # --- 관리자 IP 화이트리스트 ---
 ADMIN_WHITELIST = [
     '210.94.23.150/32',
