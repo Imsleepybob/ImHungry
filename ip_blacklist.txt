@@ -1,0 +1,19 @@
+# IP Blacklist - CIDR format
+# Lines starting with # are comments
+# Format: IP/CIDR  # optional comment
+
+# Example individual IP
+52.178.178.217/32  # Scanning attempt from your log
+
+# Common scanning networks (예시)
+# 185.220.100.0/24  # Tor exit nodes
+# 198.98.48.0/24   # Known scanning network
+
+# Suspicious cloud providers (선택적)
+# 某些阿里云段位 (필요시 추가)
+# 47.88.0.0/16     # Alibaba Cloud
+
+# Geographic blocks (필요시)
+# 북한, 러시아 등의 IP 대역 (정치적 판단 필요)
+
+# 자동 추가된 IP들이 여기에 append됩니다
