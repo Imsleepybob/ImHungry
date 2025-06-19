@@ -29,7 +29,7 @@ blocked_ips = set()
 # 보안 설정
 SECURITY_CONFIG = {
     'rate_limit_window': 60,  # 1분
-    'rate_limit_requests': 20,  # 1분에 20개 요청까지
+    'rate_limit_requests': 60,  # 1분에 60개 요청까지
     'failed_attempt_threshold': 5,  # 5회 실패시 차단
     'auto_block_duration': 3600,  # 1시간 자동 차단
     'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
@@ -44,7 +44,7 @@ SUSPICIOUS_PATTERNS = {
         r'\.xml$', r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'
     ],
     'user_agents': [
-        r'bot', r'crawler', r'spider', r'scanner', r'nikto',
+        r'spider', r'scanner', r'nikto',
         r'sqlmap', r'nmap', r'masscan', r'zap', r'burp'
     ],
     'parameters': [
