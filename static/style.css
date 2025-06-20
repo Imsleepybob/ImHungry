@@ -641,6 +641,7 @@ input[type="time"]:focus {
 .school-title {
     animation: pulse 2s infinite;
 }
+
 /* 알림 모달 추가 스타일 */
 .notification-setting .meal-time-setting {
     display: flex;
@@ -739,4 +740,79 @@ input[type="time"]:focus {
 .no-meal {
     color: #888;
     font-style: italic;
+}
+
+.main-footer {
+    background-color: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #eee;
+    color: #555;
+    font-size: 0.85em;
+    margin-top: 30px; /* Adjust as needed */
+}
+
+.footer-content {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.footer-links a {
+    color: #007bff;
+    text-decoration: none;
+    margin: 0 10px;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* Styles for new static pages (terms.html, privacy.html) */
+.page-header {
+    background-color: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.page-header h1 {
+    font-size: 2em;
+    color: #333;
+    margin: 0;
+}
+
+.page-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+    color: #444;
+}
+
+.page-content h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+.page-content p {
+    margin-bottom: 15px;
+}
+
+.page-footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    border-top: 1px solid #eee;
+    color: #777;
+    font-size: 0.8em;
 }
