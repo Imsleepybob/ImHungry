@@ -56,6 +56,22 @@
 .no-meal { color: #888; font-style: italic; }
 
 body { word-break: keep-all; }
+     
+/* 기본적으로 모든 광고를 숨김 */
+.kakao_ad_area {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    .kakao_ad_area[data-ad-width="320"][data-ad-height="100"] {
+        display: block;
+    }
+}
+@media (min-width: 768px) {
+    .kakao_ad_area[data-ad-width="728"][data-ad-height="90"] {
+        display: block;
+    }
+}
 </style>
 </head>
 <body>
@@ -92,7 +108,7 @@ data-ad-width = "320"
 data-ad-height = "100"></ins>
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 <ins class="kakao_ad_area" style="display:none;"
-data-ad-unit = "DAN-uZpbGfRymXBFqJvI"
+data-ad-unit = "DAN-I2BhGwRuogHXusUi"
 data-ad-width = "728"
 data-ad-height = "90"></ins>
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
@@ -184,7 +200,7 @@ data-ad-height = "100"></ins>
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 <footer class="main-footer">
   <div class="footer-content">
-    <p>본 웹사이트는 쿠키를 사용하여 사용자 경험을 개선하고 통계를 수집합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
+    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
     <div class="footer-links">
       <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
       <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
