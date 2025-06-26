@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
 <meta name="description" content="초중고등학교의 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
-<title>급식알리미 - ImHungry</title>
+<title>급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="manifest" href="{{ url_for('manifest') }}">
@@ -62,12 +62,16 @@ body { word-break: keep-all; }
 }
 
 @media (min-width: 768px) {
-    #ad-desktop {
+    #ad-desktop, #bodyad-desktop {
         display: block;
     }
-    #ad-mobile {
+    #ad-mobile, #bodyad-mobile {
         display: none;
     }
+#ad-mobile, #ad-desktop, #bodyad-desktop, #bodyad-mobile {
+    text-align: center;
+    margin: 20px auto;
+}
 }
 </style>
 </head>
@@ -131,6 +135,20 @@ body { word-break: keep-all; }
       </div>
       <button type="submit" class="submit-btn">검색</button>
   </form>
+<div id=bodyad-desktop>
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-ODZjnUToMyS7iXmi"
+          data-ad-width = "728"
+          data-ad-height = "90"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+<div id=bodyad-mobile>
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-StDbNq6y1v7xZsfO"
+          data-ad-width = "320"
+          data-ad-height = "50"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
   <div id="loading" class="loading-container"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
   {% if school_name %}
