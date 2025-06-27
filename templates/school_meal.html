@@ -7,46 +7,222 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
 <meta name="description" content="초중고등학교의 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
-<!-- 동적 타이틀로 변경 -->
 <title>{{ title | default('급식알리미 - ImHungry - 간편한 급식 사이트') }}</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-<!-- 기타 apple-touch-icon 링크들 -->
+<link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
+<link rel="apple-touch-icon" sizes="72x72" href="{{ url_for('static', filename='apple-touch-icon-72x72.png') }}">
+<link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', filename='apple-touch-icon-76x76.png') }}">
+<link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='apple-touch-icon-114x114.png') }}">
+<link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='apple-touch-icon-120x120.png') }}">
+<link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='apple-touch-icon-144x144.png') }}">
+<link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='apple-touch-icon-152x152.png') }}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}">
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
      crossorigin="anonymous"></script>
 <style>
-/* CSS는 생략 */
-.notification-setting .meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
-.notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
-.notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
-.notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px; }
-.day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
-.day-setting strong { display: block; margin-bottom: 10px; }
-.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
-.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
-.day-setting label { margin-right: 10px; cursor: pointer; }
-.modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
-.modal { transition: opacity 0.3s ease-in-out; }
-#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none; }
-#ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
-.ios-webapp-guide-content { text-align: center; }
-.ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
-.share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle; border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
-.share-icon-guide svg { width: 18px; height: 18px; }
-.dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
-.dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-.meal-type { margin-bottom: 15px; }
-.meal-type:last-child { margin-bottom: 0; }
-.meal-type strong { font-weight: bold; margin-right: 8px; }
-.meal-type p { display: inline; white-space: pre-line; }
-.no-meal { color: #888; font-style: italic; }
-body { word-break: keep-all; }
+    :root {
+        --primary-color: #faa41a;
+        --text-color: #333;
+        --bg-color: #fff;
+        --container-bg: #f8f9fa;
+        --border-color: #dee2e6;
+        --button-hover: #e9940a;
+    }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        margin: 0;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        word-break: keep-all;
+    }
+    .container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: var(--bg-color);
+    }
+    .main-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .logo a { display: flex; align-items: center; text-decoration: none; }
+    .notification-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    .header-logo { text-align: center; margin-bottom: 20px; }
+    .search-form {
+        background: var(--container-bg);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        box-sizing: border-box;
+    }
+    .submit-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .submit-btn:hover { background-color: var(--button-hover); }
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        padding: 40px;
+    }
+    .spinner {
+        border: 4px solid rgba(0,0,0,0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: var(--primary-color);
+        animation: spin 1s ease infinite;
+        margin-bottom: 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .error-message {
+        color: red;
+        background-color: #ffebee;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .meal-container {
+        margin-top: 20px;
+    }
+    .school-title { text-align: center; }
+    .meal-card {
+        background: var(--container-bg);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .meal-title { margin-top: 0; }
+    .meal-table-container { overflow-x: auto; }
+    .meal-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .meal-table th, .meal-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .meal-table th { background-color: #e9ecef; }
+    .date-cell { font-weight: bold; vertical-align: top; width: 150px; }
+    .menu-cell { white-space: pre-line; }
+    .meal-type { margin-bottom: 15px; }
+    .meal-type:last-child { margin-bottom: 0; }
+    .meal-type strong { font-weight: bold; margin-right: 8px; }
+    .no-meal { color: #888; font-style: italic; }
+    .toggle-month-btn {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 8px;
+        position: relative;
+    }
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .notification-setting .meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
+    .notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
+    .notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
+    .notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px; }
+    .day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
+    .day-setting strong { display: block; margin-bottom: 10px; }
+    .day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
+    .day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
+    .day-setting label { margin-right: 10px; cursor: pointer; }
+    .modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
+    #ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none; }
+    #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
+    .ios-webapp-guide-content { text-align: center; }
+    .ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+    .share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle; border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
+    .share-icon-guide svg { width: 18px; height: 18px; }
+    .dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
+    .dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+    .main-footer {
+        text-align: center;
+        padding: 20px;
+        margin-top: 40px;
+        background-color: var(--container-bg);
+        border-top: 1px solid var(--border-color);
+        font-size: 0.9em;
+        color: #6c757d;
+    }
+    .footer-links { margin: 10px 0; }
+    .footer-links a { color: #6c757d; text-decoration: none; margin: 0 10px; }
+    .footer-links a:hover { text-decoration: underline; }
+    #ad-desktop, #bodyad-desktop { display: none; }
+    @media (min-width: 768px) {
+        #ad-desktop, #bodyad-desktop { display: block; }
+        #ad-mobile, #bodyad-mobile { display: none; }
+    }
+    #bodyad-desktop, #bodyad-mobile { text-align: center; margin: 10px auto; }
+    #ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
 </style>
 </head>
-<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -82,7 +258,20 @@ body { word-break: keep-all; }
     </form>
   </div>
 </div>
-
+<div id="ad-mobile">
+    <ins class="kakao_ad_area"
+         data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
+         data-ad-width = "320"
+         data-ad-height = "100"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+<div id="ad-desktop">
+    <ins class="kakao_ad_area"
+         data-ad-unit = "DAN-I2BhGwRuogHXusUi"
+         data-ad-width = "728"
+         data-ad-height = "90"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
 <div class="container">
   {% if not school_name %}
   <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path fill="#faa41a" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/><path fill="#faa41a" d="M12 17.5c2.49 0 4.5-2.01 4.5-4.5S14.49 8.5 12 8.5 7.5 10.51 7.5 13s2.01 4.5 4.5 4.5zm0-7c1.38 0 2.5 1.12 2.5 2.5s-1.12 2.5-2.5 2.5-2.5-1.12-2.5-2.5 1.12-2.5 2.5-2.5z"/></svg> </div>
@@ -103,7 +292,20 @@ body { word-break: keep-all; }
       </div>
       <button type="submit" class="submit-btn">검색</button>
   </form>
-
+<div id="bodyad-desktop">
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-ODZjnUToMyS7iXmi"
+          data-ad-width = "728"
+          data-ad-height = "90"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+<div id="bodyad-mobile">
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-StDbNq6y1v7xZsfO"
+          data-ad-width = "320"
+          data-ad-height = "50"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
   <div id="loading" class="loading-container" style="display: none;"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
   
@@ -166,9 +368,19 @@ body { word-break: keep-all; }
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
 </div>
-
+<ins class="kakao_ad_area" style="display:none;"
+data-ad-unit = "DAN-eT4RSGGRDirSL6DS"
+data-ad-width = "320"
+data-ad-height = "100"></ins>
+<script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 <footer class="main-footer">
   <div class="footer-content">
+    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
+    <div class="footer-links">
+      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
+      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+    </div>
     <p>&copy; 2025 ImHungry. All rights reserved.</p>
   </div>
 </footer>
@@ -203,7 +415,7 @@ body { word-break: keep-all; }
         document.getElementById('lunch-time').value = settings.lunch?.time || '12:00';
         document.getElementById('dinner-enable').checked = settings.dinner?.enabled || false;
         document.getElementById('dinner-time').value = settings.dinner?.time || '18:00';
-        const days = settings.days || [1, 2, 3, 4, 5]; // Default Mon-Fri
+        const days = settings.days || [1, 2, 3, 4, 5];
         document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
             cb.checked = days.includes(parseInt(cb.value));
         });
@@ -216,7 +428,6 @@ body { word-break: keep-all; }
     }
 
     async function requestAndScheduleNotifications() {
-        // iOS/iPadOS에서는 알림 미지원 안내
         if (isIOS()) {
             alert('현재 iOS/iPadOS에서는 PWA 푸시 알림을 지원하지 않습니다.');
             return;
@@ -227,10 +438,8 @@ body { word-break: keep-all; }
             return;
         }
 
-        // 1. 권한 요청
         const permission = await Notification.requestPermission();
         
-        // 2. 권한 상태에 따라 처리
         if (permission === 'granted') {
             console.log("알림 권한이 허용되었습니다. 알림을 예약합니다.");
             await scheduleNextNotifications();
@@ -268,7 +477,6 @@ body { word-break: keep-all; }
                         if (delay > 0) {
                             const timeoutId = setTimeout(async () => {
                                 await sendNotification(mealType, nextTime);
-                                // 다음 주 같은 요일로 다시 예약
                                 await scheduleNextNotifications(); 
                             }, delay);
                             notificationTimeouts.push(timeoutId);
@@ -358,7 +566,6 @@ body { word-break: keep-all; }
                 alert('알림이 저장되었습니다.');
                 closeModal();
                 
-                // *** 변경된 부분: 저장 버튼 클릭 시에만 권한 요청 및 예약 실행 ***
                 requestAndScheduleNotifications();
             };
         }
@@ -378,13 +585,6 @@ body { word-break: keep-all; }
                 setTimeout(() => { iosGuide.classList.add('show'); }, 10);
             }, 1000);
         }
-
-        // *** 변경된 부분: 페이지 로드 시 자동 알림 예약 로직 제거 ***
-        // 이전에 허용했더라도, 사용자가 다시 설정을 저장할 때만 알림이 예약됩니다.
-        // 만약 기존에 허용한 사용자가 계속 알림을 받게 하려면 아래 로직을 유지할 수 있습니다.
-        // if ('Notification' in window && Notification.permission === 'granted') {
-        //     if (getCookie('school_code')) { scheduleNextNotifications(); } // 권한 요청 없이 바로 예약
-        // }
     });
 </script>
 </body>
