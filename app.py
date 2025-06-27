@@ -445,19 +445,54 @@ def get_school_code(school_name, region_code):
             school_data = data["schoolInfo"][1]["row"][0]
             school_code_val = school_data["SD_SCHUL_CODE"]
             full_school_name = school_data["SCHUL_NM"]
-            school_cache[cache_key] = {
+            
+            school_info_result = {
                 'code': school_code_val,
                 'name': full_school_name,
                 'region_code': region_code
             }
-            # 입력 이름과 다른 경우에도 캐시 (예: 양정고 -> 양정고등학교)
-            school_cache[f"{region_code}_{full_school_name}"] = school_cache[cache_key]
-            return school_cache[cache_key]
+            # 다양한 키로 캐시 저장
+            school_cache[cache_key] = school_info_result
+            school_cache[f"{region_code}_{full_school_name}"] = school_info_result
+            school_cache[school_code_val] = school_info_result # 학교 코드로도 캐시
+            return school_info_result
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error fetching school code (Request) for {school_name}: {e}")
     except Exception as e:
         app.logger.error(f"Error fetching school code (General) for {school_name}: {e}")
     return None
+
+def find_school_by_code(school_code):
+    """학교 코드로 학교 정보를 찾습니다. (캐시 우선, 없으면 모든 지역 API 탐색)"""
+    if school_code in school_cache:
+        return school_cache[school_code]
+
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    for region_name, region_code in regions.items():
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=1) # 타임아웃을 짧게 설정
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"]
+                }
+                school_cache[school_code] = school_info # 찾았으면 캐시에 저장
+                return school_info
+        except requests.exceptions.RequestException:
+             # 타임아웃 등 일반적인 오류는 다음 지역으로 계속 진행
+            continue
+        except Exception as e:
+            app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
+    return None
+
 
 def get_month_dates():
     """현재 KST 기준 월의 모든 날짜를 YYYYMMDD 형식으로 반환합니다."""
@@ -536,13 +571,8 @@ def index():
     school_name_encoded = request.cookies.get('school_name')
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
 
-    if request.method == 'GET':
-        school_code = request.cookies.get('school_code')
-        if school_code and school_name_cookie:
-            app.logger.info(f"Redirecting to saved school: {school_name_cookie} ({school_code})")
-            return redirect(url_for('school_meal_view', school_code=school_code))
-
-    elif request.method == 'POST':
+    # POST 요청 (학교 검색) 처리
+    if request.method == 'POST':
         region_name = request.form['region']
         school_name_input = request.form['school_name']
         app.logger.info(f"Search request - Region: {region_name}, School: {school_name_input}")
@@ -557,6 +587,7 @@ def index():
         school_info = get_school_code(school_name_input, region_code)
         if school_info:
             response = make_response(redirect(url_for('school_meal_view', school_code=school_info['code'])))
+            # 쿠키 설정 시 quote 사용
             response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
             response.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
             response.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
@@ -564,68 +595,63 @@ def index():
             return response
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
-
+    
+    # GET 요청 시에는 항상 검색 페이지를 보여줌
     return render_template('school_meal.html', regions=regions, error_message=error_message, region=region_cookie, school_name=school_name_cookie)
+
 
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
-    school_name_encoded = request.cookies.get('school_name')
-    region_code = request.cookies.get('region_code')
+    # school_code를 기반으로 학교 정보를 조회 (캐시 또는 API)
+    school_info = find_school_by_code(school_code)
 
-    if not school_name_encoded or not region_code:
-        return redirect(url_for('index', error_message="학교 정보가 만료되었거나 없습니다. 다시 검색해주세요."))
-
-    school_name = unquote(school_name_encoded)
-    school_info = None
-
-    # 캐시에서 먼저 찾아보기
-    for info in school_cache.values():
-        if info.get('code') == school_code:
-            school_info = info
-            break
-
-    # 캐시에 없으면 API 호출 시도
+    # 학교 정보를 찾지 못한 경우
     if not school_info:
-        school_info = get_school_code(school_name, region_code)
+        app.logger.warning(f"Failed to find school info for code: {school_code}")
+        return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
 
-    # API 호출도 실패하면 쿠키 정보로 최소 구성
-    if not school_info:
-        school_info = {'code': school_code, 'name': school_name, 'region_code': region_code}
-        app.logger.warning(f"Using fallback school info for {school_code}")
-
+    # 급식 정보 가져오기
     month_meals_data = get_month_meals(school_code, school_info['region_code'])
+    
+    # 주간/월간 급식 데이터 가공
     week_dates_list = get_week_dates()
     week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
     month_dates_list = get_month_dates()
     full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
 
+    # 해당 지역의 이름 찾기
+    region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
+
+    # 템플릿 렌더링
     resp = make_response(render_template(
         'school_meal.html',
         regions=regions,
         school_name=school_info['name'],
-        school_code=school_code,
+        school_code=school_info['code'],
         week_meals=week_meals_data,
         month_meals=full_month_meals_data,
         loading=False,
-        region=next((name for name, code in regions.items() if code == school_info['region_code']), None)
+        region=region_name
     ))
 
-    # 쿠키 갱신 (인코딩)
+    # 방문 기록을 쿠키에 저장 (사용자 편의성)
     resp.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
     resp.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
     resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
-    region_name_cookie = request.cookies.get('region_name')
-    if region_name_cookie:
-        resp.set_cookie('region_name', region_name_cookie, max_age=60*60*24*30)
+    if region_name:
+        resp.set_cookie('region_name', region_name, max_age=60*60*24*30)
 
     return resp
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
     """API: 특정 학교, 특정 날짜의 급식 정보를 반환합니다."""
-    region_code = request.cookies.get('region_code') # 알림용 API이므로 쿠키에 의존
-    if not region_code:
-        return jsonify({"error": "Region code missing in cookies"}), 400
+    # API 요청 시에는 school_code로 학교 정보를 찾아 region_code를 획득
+    school_info = find_school_by_code(school_code)
+    if not school_info:
+        return jsonify({"error": "School not found"}), 404
+    
+    region_code = school_info['region_code']
 
     try:
         month_meals = get_month_meals(school_code, region_code)
