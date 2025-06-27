@@ -705,7 +705,7 @@ def namufile1():
 
 @app.route('/sitemap.xml')
 def sitemap():
-    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
+    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml; charset=utf-8')
 
 # --- 탬퍼몽키 스크립트 ---
 STATIC_DIR = app.root_path
