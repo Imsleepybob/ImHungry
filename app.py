@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory, abort
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
@@ -10,27 +11,47 @@ from urllib.parse import quote, unquote
 import os
 import re
 import time
-import json # Removed in app_edited.py, but needed for security/blacklist/add endpoint's request.get_json()
+import json
+from functools import wraps
 
 app = Flask(__name__)
 
-# --- 보안 설정 (원본 전체 복구) ---
+# --- 보안 설정 ---
+# IP 블랙리스트 파일 경로
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
-SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json') # Currently unused, but kept for consistency
+SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
+
+# Rate limiting을 위한 메모리 저장소 (프로덕션에서는 Redis 권장)
 request_counts = defaultdict(deque)
 failed_attempts = defaultdict(int)
 blocked_ips = set()
+
+# 보안 설정
 SECURITY_CONFIG = {
-    'rate_limit_window': 60, 'rate_limit_requests': 60,
-    'failed_attempt_threshold': 5, 'auto_block_duration': 3600,
-    'suspicious_ua_block': True, 'path_traversal_protection': True,
+    'rate_limit_window': 60,  # 1분
+    'rate_limit_requests': 60,  # 1분에 60개 요청까지
+    'failed_attempt_threshold': 5,  # 5회 실패시 차단
+    'auto_block_duration': 3600,  # 1시간 자동 차단
+    'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
+    'path_traversal_protection': True,  # 경로 탐색 공격 차단
 }
+
+# 의심스러운 패턴들
 SUSPICIOUS_PATTERNS = {
-    'paths': [r'\.php$', r'wp-', r'admin', r'login', r'\.env', r'config', r'\.git', r'\.sql', r'backup', r'shell', r'cmd', r'eval', r'\.xml$', r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'],
-    'user_agents': [r'spider', r'scanner', r'nikto', r'sqlmap', r'nmap', r'masscan', r'zap', r'burp'],
-    'parameters': [r'union.*select', r'<script', r'javascript:', r'eval\(', r'exec\(', r'system\(', r'\.\./', r'etc/passwd']
+    'paths': [
+        r'\.php$', r'wp-', r'admin', r'login', r'\.env', r'config',
+        r'\.git', r'\.sql', r'backup', r'shell', r'cmd', r'eval',
+        r'\.xml$', r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'
+    ],
+    'user_agents': [
+        r'spider', r'scanner', r'nikto',
+        r'sqlmap', r'nmap', r'masscan', r'zap', r'burp'
+    ],
+    'parameters': [
+        r'union.*select', r'<script', r'javascript:', r'eval\(',
+        r'exec\(', r'system\(', r'\.\./', r'etc/passwd'
+    ]
 }
-ADMIN_WHITELIST = ['210.94.23.150/32', '118.221.147.88/32']
 
 def load_ip_blacklist():
     """IP 블랙리스트 파일에서 CIDR 목록 로드"""
@@ -52,6 +73,7 @@ def load_ip_blacklist():
                     app.logger.warning(f"Invalid CIDR format in blacklist: {line}")
     return blacklist
 
+
 def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
     """새로운 IP/CIDR을 블랙리스트에 추가"""
     try:
@@ -61,79 +83,322 @@ def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
     except Exception as e:
         app.logger.error(f"Error saving to blacklist: {e}")
 
+# 블랙리스트 로드
 BLOCKED_NETWORKS = load_ip_blacklist()
 
-# --- 로깅 설정 (요청사항 반영 및 복구) ---
-LOG_DIR = 'logs'
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+# --- 관리자 IP 화이트리스트 ---
+ADMIN_WHITELIST = [
+    '210.94.23.150/32',
+    '118.221.147.88/32',
+]
 
-# app_edited.py의 로그 파일 경로 설정 유지
-APP_LOG_PATH = os.path.join(LOG_DIR, 'app.log')
-ERROR_403_LOG_PATH = os.path.join(LOG_DIR, '403_errors.log')
-SECURITY_LOG_PATH = os.path.join(LOG_DIR, 'security.log')
-NAMUBOARD_LOG_PATH = os.path.join(LOG_DIR, 'namuboard.log') # 원본 유지
+def get_client_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
+    elif request.access_route:
+        return request.access_route[0]
+    else:
+        return request.remote_addr
 
-def clean_user_agent(ua_string):
-    """로그용 User-Agent 정리 함수"""
-    if not ua_string: return 'N/A'
-    # Mozilla/5.0 등 파일 크기를 늘리는 부분 제외 로직 유지
-    ua = re.sub(r'^(Mozilla/\d\.\d\s*\(.*?\)|AppleWebKit/[\d\.]+\s*\(KHTML, like Gecko\)\s*|Chrome/\d+\.\d+\.\d+\.\d+\s*|Safari/\d+\.\d+\s*|Edge/\d+\.\d+\s*|Firefox/\d+\.\d+\s*)+', '', ua_string).strip()
-    return ua if ua else ua_string[:200] # Cap at 200 characters
-
-# 요청에 따라 로거들을 분리하여 설정
-def setup_loggers():
-    # 403 에러 로거
-    error_403_logger = logging.getLogger('403_logger')
-    error_403_logger.setLevel(logging.WARNING)
-    if not error_403_logger.handlers:
-        handler_403 = RotatingFileHandler(ERROR_403_LOG_PATH, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
-        formatter_403 = logging.Formatter('[%(asctime)s] 403 FORBIDDEN - IP: %(ip)s - UA: %(user_agent)s - "%(method)s %(path)s"')
-        handler_403.setFormatter(formatter_403)
-        error_403_logger.addHandler(handler_403)
-    error_403_logger.propagate = False
-
-    # 보안 사고 로거
-    security_logger = logging.getLogger('security')
-    security_logger.setLevel(logging.WARNING)
-    if not security_logger.handlers:
-        security_handler = RotatingFileHandler(SECURITY_LOG_PATH, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
-        security_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s'))
-        security_logger.addHandler(security_handler)
-    security_logger.propagate = False
-    
-    # 통합 앱 로거 (werkzeug 로그 포함, 403 제외, HEAD 제외)
-    app_logger = logging.getLogger()
-    app_logger.setLevel(logging.INFO)
-    # 기존 핸들러 제거 (중복 방지)
-    for h in app_logger.handlers[:]: app_logger.removeHandler(h)
+def is_ip_blocked(ip_address):
+    """IP가 차단 목록에 있는지 확인"""
+    try:
+        client_ip = ipaddress.ip_address(ip_address)
         
-    app_handler = RotatingFileHandler(APP_LOG_PATH, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8')
-    # Custom formatter to include IP, UA, Method, Path, Status
-    app_formatter = logging.Formatter('[%(asctime)s] IP: %(ip)s - UA: %(user_agent)s - "%(method)s %(path)s" - Status: %(status)s - %(levelname)s: %(message)s')
-    app_handler.setFormatter(app_formatter)
-    app_logger.addHandler(app_handler)
+        # 동적 차단 목록 확인
+        if ip_address in blocked_ips:
+            return True
+            
+        # 정적 블랙리스트 확인
+        for blocked_network in BLOCKED_NETWORKS:
+            network = ipaddress.ip_network(blocked_network, strict=False)
+            if client_ip in network:
+                return True
+        return False
+    except ValueError:
+        app.logger.error(f"Invalid IP address detected: {ip_address}")
+        return True  # 잘못된 IP는 차단
 
-    # NamuBoard Extension 전용 로그 핸들러 (새로 추가)
+def is_admin_ip(ip_address):
+    """관리자 IP 화이트리스트 확인"""
+    try:
+        client_ip = ipaddress.ip_address(ip_address)
+        for admin_network in ADMIN_WHITELIST:
+            network = ipaddress.ip_network(admin_network, strict=False)
+            if client_ip in network:
+                return True
+        return False
+    except ValueError:
+        return False
+
+def is_rate_limited(ip_address):
+    """Rate limiting 확인"""
+    now = time.time()
+    window_start = now - SECURITY_CONFIG['rate_limit_window']
+    
+    # 오래된 요청 제거
+    while request_counts[ip_address] and request_counts[ip_address][0] < window_start:
+        request_counts[ip_address].popleft()
+    
+    # 현재 요청 추가
+    request_counts[ip_address].append(now)
+    
+    # Rate limit 확인
+    if len(request_counts[ip_address]) > SECURITY_CONFIG['rate_limit_requests']:
+        return True
+    
+    return False
+
+def is_suspicious_request():
+    """의심스러운 요청 패턴 탐지"""
+    suspicion_score = 0
+    reasons = []
+    
+    # 1. 경로 검사
+    path = request.path.lower()
+    for pattern in SUSPICIOUS_PATTERNS['paths']:
+        if re.search(pattern, path, re.IGNORECASE):
+            suspicion_score += 10
+            reasons.append(f"Suspicious path: {pattern}")
+    
+    # 2. User-Agent 검사
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if not user_agent or len(user_agent) < 10:
+        suspicion_score += 5
+        reasons.append("Missing or short User-Agent")
+    
+    for pattern in SUSPICIOUS_PATTERNS['user_agents']:
+        if re.search(pattern, user_agent, re.IGNORECASE):
+            suspicion_score += 15
+            reasons.append(f"Suspicious User-Agent: {pattern}")
+    
+    # 3. 쿼리 파라미터 검사
+    query_string = request.query_string.decode('utf-8', errors='ignore').lower()
+    for pattern in SUSPICIOUS_PATTERNS['parameters']:
+        if re.search(pattern, query_string, re.IGNORECASE):
+            suspicion_score += 20
+            reasons.append(f"Suspicious parameter: {pattern}")
+    
+    # 4. HTTP 메소드 검사 (웹사이트 특성상 GET, POST만 허용)
+    if request.method not in ['GET', 'POST', 'HEAD']:
+        suspicion_score += 10
+        reasons.append(f"Suspicious method: {request.method}")
+    
+    # 5. 존재하지 않는 확장자 요청
+    if path.endswith(('.php', '.asp', '.jsp', '.cgi')) and not path.startswith('/api/'):
+        suspicion_score += 15
+        reasons.append("Non-existent extension request")
+    
+    return suspicion_score >= 10, suspicion_score, reasons
+
+def log_security_incident(ip, incident_type, details, suspicion_score=0):
+    """보안 사고 로깅"""
+    security_logger = logging.getLogger('security')
+    security_logger.warning(
+        f"SECURITY INCIDENT - IP: {ip}, Type: {incident_type}, "
+        f"Score: {suspicion_score}, Details: {details}, "
+        f"UA: {request.headers.get('User-Agent', 'N/A')[:100]}, "
+        f"Path: {request.path}, Method: {request.method}"
+    )
+
+def auto_block_ip(ip, reason, duration=None):
+    """IP를 자동으로 일정 시간 차단"""
+    if duration is None:
+        duration = SECURITY_CONFIG['auto_block_duration']
+    
+    blocked_ips.add(ip)
+    log_security_incident(ip, "AUTO_BLOCK", f"{reason} - Duration: {duration}s")
+    
+    # 영구 블랙리스트에 추가 (높은 위험도인 경우)
+    failed_attempts[ip] += 1
+    if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
+        save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
+
+@app.before_request
+def security_check():
+    """종합 보안 검사"""
+    client_ip = get_client_ip()
+    
+    # 1. 관리자 IP는 모든 검사 통과
+    if is_admin_ip(client_ip):
+        return
+    
+    # 2. IP 차단 확인
+    if is_ip_blocked(client_ip):
+        log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
+        abort(403)
+    
+    # 3. Rate limiting 확인
+    if is_rate_limited(client_ip):
+        log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
+        auto_block_ip(client_ip, "Rate limit exceeded", 300)  # 5분 임시 차단
+        abort(429)
+    
+    # 4. 의심스러운 요청 패턴 확인
+    is_suspicious, suspicion_score, reasons = is_suspicious_request()
+    if is_suspicious:
+        log_security_incident(client_ip, "SUSPICIOUS_PATTERN", 
+                            f"Reasons: {', '.join(reasons)}", suspicion_score)
+        
+        # 점수가 높으면 자동 차단
+        if suspicion_score >= 20:
+            auto_block_ip(client_ip, f"High suspicion score: {suspicion_score}")
+            abort(403)
+        elif suspicion_score >= 15:
+            # 중간 점수는 404로 응답 (존재하지 않는 것처럼)
+            abort(404)
+    
+    # 5. 경로 탐색 공격 방지
+    if SECURITY_CONFIG['path_traversal_protection']:
+        if '../' in request.path or '..\\' in request.path:
+            log_security_incident(client_ip, "PATH_TRAVERSAL", request.path)
+            auto_block_ip(client_ip, "Path traversal attempt")
+            abort(403)
+
+# 보안 로거 설정
+def setup_security_logging():
+    security_logger = logging.getLogger('security')
+    security_handler = RotatingFileHandler(
+        os.path.join(os.getcwd(), 'security.log'),
+        maxBytes=10*1024*1024,
+        backupCount=5,
+        encoding='utf-8'
+    )
+    security_handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s: %(message)s'
+    ))
+    security_logger.addHandler(security_handler)
+    security_logger.setLevel(logging.WARNING)
+    security_logger.propagate = False
+
+# 로깅 설정
+setup_security_logging()
+
+# --- 로깅 설정 (확장) ---
+# 로그 파일 경로 설정 (프로젝트 루트 디렉토리)
+ACCESS_LOG_PATH = os.path.join(os.getcwd(), 'access.log')
+APP_LOG_PATH = os.path.join(os.getcwd(), 'app.log')
+IP_BLOCK_LOG_PATH = os.path.join(os.getcwd(), 'ip_block.log')
+NAMUBOARD_LOG_PATH = os.path.join(os.getcwd(), 'namuboard.log') # New log file for namuboardextension
+
+# 커스텀 로그 포맷터
+class AccessLogFormatter(logging.Formatter):
+    def format(self, record):
+        # request 객체에서 정보 추출
+        record.remote_addr = getattr(record, 'remote_addr', 'N/A')
+        record.user_agent = getattr(record, 'user_agent', 'N/A')
+        record.method = getattr(record, 'method', 'N/A')
+        record.path = getattr(record, 'path', 'N/A')
+        record.status = getattr(record, 'status', 'N/A')
+        record.referrer = getattr(record, 'referrer', 'N/A')
+        return super().format(record)
+
+def setup_logging():
+    """로깅 시스템 초기화"""
+    # 기본 로거 설정
+    logging.basicConfig(level=logging.INFO)
+    
+    # 1. 앱 로그 핸들러 (기본 앱 로그)
+    app_handler = RotatingFileHandler(
+        APP_LOG_PATH, 
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5, 
+        encoding='utf-8'
+    )
+    app_handler.setFormatter(logging.Formatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    ))
+    
+    # 2. 접속 로그 핸들러
+    access_handler = RotatingFileHandler(
+        ACCESS_LOG_PATH,
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    access_formatter = AccessLogFormatter(
+        '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
+    )
+    access_handler.setFormatter(access_formatter)
+    
+    # 3. IP 차단 로그 핸들러
+    ip_handler = logging.FileHandler(IP_BLOCK_LOG_PATH, encoding='utf-8')
+    ip_handler.setLevel(logging.WARNING)
+    ip_handler.setFormatter(logging.Formatter(
+            '[%(asctime)s] %(levelname)s: %(message)s'
+    ))
+
+    # 4. NamuBoard Extension 전용 로그 핸들러 (새로 추가)
+    namuboard_handler = RotatingFileHandler(
+        NAMUBOARD_LOG_PATH,
+        maxBytes=5*1024*1024, # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    namuboard_formatter = logging.Formatter(
+        '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Referrer: %(referrer)s'
+    )
+    namuboard_handler.setFormatter(namuboard_formatter)
+    
+    # 로거들 설정
+    logger = logging.getLogger(__name__)
+    logger.addHandler(app_handler)
+    logger.addHandler(ip_handler)
+    
+    # Flask 기본 로거에 핸들러 추가
+    app.logger.addHandler(app_handler)
+    app.logger.addHandler(ip_handler)
+    
+    # 접속 로그용 별도 로거 생성
+    access_logger = logging.getLogger('access')
+    access_logger.setLevel(logging.INFO)
+    access_logger.addHandler(access_handler)
+    
+    # NamuBoard Extension 로그용 별도 로거 생성
     namuboard_logger = logging.getLogger('namuboard')
     namuboard_logger.setLevel(logging.INFO)
-    if not namuboard_logger.handlers: # Prevent adding multiple handlers
-        namuboard_handler = RotatingFileHandler(
-            NAMUBOARD_LOG_PATH,
-            maxBytes=5*1024*1024, # 5MB
-            backupCount=3,
-            encoding='utf-8'
-        )
-        namuboard_formatter = logging.Formatter(
-            '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Referrer: %(referrer)s'
-        )
-        namuboard_handler.setFormatter(namuboard_formatter)
-        namuboard_logger.addHandler(namuboard_handler)
-    namuboard_logger.propagate = False
+    namuboard_logger.addHandler(namuboard_handler)
 
-setup_loggers()
+    # 중복 로그 방지
+    access_logger.propagate = False
+    namuboard_logger.propagate = False # Prevent duplicate logging for namuboard
 
-# NamuBoard Extension 접속 로그 기록 함수 - 복구
+    return access_logger, namuboard_logger
+
+# 접속 로거 초기화
+access_logger, namuboard_logger = setup_logging()
+
+# User-Agent 클리닝 함수
+def clean_user_agent(user_agent_string):
+    if not user_agent_string:
+        return 'Unknown'
+    # Remove common prefixes like "Mozilla/5.0", "AppleWebKit/" etc.
+    cleaned_ua = re.sub(r'^(Mozilla/\d\.\d\s\(.*\)|AppleWebKit/\d+\.\d+\s\(.*\)|KHTML,\s*like\s*Gecko\s*|Chrome/\d+\.\d+\.\d+\.\d+\s*|Safari/\d+\.\d+\s*|Edge/\d+\.\d+\s*|Firefox/\d+\.\d+\s*)+', '', user_agent_string).strip()
+    return cleaned_ua[:200] # Ensure it's still capped at 200 characters
+
+# 접속 로그 기록 함수
+def log_access_request(status_code=200):
+    """접속 로그를 기록합니다."""
+    # Only log GET and POST requests with status 200 or 206
+    if request.method in ['GET', 'POST'] and status_code in [200, 206]:
+        try:
+            real_ip = get_client_ip()
+            
+            extra_info = {
+                'remote_addr': real_ip or 'Unknown',
+                'user_agent': clean_user_agent(request.headers.get('User-Agent', 'Unknown')),
+                'method': request.method,
+                'path': request.path,
+                'status': status_code,
+                'referrer': request.headers.get('Referer', 'N/A')[:100]
+            }
+            
+            access_logger.info('Access log', extra=extra_info)
+            
+        except Exception as e:
+            app.logger.error(f"접속 로그 기록 중 오류 발생: {e}")
+
+# NamuBoard Extension 접속 로그 기록 함수
 def log_namuboard_access_request():
     """/namuboardextension.user.js 접근 로그를 기록합니다."""
     try:
@@ -143,118 +408,29 @@ def log_namuboard_access_request():
             'user_agent': clean_user_agent(request.headers.get('User-Agent', 'Unknown')),
             'referrer': request.headers.get('Referer', 'N/A')[:100]
         }
-        logging.getLogger('namuboard').info('NamuBoard Extension Access', extra=extra_info)
+        namuboard_logger.info('NamuBoard Extension Access', extra=extra_info)
     except Exception as e:
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
-# --- 보안 관련 함수 (원본 전체 복구) ---
-def get_client_ip():
-    if request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
-    # app.py 원본에 access_route fallback이 있었음
-    elif request.access_route:
-        return request.access_route[0]
-    return request.remote_addr
-
-def is_ip_blocked(ip):
-    try:
-        addr = ipaddress.ip_address(ip)
-        if ip in blocked_ips: return True
-        return any(addr in ipaddress.ip_network(net, strict=False) for net in BLOCKED_NETWORKS)
-    except ValueError: return True
-
-def is_admin_ip(ip):
-    try:
-        return any(ipaddress.ip_address(ip) in ipaddress.ip_network(net, strict=False) for net in ADMIN_WHITELIST)
-    except ValueError: return False
-
-def is_rate_limited(ip):
-    now = time.time()
-    while request_counts[ip] and request_counts[ip][0] < now - SECURITY_CONFIG['rate_limit_window']:
-        request_counts[ip].popleft()
-    request_counts[ip].append(now)
-    return len(request_counts[ip]) > SECURITY_CONFIG['rate_limit_requests']
-
-def is_suspicious_request():
-    score, reasons = 0, []
-    path = request.path.lower()
-    ua = request.headers.get('User-Agent', '').lower()
-    qs = request.query_string.decode('utf-8', errors='ignore').lower()
-    if any(re.search(p, path, re.I) for p in SUSPICIOUS_PATTERNS['paths']): score, reasons = score+10, reasons+["Path"]
-    if any(re.search(p, ua, re.I) for p in SUSPICIOUS_PATTERNS['user_agents']): score, reasons = score+15, reasons+["UA"]
-    if any(re.search(p, qs, re.I) for p in SUSPICIOUS_PATTERNS['parameters']): score, reasons = score+20, reasons+["Param"]
-    
-    # HTTP 메소드 검사 (웹사이트 특성상 GET, POST, HEAD만 허용) - 원본 로직 복구
-    if request.method not in ['GET', 'POST', 'HEAD']:
-        score += 10
-        reasons.append(f"Suspicious method: {request.method}")
-
-    # 존재하지 않는 확장자 요청 - 원본 로직 복구
-    if path.endswith(('.php', '.asp', '.jsp', '.cgi')) and not path.startswith('/api/'):
-        score += 15
-        reasons.append("Non-existent extension request")
-
-    return score >= 10, score, reasons
-
-def log_security_incident(ip, incident_type, details, score=0):
-    """보안 사고 로깅"""
-    security_logger = logging.getLogger('security')
-    security_logger.warning(
-        f"SECURITY INCIDENT - IP: {ip}, Type: {incident_type}, "
-        f"Score: {score}, Details: {details}, "
-        f"UA: {request.headers.get('User-Agent', 'N/A')[:100]}, "
-        f"Path: {request.path}, Method: {request.method}"
-    )
-
-def auto_block_ip(ip, reason, duration=None): # 원본의 duration=None 유지
-    """IP를 자동으로 일정 시간 차단"""
-    if duration is None: # duration 처리 원본 로직 유지
-        duration = SECURITY_CONFIG['auto_block_duration']
-    blocked_ips.add(ip)
-    log_security_incident(ip, "AUTO_BLOCK", f"{reason} - Duration: {duration}s")
-    failed_attempts[ip] += 1
-    if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
-        save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
-
-@app.before_request
-def security_check():
-    """종합 보안 검사"""
-    ip = get_client_ip()
-    if is_admin_ip(ip): return
-    if is_ip_blocked(ip): 
-        log_security_incident(ip, "BLOCKED_IP", "IP in blacklist") # 원본 로깅 추가
-        abort(403)
-    if is_rate_limited(ip):
-        log_security_incident(ip, "RATE_LIMIT", "Too many requests")
-        auto_block_ip(ip, "Rate limit exceeded", 300)
-        abort(429)
-    is_suspicious, score, reasons = is_suspicious_request()
-    if is_suspicious:
-        log_security_incident(ip, "SUSPICIOUS_PATTERN", f"Reasons: {', '.join(reasons)}", score) # 원본 로깅 포맷 복구
-        if score >= 20: auto_block_ip(ip, f"High suspicion score: {score}"); abort(403)
-        elif score >= 15: abort(404)
-    if SECURITY_CONFIG['path_traversal_protection'] and ('../' in request.path or '..\\' in request.path):
-        log_security_incident(ip, "PATH_TRAVERSAL", request.path)
-        auto_block_ip(ip, "Path traversal attempt")
-        abort(403)
 
 # --- NEIS API 및 기본 설정 ---
-API_KEY = "4e2c538d90ef493c94c6e2d943e756d9"
+API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
 KST = timezone(timedelta(hours=9))
-regions = {"서울":"B10", "부산":"C10", "대구":"D10", "인천":"E10", "광주":"F10", "대전":"G10", "울산":"H10", "세종":"I10", "경기":"J10", "강원":"K10", "충북":"M10", "충남":"N10", "전북":"P10", "전남":"Q10", "경북":"R10", "경남":"S10", "제주":"T10"}
+regions = {
+    "서울": "B10", "부산": "C10", "대구": "D10", "인천": "E10", "광주": "F10",
+    "대전": "G10", "울산": "H10", "세종": "I10", "경기": "J10", "강원": "K10",
+    "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
+    "경남": "S10", "제주": "T10"
+}
 school_cache = {}
 meal_cache = {}
-school_code_cache = {} # 요청사항 반영 (유지)
 
 # --- 핵심 함수 ---
 def get_school_code(school_name, region_code):
     """학교 이름과 지역 코드로 NEIS API에서 학교 코드와 전체 이름을 조회합니다."""
     cache_key = f"{region_code}_{school_name}"
     if cache_key in school_cache:
-        # school_code_cache 업데이트도 함께 진행
-        school_info = school_cache[cache_key]
-        school_code_cache[school_info['code']] = school_info
-        return school_info
+        return school_cache[cache_key]
 
     url = "https://open.neis.go.kr/hub/schoolInfo"
     params = {
@@ -270,34 +446,18 @@ def get_school_code(school_name, region_code):
             school_data = data["schoolInfo"][1]["row"][0]
             school_code_val = school_data["SD_SCHUL_CODE"]
             full_school_name = school_data["SCHUL_NM"]
-            school_info = {
+            school_cache[cache_key] = {
                 'code': school_code_val,
                 'name': full_school_name,
                 'region_code': region_code
             }
-            school_cache[cache_key] = school_info
             # 입력 이름과 다른 경우에도 캐시 (예: 양정고 -> 양정고등학교)
-            school_cache[f"{region_code}_{full_school_name}"] = school_info
-            school_code_cache[school_code_val] = school_info # school_code_cache 업데이트
-            return school_info
+            school_cache[f"{region_code}_{full_school_name}"] = school_cache[cache_key]
+            return school_cache[cache_key]
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Error fetching school code (Request) for {school_name}: {e}")
     except Exception as e:
         app.logger.error(f"Error fetching school code (General) for {school_name}: {e}")
-    return None
-
-def get_school_info_by_code(school_code):
-    """학교 코드를 사용하여 학교 정보를 캐시에서 조회합니다."""
-    # 먼저 school_code_cache에서 찾기
-    if school_code in school_code_cache:
-        return school_code_cache[school_code]
-    
-    # school_cache를 역방향으로 순회하며 찾기 (효율적이지 않으므로 school_code_cache 사용 권장)
-    # 하지만 만약을 위해 유지
-    for info in school_cache.values():
-        if info.get('code') == school_code:
-            school_code_cache[school_code] = info # 찾았으면 school_code_cache에 추가
-            return info
     return None
 
 def get_month_dates():
@@ -309,7 +469,6 @@ def get_month_dates():
 def get_week_dates():
     """현재 KST 기준 주의 모든 날짜(일~토)를 YYYYMMDD 형식으로 반환합니다."""
     today = datetime.now(KST).date()
-    # 주의 시작을 일요일 (0)로 맞추기 위해 (today.weekday() + 1) % 7 사용
     start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
     return [(start_of_week + timedelta(days=i)).strftime('%Y%m%d') for i in range(7)]
 
@@ -379,17 +538,10 @@ def index():
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
 
     if request.method == 'GET':
-        # 이전 요청에서 '강제 이동' 문제 해결을 위해 school_code 쿠키를 직접 사용한 리다이렉션 로직 제거됨.
-        # school_name과 region_name 쿠키가 있다면 학교 정보를 다시 조회하여 유효성 검사를 시도.
-        if school_name_cookie and region_cookie:
-            region_code_from_cookie = regions.get(region_cookie)
-            if region_code_from_cookie:
-                school_info_from_cookie = get_school_code(school_name_cookie, region_code_from_cookie)
-                if school_info_from_cookie:
-                    app.logger.info(f"Redirecting to saved school: {school_info_from_cookie['name']} ({school_info_from_cookie['code']})")
-                    return redirect(url_for('school_meal_view', school_code=school_info_from_cookie['code']))
-            # 쿠키가 있으나 유효한 학교 정보를 찾지 못한 경우 (문제 3 해결 노력의 일부)
-            # 이 경우 에러 메시지를 표시하거나 초기 화면으로 진행
+        school_code = request.cookies.get('school_code')
+        if school_code and school_name_cookie:
+            app.logger.info(f"Redirecting to saved school: {school_name_cookie} ({school_code})")
+            return redirect(url_for('school_meal_view', school_code=school_code))
 
     elif request.method == 'POST':
         region_name = request.form['region']
@@ -406,10 +558,10 @@ def index():
         school_info = get_school_code(school_name_input, region_code)
         if school_info:
             response = make_response(redirect(url_for('school_meal_view', school_code=school_info['code'])))
-            # 쿠키 설정: school_name, region_code, region_name 모두 저장
-            response.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30, samesite='Lax') # samesite 추가됨
-            response.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30, samesite='Lax')
-            response.set_cookie('region_name', region_name, max_age=60*60*24*30, samesite='Lax')
+            response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
+            response.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
+            response.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
+            response.set_cookie('region_name', region_name, max_age=60*60*24*30)
             return response
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
@@ -419,34 +571,34 @@ def index():
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
     school_name_encoded = request.cookies.get('school_name')
-    region_code_cookie = request.cookies.get('region_code') # 쿠키에서 region_code를 가져옴
+    region_code = request.cookies.get('region_code')
 
-    # 학교 정보가 없거나 만료된 경우 (문제 3 해결 노력의 일부)
-    if not school_name_encoded or not region_code_cookie:
+    if not school_name_encoded or not region_code:
         return redirect(url_for('index', error_message="학교 정보가 만료되었거나 없습니다. 다시 검색해주세요."))
 
     school_name = unquote(school_name_encoded)
-    school_info = get_school_info_by_code(school_code) # school_code_cache를 먼저 확인
+    school_info = None
 
-    # 캐시에 없으면, 쿠키의 학교 이름과 지역 코드로 API 호출 시도
-    if not school_info:
-        school_info = get_school_code(school_name, region_code_cookie) # 쿠키의 region_code 사용
+    # 캐시에서 먼저 찾아보기
+    for info in school_cache.values():
+        if info.get('code') == school_code:
+            school_info = info
+            break
 
-    # API 호출도 실패하면 쿠키 정보로 최소 구성 (fallback)
+    # 캐시에 없으면 API 호출 시도
     if not school_info:
-        school_info = {'code': school_code, 'name': school_name, 'region_code': region_code_cookie}
-        app.logger.warning(f"Using fallback school info for {school_code}. Data might be incomplete.")
+        school_info = get_school_code(school_name, region_code)
+
+    # API 호출도 실패하면 쿠키 정보로 최소 구성
+    if not school_info:
+        school_info = {'code': school_code, 'name': school_name, 'region_code': region_code}
+        app.logger.warning(f"Using fallback school info for {school_code}")
 
     month_meals_data = get_month_meals(school_code, school_info['region_code'])
     week_dates_list = get_week_dates()
     week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
     month_dates_list = get_month_dates()
     full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
-
-    # HTML title 변경 요청 반영 (문제 4)
-    title = f"{school_info['name']} 급식 정보 - ImHungry - 간편한 급식 사이트"
-    region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
-
 
     resp = make_response(render_template(
         'school_meal.html',
@@ -456,79 +608,135 @@ def school_meal_view(school_code):
         week_meals=week_meals_data,
         month_meals=full_month_meals_data,
         loading=False,
-        region=region_name,
-        title=title
+        region=next((name for name, code in regions.items() if code == school_info['region_code']), None)
     ))
 
-    # 쿠키 갱신 (인코딩) - 원본 로직 복구 및 samesite 추가
-    resp.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30, samesite='Lax')
-    resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30, samesite='Lax')
-    if region_name: # region_name도 갱신
-        resp.set_cookie('region_name', region_name, max_age=60*60*24*30, samesite='Lax')
+    # 쿠키 갱신 (인코딩)
+    resp.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
+    resp.set_cookie('school_name', quote(school_info['name']), max_age=60*60*24*30)
+    resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
+    region_name_cookie = request.cookies.get('region_name')
+    if region_name_cookie:
+        resp.set_cookie('region_name', region_name_cookie, max_age=60*60*24*30)
 
     return resp
 
 @app.route('/api/meals/<school_code>/<date>')
-def api_get_meal(school_code, date):
+def get_school_meal(school_code, date):
     """API: 특정 학교, 특정 날짜의 급식 정보를 반환합니다."""
-    # region_code는 school_info에서 얻는 것이 더 신뢰성 있음
-    school_info = get_school_info_by_code(school_code)
-    if not school_info:
-        # 캐시에 없으면, 쿠키에서 region_code를 가져와 시도
-        region_code_from_cookie = request.cookies.get('region_code')
-        if region_code_from_cookie:
-            # school_name을 알 수 없으므로, 이 시점에서 school_info를 NEIS API로 조회하는 것은 비효율적.
-            # 클라이언트가 school_info를 제공하지 않는 한, 캐시된 정보에 의존.
-            # 이 API는 주로 NamuBoard 확장 등에서 사용되므로, 이미 검색된 학교 정보가 있을 것으로 가정.
-            app.logger.warning(f"API request for unknown school_code {school_code}. Attempting with region from cookie.")
-            # 임시 school_info 생성 (급식 조회만 목적)
-            school_info = {'code': school_code, 'name': 'Unknown School', 'region_code': region_code_from_cookie}
-        else:
-            return jsonify({"error": "School information not found and region code missing"}), 400
+    region_code = request.cookies.get('region_code') # 알림용 API이므로 쿠키에 의존
+    if not region_code:
+        return jsonify({"error": "Region code missing in cookies"}), 400
 
     try:
-        month_meals = get_month_meals(school_code, school_info['region_code'])
+        month_meals = get_month_meals(school_code, region_code)
         meal_data = month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
         return jsonify(meal_data)
     except Exception as e:
-        app.logger.error(f"Error in get_school_meal API for {school_code}, {date}: {e}")
+        app.logger.error(f"Error in get_school_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/current_time')
-def current_time(): return jsonify({'current_time': datetime.now(KST).isoformat()})
+def current_time():
+    """KST 기준 현재 시간을 반환합니다."""
+    return jsonify({'current_time': datetime.now(KST).isoformat()})
+
+# --- 정적 파일 및 기타 라우트 ---
 @app.route('/robots.txt')
-def robots_txt(): return send_from_directory(app.static_folder, 'robots.txt')
+def robots_txt():
+    return send_from_directory(app.static_folder, 'robots.txt')
+
 @app.route('/favicon.svg')
-def favicon(): return send_from_directory(app.static_folder, 'favicon.svg')
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.svg')
+
 @app.route('/favicon.ico')
-def faviconico(): return send_from_directory(app.static_folder, 'favicon.svg')
+def faviconico():
+    return send_from_directory(app.static_folder, 'favicon.svg') # svg로 통일 또는 ico 파일 준비
+
 @app.route('/manifest.json')
-def manifest(): return send_from_directory('static', 'manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json')
+
 @app.route("/It's Christmas Time Again.mp3")
-def namufile1(): return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
+def namufile1():
+    return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
+
+# --- 탬퍼몽키 스크립트 ---
+STATIC_DIR = app.root_path
+
 @app.route('/namuboardextension.user.js')
 def serve_tampermonkey_script():
-    log_namuboard_access_request() # Log this specific access - 복구
+    log_namuboard_access_request() # Log this specific access
     try:
-        return send_from_directory(app.root_path, 'namuboardextension.user.js', mimetype='application/javascript')
+        return send_from_directory(STATIC_DIR, 'namuboardextension.user.js', mimetype='application/javascript')
     except FileNotFoundError:
         return "파일 오류. 사토 발제 바랍니다.", 404
     except Exception as e:
         app.logger.error(f"Error serving script: {e}")
         return "서버 오류. 사토 발제 바랍니다.", 500
 
-# --- 로그 확인용 엔드포인트 (기존 통합 로그 뷰어 유지) ---
-@app.route('/logs/<log_type>')
-def view_logs(log_type):
-    if not is_admin_ip(get_client_ip()): abort(403)
-    # app_edited.py의 통합 로그 맵핑 유지
-    log_map = {'app': APP_LOG_PATH, '403': ERROR_403_LOG_PATH, 'security': SECURITY_LOG_PATH, 'namuboard': NAMUBOARD_LOG_PATH} # namuboard 로그 추가
-    log_file = log_map.get(log_type)
-    if not log_file or not os.path.exists(log_file): return "Log not found.", 404
-    with open(log_file, 'r', encoding='utf-8') as f: content = f.read()
-    return f'<h2>{log_type.upper()} Log</h2><pre>{content}</pre>'
+# --- 로그 확인용 엔드포인트 (개발/디버깅용) ---
+@app.route('/logs/access')
+def view_access_logs():
+    """접속 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(ACCESS_LOG_PATH):
+            with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>접속 로그</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return '접속 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'접속 로그 파일 읽기 오류: {e}'
 
-# --- 접속 통계 엔드포인트 (복구) ---
+@app.route('/logs/app')
+def view_app_logs():
+    """앱 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(APP_LOG_PATH):
+            with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>앱 로그</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return '앱 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'앱 로그 파일 읽기 오류: {e}'
+
+@app.route('/logs/namuboard')
+def view_namuboard_logs():
+    """NamuBoard Extension 로그 확인 (관리자 IP만 허용)"""
+    client_ip = get_client_ip()
+    
+    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
+    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
+        app.logger.warning(f"Unauthorized access attempt to namuboard logs from IP: {client_ip}")
+        return "접근 권한이 없습니다.", 403
+    
+    try:
+        if os.path.exists(NAMUBOARD_LOG_PATH):
+            with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
+                lines = f.readlines() # 모든 줄 표시
+            return f'<h2>NamuBoard Extension 로그</h2><pre>{"".join(lines)}</pre>'
+        else:
+            return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
+    except Exception as e:
+        return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
+
 @app.route('/stats')
 def view_stats():
     """접속 통계 (관리자 IP만 허용)"""
@@ -540,10 +748,8 @@ def view_stats():
         return "접근 권한이 없습니다.", 403
     
     try:
-        # 이 부분은 ACCESS_LOG_PATH를 가정합니다. 현재 APP_LOG_PATH가 통합 로그 역할을 합니다.
-        # 실제 사용 시 APP_LOG_PATH를 파싱하도록 수정하거나, ACCESS_LOG_PATH를 다시 활성화해야 합니다.
-        if not os.path.exists(APP_LOG_PATH): # APP_LOG_PATH를 확인하도록 변경
-            return '앱 로그 파일이 없습니다.'
+        if not os.path.exists(ACCESS_LOG_PATH):
+            return '접속 로그 파일이 없습니다.'
         
         stats = {
             'total_requests': 0,
@@ -553,36 +759,38 @@ def view_stats():
             'user_agents': {}
         }
         
-        with open(APP_LOG_PATH, 'r', encoding='utf-8') as f: # APP_LOG_PATH를 열도록 변경
+        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
             for line in f:
-                # APP_LOG_PATH의 새 포맷에 맞춰 파싱 로직 조정 필요
-                # 예: '[2023-10-27 10:00:00,123] IP: 1.2.3.4 - UA: Chrome - "GET /path" - Status: 200 - INFO: Request handled'
                 if 'IP:' in line:
                     stats['total_requests'] += 1
                     
                     # IP 추출
                     try:
-                        ip_match = re.search(r'IP: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})', line)
-                        if ip_match:
-                            ip = ip_match.group(1)
+                        ip_start = line.find('IP: ') + 4
+                        ip_end = line.find(' -', ip_start)
+                        if ip_end > ip_start:
+                            ip = line[ip_start:ip_end]
                             stats['unique_ips'].add(ip)
                     except:
                         pass
                     
                     # 상태 코드 추출
                     try:
-                        status_match = re.search(r'Status: (\d{3})', line)
-                        if status_match:
-                            status = status_match.group(1)
-                            stats['status_codes'][status] = stats['status_codes'].get(status, 0) + 1
+                        status_start = line.find('Status: ') + 8
+                        status_end = line.find(' -', status_start)
+                        if status_end == -1:
+                            status_end = len(line)
+                        status = line[status_start:status_end].strip()
+                        stats['status_codes'][status] = stats['status_codes'].get(status, 0) + 1
                     except:
                         pass
                     
                     # 경로 추출
                     try:
-                        path_match = re.search(r'"(GET|POST|HEAD|PUT|DELETE) (\S+)"', line)
-                        if path_match:
-                            path = path_match.group(2).split('?')[0] # 쿼리 스트링 제거
+                        path_start = line.find('Path: ') + 6
+                        path_end = line.find(' -', path_start)
+                        if path_end > path_start:
+                            path = line[path_start:path_end]
                             stats['popular_paths'][path] = stats['popular_paths'].get(path, 0) + 1
                     except:
                         pass
@@ -604,7 +812,6 @@ def view_stats():
     except Exception as e:
         return f'통계 생성 오류: {e}'
 
-# --- 보안 상태 확인 엔드포인트 (복구) ---
 @app.route('/security/status')
 def security_status():
     """보안 상태 확인 (관리자만)"""
@@ -622,7 +829,7 @@ def security_status():
     
     return jsonify(status)
 
-# 블랙리스트 관리 엔드포인트 (복구)
+# 블랙리스트 관리 엔드포인트
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
     """블랙리스트에 IP/CIDR 추가 (관리자만)"""
@@ -650,45 +857,40 @@ def add_to_blacklist():
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
         
-# --- 응답 로깅 (요청사항 반영) ---
+# --- 응답 로깅 (기존 + 접속 로그) ---
 @app.after_request
-def after_request_logging(response):
-    if request.method == 'HEAD': # HEAD 요청은 기록하지 않음 (요청사항 반영)
-        return response
-
-    log_extra = {
-        'ip': get_client_ip(),
-        'user_agent': clean_user_agent(request.headers.get('User-Agent')),
-        'method': request.method,
-        'path': request.full_path,
-        'status': response.status_code
-    }
+def after_request_func(response):
+    # 기존 앱 로그 (모든 요청에 대해 기록)
+    log_entry = (
+        f"IP: {get_client_ip()}, "
+        f"Method: {request.method}, "
+        f"URL: {request.url}, "
+        f"Status: {response.status_code}"
+    )
+    app.logger.info(log_entry)
     
-    if response.status_code == 403:
-        logging.getLogger('403_logger').warning("Forbidden", extra=log_extra) # 403은 별도로 기록 (요청사항 반영)
-    else:
-        # werkzeug 로그를 캡처하기 위해 info 레벨로 일반 로그 기록 (접속 로그 통합)
-        # app_logger는 이미 여기에 연결된 핸들러가 있으므로 getLogger().info 호출
-        logging.getLogger().info("Request handled", extra=log_extra)
-        
+    # 새로운 접속 로그 (HEAD 요청 제외, 200/206 상태 코드만)
+    if request.method != 'HEAD':
+        log_access_request(response.status_code)
+    
     return response
 
-# --- 앱 실행 (원본 복구) ---
+# --- 앱 실행 ---
 if __name__ == "__main__":
-    # 블랙리스트 파일 생성 (없는 경우) - app_edited.py에도 존재
+    # 로그 파일 경로 정보 출력
+    app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
+    app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
+    app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
+    app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
+    app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
+        # 블랙리스트 파일 생성 (없는 경우)
     if not os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'w', encoding='utf-8') as f:
-            f.write("# IP Blacklist\n")
+            f.write("# IP Blacklist - CIDR format\n")
             f.write("# Example: 192.168.1.0/24\n")
-            f.write("# 52.178.178.217/32  # Example blocked IP\n") # app.py 원본에 있던 예시 추가
+            f.write("# 52.178.178.217/32  # Example blocked IP\n")
     
-    # 로그 파일 경로 정보 출력 - 복구 및 현재 경로 반영
-    app.logger.info(f"앱 로그 파일 경로: {os.path.abspath(APP_LOG_PATH)}")
-    app.logger.info(f"403 에러 로그 파일 경로: {os.path.abspath(ERROR_403_LOG_PATH)}")
-    app.logger.info(f"보안 로그 파일 경로: {os.path.abspath(SECURITY_LOG_PATH)}")
-    app.logger.info(f"NamuBoard Extension 로그 파일 경로: {os.path.abspath(NAMUBOARD_LOG_PATH)}")
-    app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}") # 원본 복구
-    app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks") # 원본 복구
-    app.logger.info(f"Security config: {SECURITY_CONFIG}") # 원본 복구
-
+    app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks")
+    app.logger.info(f"Security config: {SECURITY_CONFIG}")
+    
     app.run(debug=False)
