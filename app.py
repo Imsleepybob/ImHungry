@@ -703,6 +703,10 @@ def manifest():
 def namufile1():
     return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
+@app.route("/sitemap.xml")
+def sitemap():
+    return send_from_directory(directory=os.getcwd(), path="sitemap.xml", mimetype="application/xml")
+
 # --- 탬퍼몽키 스크립트 ---
 STATIC_DIR = app.root_path
 
@@ -712,10 +716,10 @@ def serve_tampermonkey_script():
     try:
         return send_from_directory(STATIC_DIR, 'namuboardextension.user.js', mimetype='application/javascript')
     except FileNotFoundError:
-        return "파일 오류. 사토 발제 바랍니다.", 404
+        return "파일 오류.", 404
     except Exception as e:
         app.logger.error(f"Error serving script: {e}")
-        return "서버 오류. 사토 발제 바랍니다.", 500
+        return "서버 오류.", 500
 
 # --- 로그 확인용 엔드포인트 (개발/디버깅용) ---
 @app.route('/logs/access')
