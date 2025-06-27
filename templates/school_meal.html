@@ -24,203 +24,61 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
      crossorigin="anonymous"></script>
 <style>
-    :root {
-        --primary-color: #faa41a;
-        --text-color: #333;
-        --bg-color: #fff;
-        --container-bg: #f8f9fa;
-        --border-color: #dee2e6;
-        --button-hover: #e9940a;
+.notification-setting .meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
+.notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
+.notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
+.notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px; }
+.day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
+.day-setting strong { display: block; margin-bottom: 10px; }
+.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
+.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
+.day-setting label { margin-right: 10px; cursor: pointer; }
+.modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
+
+.modal { transition: opacity 0.3s ease-in-out; }
+
+#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none; }
+#ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
+.ios-webapp-guide-content { text-align: center; }
+.ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+.share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle; border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
+.share-icon-guide svg { width: 18px; height: 18px; }
+.dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
+.dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+
+.meal-type { margin-bottom: 15px; }
+.meal-type:last-child { margin-bottom: 0; }
+.meal-type strong {
+    font-weight: bold;
+    margin-right: 8px;
+}
+.meal-type p { display: inline; white-space: pre-line; }
+.no-meal { color: #888; font-style: italic; }
+
+body { word-break: keep-all; }
+
+#ad-desktop, #bodyad-desktop {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    #ad-desktop, #bodyad-desktop {
+        display: block;
     }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        margin: 0;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        line-height: 1.6;
-        word-break: keep-all;
-    }
-    .container {
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-        background-color: var(--bg-color);
-    }
-    .main-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 20px;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .logo a { display: flex; align-items: center; text-decoration: none; }
-    .notification-btn {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-    }
-    .header-logo { text-align: center; margin-bottom: 20px; }
-    .search-form {
-        background: var(--container-bg);
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-    .form-control {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        box-sizing: border-box;
-    }
-    .submit-btn {
-        width: 100%;
-        padding: 12px;
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-    }
-    .submit-btn:hover { background-color: var(--button-hover); }
-    .loading-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        padding: 40px;
-    }
-    .spinner {
-        border: 4px solid rgba(0,0,0,0.1);
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border-left-color: var(--primary-color);
-        animation: spin 1s ease infinite;
-        margin-bottom: 10px;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .error-message {
-        color: red;
-        background-color: #ffebee;
-        padding: 10px;
-        border-radius: 4px;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .meal-container {
-        margin-top: 20px;
-    }
-    .school-title { text-align: center; }
-    .meal-card {
-        background: var(--container-bg);
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-    .meal-title { margin-top: 0; }
-    .meal-table-container { overflow-x: auto; }
-    .meal-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .meal-table th, .meal-table td {
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .meal-table th { background-color: #e9ecef; }
-    .date-cell { font-weight: bold; vertical-align: top; width: 150px; }
-    .menu-cell { white-space: pre-line; }
-    .meal-type { margin-bottom: 15px; }
-    .meal-type:last-child { margin-bottom: 0; }
-    .meal-type strong { font-weight: bold; margin-right: 8px; }
-    .no-meal { color: #888; font-style: italic; }
-    .toggle-month-btn {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 20px;
-        background-color: #6c757d;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    .modal {
+    #ad-mobile, #bodyad-mobile {
         display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.4);
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
     }
-    .modal-content {
-        background-color: #fefefe;
-        margin: 15% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 500px;
-        border-radius: 8px;
-        position: relative;
-    }
-    .close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-    .notification-setting .meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
-    .notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
-    .notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
-    .notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px; }
-    .day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
-    .day-setting strong { display: block; margin-bottom: 10px; }
-    .day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
-    .day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
-    .day-setting label { margin-right: 10px; cursor: pointer; }
-    .modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
-    #ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none; }
-    #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
-    .ios-webapp-guide-content { text-align: center; }
-    .ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
-    .share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle; border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
-    .share-icon-guide svg { width: 18px; height: 18px; }
-    .dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
-    .dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-    .main-footer {
-        text-align: center;
-        padding: 20px;
-        margin-top: 40px;
-        background-color: var(--container-bg);
-        border-top: 1px solid var(--border-color);
-        font-size: 0.9em;
-        color: #6c757d;
-    }
-    .footer-links { margin: 10px 0; }
-    .footer-links a { color: #6c757d; text-decoration: none; margin: 0 10px; }
-    .footer-links a:hover { text-decoration: underline; }
-    #ad-desktop, #bodyad-desktop { display: none; }
-    @media (min-width: 768px) {
-        #ad-desktop, #bodyad-desktop { display: block; }
-        #ad-mobile, #bodyad-mobile { display: none; }
-    }
-    #bodyad-desktop, #bodyad-mobile { text-align: center; margin: 10px auto; }
-    #ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
+}
+     
+#bodyad-desktop, #bodyad-mobile {
+    text-align: center;
+    margin: 10px auto;
+}
+
+#ad-mobile, #ad-desktop {
+     text-align: center;
+     margin: 0 auto;
+)
 </style>
 </head>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
