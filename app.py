@@ -40,7 +40,7 @@ SUSPICIOUS_PATTERNS = {
     'paths': [
         r'\.php$', r'wp-', r'admin', r'login', r'\.env', r'config',
         r'\.git', r'\.sql', r'backup', r'shell', r'cmd', r'eval',
-        r'\.xml$', r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'
+        r'xmlrpc', r'\.asp', r'\.jsp', r'\.cgi'
     ],
     'user_agents': [
         r'spider', r'scanner', r'nikto',
