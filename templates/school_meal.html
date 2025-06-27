@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
 <meta name="description" content="초중고등학교의 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
-<title>{{ title | default('급식알리미 - ImHungry - 간편한 급식 사이트') }}</title>
+<title>{{ title | default('급식알리미 - ImHungry - 간편한 급식 사이트') }}</title> {# Use title variable, with a default #}
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="manifest" href="{{ url_for('manifest') }}">
@@ -34,8 +34,10 @@
 .day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
 .day-setting label { margin-right: 10px; cursor: pointer; }
 .modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
+
 .modal { transition: opacity 0.3s ease-in-out; }
-#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); display: none; }
+
+#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); display: none; } {# Removed box-shadow, display set to none initially #}
 #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
 .ios-webapp-guide-content { text-align: center; }
 .ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
@@ -43,32 +45,55 @@
 .share-icon-guide svg { width: 18px; height: 18px; }
 .dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
 .dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+
 .meal-type { margin-bottom: 15px; }
 .meal-type:last-child { margin-bottom: 0; }
-.meal-type strong { font-weight: bold; margin-right: 8px; }
+.meal-type strong {
+    font-weight: bold;
+    margin-right: 8px;
+}
 .meal-type p { display: inline; white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
+
 body { word-break: keep-all; }
-#ad-desktop, #bodyad-desktop { display: none; }
-@media (min-width: 768px) {
-    #ad-desktop, #bodyad-desktop { display: block; }
-    #ad-mobile, #bodyad-mobile { display: none; }
+
+#ad-desktop, #bodyad-desktop {
+    display: none;
 }
-#bodyad-desktop, #bodyad-mobile { text-align: center; margin: 10px auto; }
-#ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
+
+@media (min-width: 768px) {
+    #ad-desktop, #bodyad-desktop {
+        display: block;
+    }
+    #ad-mobile, #bodyad-mobile {
+        display: none;
+    }
+}
+     
+#bodyad-desktop, #bodyad-mobile {
+    text-align: center;
+    margin: 10px auto;
+}
+
+#ad-mobile, #ad-desktop {
+     text-align: center;
+     margin: 0 auto;
+}
 </style>
 </head>
+{# Google Analytics Script #}
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+
   gtag('config', 'G-ERQ4FS2YTY');
 </script>
 <body>
 <header class="main-header">
   <div class="logo">
-    <a href="/">
+    <a href="/"> {# /로 이동 시 초기화면으로 이동하도록 수정 #}
       <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
     </a>
   </div>
@@ -94,11 +119,17 @@ body { word-break: keep-all; }
   </div>
 </div>
 <div id="ad-mobile">
-    <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
+    <ins class="kakao_ad_area"
+         data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
+         data-ad-width = "320"
+         data-ad-height = "100"></ins>
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id="ad-desktop">
-    <ins class="kakao_ad_area" data-ad-unit="DAN-I2BhGwRuogHXusUi" data-ad-width="728" data-ad-height="90"></ins>
+    <ins class="kakao_ad_area"
+         data-ad-unit = "DAN-I2BhGwRuogHXusUi"
+         data-ad-width = "728"
+         data-ad-height = "90"></ins>
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div class="container">
@@ -106,7 +137,7 @@ body { word-break: keep-all; }
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
       <div class="form-group">
         <label for="region">지역 선택</label>
-        <select id="region" name="region" class="form-control" required>
+        <select id="region" name="region" class="form-control" required> {# required added for client-side validation #}
           <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
           {% for region_name_iter, region_code_iter in regions.items() %}
           <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
@@ -115,24 +146,31 @@ body { word-break: keep-all; }
       </div>
       <div class="form-group">
         <label for="school_name">학교 이름 입력</label>
-        <input type="text" id="school_name" name="school_name" value="{{ school_name or '' }}" required class="form-control">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name or '' }}" required class="form-control"> {# value handling simplified, required added #}
       </div>
       <button type="submit" class="submit-btn">검색</button>
   </form>
 <div id=bodyad-desktop>
-     <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-ODZjnUToMyS7iXmi"
+          data-ad-width = "728"
+          data-ad-height = "90"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id=bodyad-mobile>
-     <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
+     <ins class="kakao_ad_area"
+          data-ad-unit = "DAN-StDbNq6y1v7xZsfO"
+          data-ad-width = "320"
+          data-ad-height = "50"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
   <div id="loading" class="loading-container" style="display: none;"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
-  {% if school_name %}
+  {% if school_name %} {# Only show meal container if school name is provided from server #}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
-    {% if week_meals %}
+    {# Check if week_meals exists AND has data #}
+    {% if week_meals and week_meals.values()|selectattr('breakfast', 'ne', '급식 정보 없음')|list or week_meals.values()|selectattr('lunch', 'ne', '급식 정보 없음')|list or week_meals.values()|selectattr('dinner', 'ne', '급식 정보 없음')|list %}
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
@@ -143,10 +181,16 @@ body { word-break: keep-all; }
             <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
+                {# Check if meal content exists and is not "급식 정보 없음" #}
                 {% if meal.breakfast and meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
                 {% if meal.lunch and meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
                 {% if meal.dinner and meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
-                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and (not meal.lunch or meal.lunch == "급식 정보 없음") and (not meal.dinner or meal.dinner == "급식 정보 없음") %}<div class="no-meal">급식 정보 없음</div>{% endif %}
+                {# Display "급식 정보 없음" only if all meal types are "급식 정보 없음" or empty #}
+                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and \
+                      (not meal.lunch or meal.lunch == "급식 정보 없음") and \
+                      (not meal.dinner or meal.dinner == "급식 정보 없음") %}
+                    <div class="no-meal">급식 정보 없음</div>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}
@@ -168,7 +212,11 @@ body { word-break: keep-all; }
                 {% if meal.breakfast and meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
                 {% if meal.lunch and meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
                 {% if meal.dinner and meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
-                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and (not meal.lunch or meal.lunch == "급식 정보 없음") and (not meal.dinner or meal.dinner == "급식 정보 없음") %}<div class="no-meal">급식 정보 없음</div>{% endif %}
+                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and \
+                      (not meal.lunch or meal.lunch == "급식 정보 없음") and \
+                      (not meal.dinner or meal.dinner == "급식 정보 없음") %}
+                    <div class="no-meal">급식 정보 없음</div>
+                {% endif %}
               </td>
             </tr>
           {% endfor %}
@@ -177,11 +225,12 @@ body { word-break: keep-all; }
       </div>
     </div>
     {% else %}
-    <div class="no-info">급식 정보가 없습니다.</div>
+    <div class="no-info">급식 정보가 없습니다.</div> {# Display this if week_meals is empty or all meals are "급식 정보 없음" #}
     {% endif %}
   </div>
   {% endif %}
 </div>
+
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
@@ -189,7 +238,10 @@ body { word-break: keep-all; }
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
 </div>
-<ins class="kakao_ad_area" style="display:none;" data-ad-unit = "DAN-eT4RSGGRDirSL6DS" data-ad-width = "320" data-ad-height = "100"></ins>
+<ins class="kakao_ad_area" style="display:none;"
+data-ad-unit = "DAN-eT4RSGGRDirSL6DS"
+data-ad-width = "320"
+data-ad-height = "100"></ins>
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 <footer class="main-footer">
   <div class="footer-content">
@@ -223,17 +275,27 @@ body { word-break: keep-all; }
     async function scheduleNextNotifications() {
         clearNotificationTimeouts();
         const settingsStr = localStorage.getItem('notificationSettings');
-        if (!settingsStr) return;
+        if (!settingsStr) {
+            console.log("No notification settings found, skipping schedule.");
+            return;
+        }
         
         const settings = JSON.parse(settingsStr);
         const schoolCode = getCookie('school_code');
-        if (!settings || !schoolCode) return;
+        if (!settings || !schoolCode) {
+            console.log("No settings or school code, skipping schedule.");
+            return;
+        }
 
         try {
             const response = await fetch('/current_time');
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.error("Failed to fetch current time:", response.status, response.statusText);
+                return;
+            }
             const data = await response.json();
             const now = new Date(data.current_time);
+            console.log("Current KST:", now);
 
             ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
                 if (settings[mealType]?.enabled && settings[mealType]?.time && settings.days) {
@@ -241,18 +303,26 @@ body { word-break: keep-all; }
                     settings.days.forEach(dayOfWeek => {
                         let nextTime = new Date(now);
                         nextTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-                        let dayDiff = dayOfWeek - now.getDay();
+                        let currentDay = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
+                        let dayDiff = dayOfWeek - currentDay;
+
+                        // Calculate difference to next occurrence of dayOfWeek
                         if (dayDiff < 0 || (dayDiff === 0 && nextTime <= now)) {
                             dayDiff += 7;
                         }
                         nextTime.setDate(now.getDate() + dayDiff);
                         const delay = nextTime.getTime() - now.getTime();
+                        
                         if (delay > 0) {
-                            const timeoutId = setTimeout(() => {
-                                sendNotification(mealType, nextTime);
-                                scheduleNextNotifications();
+                            console.log(`Scheduling ${mealType} for ${nextTime} (Delay: ${Math.round(delay/1000)}s)`);
+                            const timeoutId = setTimeout(async () => { // Make timeout callback async
+                                console.log(`Triggering notification for ${mealType} at ${new Date()}`);
+                                await sendNotification(mealType, nextTime); // Await here
+                                scheduleNextNotifications(); // Reschedule after sending
                             }, delay);
                             notificationTimeouts.push(timeoutId);
+                        } else {
+                            console.warn(`Could not schedule ${mealType} for day ${dayOfWeek}, time is past.`);
                         }
                     });
                 }
@@ -264,27 +334,38 @@ body { word-break: keep-all; }
         if (Notification.permission !== 'granted') return;
         const schoolCode = getCookie('school_code');
         const schoolName = decodeURIComponent(getCookie('school_name') || '');
-        if (!schoolCode || !schoolName) return;
+        if (!schoolCode || !schoolName) {
+            console.warn("Missing schoolCode or schoolName for notification.");
+            return;
+        }
 
         try {
             const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+            console.log(`Fetching meal for ${schoolName} (${schoolCode}) on ${dateStr}`);
             const res = await fetch(`/api/meals/${schoolCode}/${dateStr}`);
-            if (!res.ok) return;
+            if (!res.ok) {
+                console.error("API Fetch Error for notification:", res.status, res.statusText);
+                return;
+            }
             const mealData = await res.json();
+            console.log("Meal data received for notification:", mealData);
+
             const mealContent = mealData[mealType.toLowerCase()];
 
             if (mealContent && mealContent !== "급식 정보 없음") {
                 const titleMap = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
                 const title = `${schoolName} 오늘의 ${titleMap[mealType]} 🍗`;
                 const options = {
-                    body: mealContent.substring(0, 100),
+                    body: mealContent.length > 100 ? mealContent.substring(0, 100) + '...' : mealContent,
                     icon: "{{ url_for('static', filename='favicon.svg') }}",
-                    tag: `${dateStr}-${mealType}`
+                    tag: `${dateStr}-${mealType}` // Ensure unique tag for each notification
                 };
                 new Notification(title, options).onclick = (e) => {
                     e.preventDefault();
-                    window.open(window.location.href, '_blank');
+                    window.open(`/meal/${schoolCode}`, '_blank'); // Open the specific school page
                 };
+            } else {
+                console.log(`No ${mealType} for ${dateStr}, skipping notification.`);
             }
         } catch (error) { console.error('Error sending notification:', error); }
     }
@@ -293,6 +374,8 @@ body { word-break: keep-all; }
         const notificationModal = document.getElementById('notification-modal');
         const notificationForm = document.getElementById('notification-form');
         const loadingDiv = document.getElementById('loading');
+        const schoolNameInput = document.getElementById('school_name');
+        const regionSelect = document.getElementById('region');
         
         // Modal open/close logic
         const notificationBtn = document.getElementById('notification-btn');
@@ -324,7 +407,7 @@ body { word-break: keep-all; }
             }
         });
 
-        // Form submission
+        // Form submission - show loading
         document.getElementById('regionForm').addEventListener('submit', () => {
             if(loadingDiv) loadingDiv.style.display = 'flex';
         });
@@ -332,8 +415,9 @@ body { word-break: keep-all; }
         if (notificationForm) {
             notificationForm.addEventListener('submit', async function(event) {
                 event.preventDefault();
-                if (!getCookie('school_code')) {
-                    alert('먼저 학교를 검색해주세요.');
+                const schoolCode = getCookie('school_code');
+                if (!schoolCode) {
+                    alert('알림 설정을 저장하려면 먼저 학교를 검색해주세요.'); // More specific alert
                     return;
                 }
                 
@@ -345,6 +429,7 @@ body { word-break: keep-all; }
                 };
                 localStorage.setItem('notificationSettings', JSON.stringify(settings));
 
+                // Notification permission request only on "Save" button click (요청사항 2)
                 if (!('Notification' in window)) {
                     alert('이 브라우저는 알림을 지원하지 않습니다.');
                     return;
@@ -355,7 +440,7 @@ body { word-break: keep-all; }
                     alert('알림이 저장되었습니다.');
                     await scheduleNextNotifications();
                 } else {
-                    alert('알림 권한이 거부되었습니다.');
+                    alert('알림 권한이 거부되었습니다. 브라우저 설정에서 허용해주세요.'); // More specific message
                 }
                 notificationModal.style.display = 'none';
             });
@@ -373,29 +458,38 @@ body { word-break: keep-all; }
             });
         }
 
-        // iOS guide
+        // iOS guide logic (요청사항 2 - PWA 알림 권한 관련 개선)
         const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isStandalone = () => window.navigator.standalone === true;
         const iosGuide = document.getElementById('ios-webapp-guide');
+        const dismissBtn = document.getElementById('dismiss-ios-btn');
+
         if (iosGuide && isIOS() && !isStandalone() && !localStorage.getItem('ios-guide-dismissed')) {
+            // Check for iOS, not standalone, and not dismissed before showing
             setTimeout(() => iosGuide.classList.add('show'), 1500);
         }
-        const dismissBtn = document.getElementById('dismiss-ios-btn');
         if(dismissBtn) dismissBtn.addEventListener('click', () => {
             iosGuide.classList.remove('show');
-            localStorage.setItem('ios-guide-dismissed', 'true');
+            localStorage.setItem('ios-guide-dismissed', 'true'); // Dismiss permanently
         });
 
-        // Initial schedule on load if permission already granted
-        if (Notification.permission === 'granted') {
-            scheduleNextNotifications();
-        }
+        // Initial schedule on load if permission already granted (요청사항 2 - 알림 권한이 이미 허용된 경우만 스케줄링)
+        // 이 부분은 Notification.requestPermission()을 누를 때만 작동하도록 변경되었으므로,
+        // 페이지 로드 시에는 스케줄링하지 않습니다.
+        // if ('Notification' in window && Notification.permission === 'granted') {
+        //     scheduleNextNotifications();
+        // }
+        // 주석 처리 또는 제거
 
         if (loadingDiv) loadingDiv.style.display = 'none';
 
         // Pre-fill form from cookies
-        document.getElementById('school_name').value = decodeURIComponent(getCookie('school_name') || '');
-        document.getElementById('region').value = getCookie('region_name') || '';
+        if (schoolNameInput) {
+            schoolNameInput.value = decodeURIComponent(getCookie('school_name') || '');
+        }
+        if (regionSelect) {
+            regionSelect.value = getCookie('region_name') || '';
+        }
     });
 </script>
 </body>
