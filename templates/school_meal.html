@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
 <meta name="description" content="초중고등학교의 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
-<title>급식알리미 - ImHungry - 간편한 급식 사이트</title>
+<title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="manifest" href="{{ url_for('manifest') }}">
@@ -34,9 +34,7 @@
 .day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
 .day-setting label { margin-right: 10px; cursor: pointer; }
 .modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
-
 .modal { transition: opacity 0.3s ease-in-out; }
-
 #ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none; }
 #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
 .ios-webapp-guide-content { text-align: center; }
@@ -45,7 +43,6 @@
 .share-icon-guide svg { width: 18px; height: 18px; }
 .dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
 .dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-
 .meal-type { margin-bottom: 15px; }
 .meal-type:last-child { margin-bottom: 0; }
 .meal-type strong {
@@ -54,13 +51,10 @@
 }
 .meal-type p { display: inline; white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
-
 body { word-break: keep-all; }
-
 #ad-desktop, #bodyad-desktop {
     display: none;
 }
-
 @media (min-width: 768px) {
     #ad-desktop, #bodyad-desktop {
         display: block;
@@ -69,25 +63,21 @@ body { word-break: keep-all; }
         display: none;
     }
 }
-     
 #bodyad-desktop, #bodyad-mobile {
     text-align: center;
     margin: 10px auto;
 }
-
 #ad-mobile, #ad-desktop {
      text-align: center;
      margin: 0 auto;
-)
+}
 </style>
 </head>
-<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
   gtag('config', 'G-ERQ4FS2YTY');
 </script>
 <body>
@@ -110,7 +100,8 @@ body { word-break: keep-all; }
             <div class="meal-time-setting"> <input type="checkbox" id="lunch-enable" name="lunch-enable"> <label for="lunch-enable"><strong>점심</strong></label> <input type="time" id="lunch-time" name="lunch-time"> </div>
             <div class="meal-time-setting"> <input type="checkbox" id="dinner-enable" name="dinner-enable"> <label for="dinner-enable"><strong>저녁</strong></label> <input type="time" id="dinner-time" name="dinner-time"> </div>
         </div>
-        <div class="day-setting">
+      
+    <div class="day-setting">
             <strong>알림 요일</strong>
             <div> <input type="checkbox" id="day-sun" name="day" value="0"><label for="day-sun">일</label> <input type="checkbox" id="day-mon" name="day" value="1"><label for="day-mon">월</label> <input type="checkbox" id="day-tue" name="day" value="2"><label for="day-tue">화</label> <input type="checkbox" id="day-wed" name="day" value="3"><label for="day-wed">수</label> <input type="checkbox" id="day-thu" name="day" value="4"><label for="day-thu">목</label> <input type="checkbox" id="day-fri" name="day" value="5"><label for="day-fri">금</label> <input type="checkbox" id="day-sat" name="day" value="6"><label for="day-sat">토</label> </div>
         </div>
@@ -119,7 +110,8 @@ body { word-break: keep-all; }
   </div>
 </div>
 <div id="ad-mobile">
-    <ins class="kakao_ad_area"
+    
+<ins class="kakao_ad_area"
          data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
          data-ad-width = "320"
          data-ad-height = "100"></ins>
@@ -189,7 +181,7 @@ body { word-break: keep-all; }
           {% endfor %}
           </tbody>
         </table>
-      </div>
+       </div>
     </div>
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
     <div class="meal-card month-meal" id="monthTable" style="display: none;">
@@ -211,7 +203,7 @@ body { word-break: keep-all; }
           {% endfor %}
           </tbody>
         </table>
-      </div>
+       </div>
     </div>
     {% else %}
     <div class="no-info">급식 정보가 없습니다.</div>
@@ -228,7 +220,7 @@ body { word-break: keep-all; }
   </div>
 </div>
 <ins class="kakao_ad_area" style="display:none;"
-data-ad-unit = "DAN-eT4RSGGRDirSL6DS"
+ data-ad-unit = "DAN-eT4RSGGRDirSL6DS"
 data-ad-width = "320"
 data-ad-height = "100"></ins>
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
@@ -245,7 +237,6 @@ data-ad-height = "100"></ins>
 </footer>
 <script>
     const regions_data = {{ regions | tojson | safe }};
-
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -329,8 +320,8 @@ data-ad-height = "100"></ins>
                         if (delay > 0) {
                             console.log(`Scheduling ${mealType} for ${nextTime} (Delay: ${Math.round(delay/1000)}s)`);
                             const timeoutId = setTimeout(async () => {
-                                console.log(`Triggering notification for ${mealType} at ${new Date()}`);
-                                await sendNotification(mealType, nextTime);
+                                 console.log(`Triggering notification for ${mealType} at ${new Date()}`);
+                                 await sendNotification(mealType, nextTime);
                                 await scheduleNextNotifications(); // Reschedule *after* sending
                             }, delay);
                             notificationTimeouts.push(timeoutId);
@@ -346,7 +337,6 @@ data-ad-height = "100"></ins>
         const schoolCode = getCookie('school_code');
         const schoolName = getCookie('school_name');
         if (!schoolCode || !schoolName) return;
-
         try {
             const dateString = notificationDate.toISOString().slice(0, 10).replace(/-/g, '');
             console.log(`Workspaceing meal for ${schoolName} (${schoolCode}) on ${dateString}`);
@@ -376,6 +366,7 @@ data-ad-height = "100"></ins>
         const schoolNameInput = document.getElementById("school_name");
         const loadingDiv = document.getElementById('loading');
         const notificationForm = document.getElementById('notification-form');
+ 
         const toggleMonthBtn = document.getElementById('toggleMonthBtn');
         const monthTable = document.getElementById('monthTable');
         const iosGuide = document.getElementById('ios-webapp-guide');
@@ -396,7 +387,6 @@ data-ad-height = "100"></ins>
                 setTimeout(() => { notificationModal.style.display = 'none'; }, 300);
             }
         };
-
         if (notificationBtn) notificationBtn.addEventListener('click', openModal);
         if (closeBtn) closeBtn.addEventListener('click', closeModal);
         window.addEventListener('click', (event) => { if (event.target == notificationModal) { closeModal(); } });
@@ -419,7 +409,7 @@ data-ad-height = "100"></ins>
                     breakfast: { enabled: document.getElementById('breakfast-enable').checked, time: document.getElementById('breakfast-time').value },
                     lunch: { enabled: document.getElementById('lunch-enable').checked, time: document.getElementById('lunch-time').value },
                     dinner: { enabled: document.getElementById('dinner-enable').checked, time: document.getElementById('dinner-time').value },
-                    days: selectedDays
+                     days: selectedDays
                 };
                 console.log("Saving settings:", settings);
                 localStorage.setItem('notificationSettings', JSON.stringify(settings));
@@ -454,12 +444,10 @@ data-ad-height = "100"></ins>
             if (getCookie('school_code')) { requestAndScheduleNotifications(); }
         }
         if(loadingDiv) loadingDiv.style.display = 'none';
-
         const savedSchool = getCookie('school_name');
         const savedRegionName = getCookie('region_name');
         if(savedSchool && schoolNameInput) schoolNameInput.value = savedSchool;
         if(savedRegionName && regionSelect) regionSelect.value = savedRegionName;
-
         console.log("DOM Loaded and JS initialized.");
     });
 </script>
