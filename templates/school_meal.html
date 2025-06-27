@@ -12,11 +12,59 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
+<link rel="apple-touch-icon" sizes="72x72" href="{{ url_for('static', filename='apple-touch-icon-72x72.png') }}">
+<link rel="apple-touch-icon" sizes="76x76" href="{{ url_for('static', filename='apple-touch-icon-76x76.png') }}">
+<link rel="apple-touch-icon" sizes="114x114" href="{{ url_for('static', filename='apple-touch-icon-114x114.png') }}">
+<link rel="apple-touch-icon" sizes="120x120" href="{{ url_for('static', filename='apple-touch-icon-120x120.png') }}">
+<link rel="apple-touch-icon" sizes="144x144" href="{{ url_for('static', filename='apple-touch-icon-144x144.png') }}">
+<link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='apple-touch-icon-152x152.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}">
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
      crossorigin="anonymous"></script>
+<style>
+.notification-setting .meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
+.notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
+.notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
+.notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px; }
+.day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
+.day-setting strong { display: block; margin-bottom: 10px; }
+.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
+.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
+.day-setting label { margin-right: 10px; cursor: pointer; }
+.modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px; }
+.modal { transition: opacity 0.3s ease-in-out; }
+#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); display: none; }
+#ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
+.ios-webapp-guide-content { text-align: center; }
+.ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+.share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle; border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
+.share-icon-guide svg { width: 18px; height: 18px; }
+.dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px; cursor: pointer; transition: all 0.3s ease; }
+.dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+.meal-type { margin-bottom: 15px; }
+.meal-type:last-child { margin-bottom: 0; }
+.meal-type strong { font-weight: bold; margin-right: 8px; }
+.meal-type p { display: inline; white-space: pre-line; }
+.no-meal { color: #888; font-style: italic; }
+body { word-break: keep-all; }
+#ad-desktop, #bodyad-desktop { display: none; }
+@media (min-width: 768px) {
+    #ad-desktop, #bodyad-desktop { display: block; }
+    #ad-mobile, #bodyad-mobile { display: none; }
+}
+#bodyad-desktop, #bodyad-mobile { text-align: center; margin: 10px auto; }
+#ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
+</style>
 </head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ERQ4FS2YTY');
+</script>
 <body>
 <header class="main-header">
   <div class="logo">
@@ -24,16 +72,14 @@
       <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
     </a>
   </div>
-  {% if school_name %}
-  <button class="notification-btn" id="notification-btn" title="알림 설정">🔔</button>
-  {% endif %}
+  <button class="notification-btn" id="notification-btn">🔔</button>
 </header>
 <div id="notification-modal" class="modal">
   <div class="modal-content">
-    <span class="close" title="닫기">&times;</span>
+    <span class="close">&times;</span>
     <h2>알림 설정</h2>
     <form id="notification-form">
-        <p>알림을 받고 싶은 식사와 요일을 선택하세요. 알림은 브라우저가 실행 중일 때만 동작합니다. 급식이 없는 날은 알림이 울리지 않습니다.</p>
+        <p>알림을 받고 싶은 식사와 요일을 선택하세요. 알림 기능은 PC에서만 제공되며, 브라우저의 백그라운드에 본 페이지가 열려있어야 합니다. 급식이 없는 날은 알림이 울리지 않습니다.</p>
         <div class="notification-setting">
             <div class="meal-time-setting"> <input type="checkbox" id="breakfast-enable" name="breakfast-enable"> <label for="breakfast-enable"><strong>아침</strong></label> <input type="time" id="breakfast-time" name="breakfast-time"> </div>
             <div class="meal-time-setting"> <input type="checkbox" id="lunch-enable" name="lunch-enable"> <label for="lunch-enable"><strong>점심</strong></label> <input type="time" id="lunch-time" name="lunch-time"> </div>
@@ -41,57 +87,66 @@
         </div>
         <div class="day-setting">
             <strong>알림 요일</strong>
-            <div> <label><input type="checkbox" name="day" value="0">일</label> <label><input type="checkbox" name="day" value="1">월</label> <label><input type="checkbox" name="day" value="2">화</label> <label><input type="checkbox" name="day" value="3">수</label> <label><input type="checkbox" name="day" value="4">목</label> <label><input type="checkbox" name="day" value="5">금</label> <label><input type="checkbox" name="day" value="6">토</label> </div>
+            <div> <input type="checkbox" id="day-sun" name="day" value="0"><label for="day-sun">일</label> <input type="checkbox" id="day-mon" name="day" value="1"><label for="day-mon">월</label> <input type="checkbox" id="day-tue" name="day" value="2"><label for="day-tue">화</label> <input type="checkbox" id="day-wed" name="day" value="3"><label for="day-wed">수</label> <input type="checkbox" id="day-thu" name="day" value="4"><label for="day-thu">목</label> <input type="checkbox" id="day-fri" name="day" value="5"><label for="day-fri">금</label> <input type="checkbox" id="day-sat" name="day" value="6"><label for="day-sat">토</label> </div>
         </div>
-        <button type="submit" class="submit-btn">설정 저장</button>
+        <button type="submit" class="submit-btn">저장</button>
     </form>
   </div>
 </div>
+<div id="ad-mobile">
+    <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+<div id="ad-desktop">
+    <ins class="kakao_ad_area" data-ad-unit="DAN-I2BhGwRuogHXusUi" data-ad-width="728" data-ad-height="90"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
 <div class="container">
-  {% if not school_name %}
-  <div class="header-logo">
-      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path fill="#faa41a" d="M16 13v-2a2 2 0 0 0-2-2h- контекст -a2 2 0 0 0-2 2v2H8v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2h-2zM5 13H3V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7h-2v-1H5v1zm14 2v6H5v-6h14z"/></svg>
-  </div>
-  <h1 class="site-title">급식알리미</h1>
-  <p class="site-subtitle">가장 빠른 급식 정보 사이트</p>
-  {% endif %}
-
-  <form method="POST" action="{{ url_for('index') }}" id="searchForm" class="search-form">
+  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
+  <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
       <div class="form-group">
         <label for="region">지역 선택</label>
         <select id="region" name="region" class="form-control" required>
           <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
-          {% for r_name, r_code in regions.items() %}
-          <option value="{{ r_name }}" {% if region == r_name %}selected{% endif %}>{{ r_name }}</option>
+          {% for region_name_iter, region_code_iter in regions.items() %}
+          <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="form-group">
         <label for="school_name">학교 이름 입력</label>
-        <input type="text" id="school_name" name="school_name" value="{{ school_name or '' }}" required class="form-control" placeholder="예: 양정고">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name or '' }}" required class="form-control">
       </div>
-      <button type="submit" class="submit-btn">급식 검색</button>
+      <button type="submit" class="submit-btn">검색</button>
   </form>
-  <div id="loading" class="loading-container" style="display: none;"> <div class="spinner"></div> <p>급식 정보 로딩 중...</p> </div>
+<div id=bodyad-desktop>
+     <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+<div id=bodyad-mobile>
+     <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
+     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+</div>
+  <div id="loading" class="loading-container" style="display: none;"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
-  
   {% if school_name %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
+    {% if week_meals %}
     <div class="meal-card week-meal">
-      <h3 class="meal-title">이번 주 급식 ({{ week_meals.keys() | list | first | format_date }} ~ {{ week_meals.keys() | list | last | format_date }})</h3>
+      <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
         <table class="meal-table">
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
           <tbody>
-          {% for date, meals in week_meals.items() %}
-            <tr>
+          {% for date, meal in week_meals.items() %}
+            <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meals.breakfast %}<div class="meal-type"><strong>아침</strong><p>{{ meals.breakfast | safe }}</p></div>{% endif %}
-                {% if meals.lunch %}<div class="meal-type"><strong>점심</strong><p>{{ meals.lunch | safe }}</p></div>{% endif %}
-                {% if meals.dinner %}<div class="meal-type"><strong>저녁</strong><p>{{ meals.dinner | safe }}</p></div>{% endif %}
-                {% if not meals %}<div class="no-meal">급식 정보가 없습니다.</div>{% endif %}
+                {% if meal.breakfast and meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.lunch and meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.dinner and meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and (not meal.lunch or meal.lunch == "급식 정보 없음") and (not meal.dinner or meal.dinner == "급식 정보 없음") %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
           {% endfor %}
@@ -99,207 +154,248 @@
         </table>
       </div>
     </div>
-    <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 전체보기</button>
+    <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
     <div class="meal-card month-meal" id="monthTable" style="display: none;">
-      <h3 class="meal-title">이번 달 급식 전체</h3>
+      <h3 class="meal-title">이번 달 급식 정보🍱</h3>
       <div class="meal-table-container">
         <table class="meal-table">
-            <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
-            <tbody>
-            {% for date, meals in month_meals.items() %}
-              <tr>
-                <td class="date-cell">{{ date | format_date }}</td>
-                <td class="menu-cell">
-                    {% if meals.breakfast %}<div class="meal-type"><strong>아침</strong><p>{{ meals.breakfast | safe }}</p></div>{% endif %}
-                    {% if meals.lunch %}<div class="meal-type"><strong>점심</strong><p>{{ meals.lunch | safe }}</p></div>{% endif %}
-                    {% if meals.dinner %}<div class="meal-type"><strong>저녁</strong><p>{{ meals.dinner | safe }}</p></div>{% endif %}
-                    {% if not meals %}<div class="no-meal">급식 정보가 없습니다.</div>{% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-            </tbody>
+          <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
+          <tbody>
+          {% for date, meal in month_meals.items() %}
+            <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="menu-cell">
+                {% if meal.breakfast and meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.lunch and meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.dinner and meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if (not meal.breakfast or meal.breakfast == "급식 정보 없음") and (not meal.lunch or meal.lunch == "급식 정보 없음") and (not meal.dinner or meal.dinner == "급식 정보 없음") %}<div class="no-meal">급식 정보 없음</div>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
         </table>
       </div>
     </div>
+    {% else %}
+    <div class="no-info">급식 정보가 없습니다.</div>
+    {% endif %}
   </div>
   {% endif %}
 </div>
+<div id="ios-webapp-guide">
+  <div class="ios-webapp-guide-content">
+    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
+    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12" y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요! </p>
+    <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
+  </div>
+</div>
+<ins class="kakao_ad_area" style="display:none;" data-ad-unit = "DAN-eT4RSGGRDirSL6DS" data-ad-width = "320" data-ad-height = "100"></ins>
+<script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 <footer class="main-footer">
   <div class="footer-content">
+    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
+    <div class="footer-links">
+      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
+      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+    </div>
     <p>&copy; 2025 ImHungry. All rights reserved.</p>
   </div>
 </footer>
 <script>
+    // 원본 스크립트 구조를 유지하며 요청사항 반영
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) {
              try { return decodeURIComponent(parts.pop().split(';').shift()); }
              catch (e) { return parts.pop().split(';').shift(); }
-        }
-        return null;
+        } return null;
     }
-
-    function loadNotificationSettings() {
-        const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
-        document.getElementById('breakfast-enable').checked = settings.breakfast?.enabled || false;
-        document.getElementById('breakfast-time').value = settings.breakfast?.time || '07:30';
-        document.getElementById('lunch-enable').checked = settings.lunch?.enabled || false;
-        document.getElementById('lunch-time').value = settings.lunch?.time || '12:30';
-        document.getElementById('dinner-enable').checked = settings.dinner?.enabled || false;
-        document.getElementById('dinner-time').value = settings.dinner?.time || '18:30';
-        const days = settings.days || [1, 2, 3, 4, 5]; // Default Mon-Fri
-        document.querySelectorAll('.day-setting input[name="day"]').forEach(cb => {
-            cb.checked = days.includes(parseInt(cb.value));
-        });
-    }
-
+    
     let notificationTimeouts = [];
-    function clearAllScheduledNotifications() {
+
+    function clearNotificationTimeouts() {
         notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
         notificationTimeouts = [];
     }
 
-    async function requestAndScheduleNotifications() {
-        if (!('Notification' in window)) {
-            alert('이 브라우저는 알림을 지원하지 않습니다.');
-            return;
-        }
-        
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            await scheduleNextNotifications();
-            alert('알림이 설정되었습니다. 설정된 시간에 급식 정보를 알려드릴게요!');
-        } else {
-            alert('알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
-        }
-    }
-
     async function scheduleNextNotifications() {
-        clearAllScheduledNotifications();
-        const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
+        clearNotificationTimeouts();
+        const settingsStr = localStorage.getItem('notificationSettings');
+        if (!settingsStr) return;
+        
+        const settings = JSON.parse(settingsStr);
         const schoolCode = getCookie('school_code');
-        if (!settings || Object.keys(settings).length === 0 || !schoolCode) {
-            return;
-        }
+        if (!settings || !schoolCode) return;
 
         try {
             const response = await fetch('/current_time');
+            if (!response.ok) return;
             const data = await response.json();
             const now = new Date(data.current_time);
 
-            const mealTypes = ['breakfast', 'lunch', 'dinner'];
-            for (const mealType of mealTypes) {
-                if (settings[mealType]?.enabled && settings[mealType]?.time && settings.days?.length > 0) {
+            ['breakfast', 'lunch', 'dinner'].forEach(mealType => {
+                if (settings[mealType]?.enabled && settings[mealType]?.time && settings.days) {
                     const [hours, minutes] = settings[mealType].time.split(':');
-                    for (const dayOfWeek of settings.days) {
+                    settings.days.forEach(dayOfWeek => {
                         let nextTime = new Date(now);
-                        nextTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-                        
+                        nextTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                         let dayDiff = dayOfWeek - now.getDay();
                         if (dayDiff < 0 || (dayDiff === 0 && nextTime <= now)) {
                             dayDiff += 7;
                         }
                         nextTime.setDate(now.getDate() + dayDiff);
-
                         const delay = nextTime.getTime() - now.getTime();
                         if (delay > 0) {
-                            const timeoutId = setTimeout(() => sendNotification(mealType, nextTime), delay);
+                            const timeoutId = setTimeout(() => {
+                                sendNotification(mealType, nextTime);
+                                scheduleNextNotifications();
+                            }, delay);
                             notificationTimeouts.push(timeoutId);
                         }
-                    }
+                    });
                 }
-            }
-        } catch (error) {
-            console.error('알림 스케줄링 중 오류 발생:', error);
-        }
+            });
+        } catch (error) { console.error('Error during scheduling:', error); }
     }
 
-    async function sendNotification(mealType, notificationDate) {
+    async function sendNotification(mealType, date) {
         if (Notification.permission !== 'granted') return;
-
         const schoolCode = getCookie('school_code');
-        const schoolName = getCookie('school_name');
+        const schoolName = decodeURIComponent(getCookie('school_name') || '');
         if (!schoolCode || !schoolName) return;
 
         try {
-            const dateString = notificationDate.toISOString().slice(0, 10).replace(/-/g, '');
-            const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
-            if (!mealResponse.ok) return;
+            const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+            const res = await fetch(`/api/meals/${schoolCode}/${dateStr}`);
+            if (!res.ok) return;
+            const mealData = await res.json();
+            const mealContent = mealData[mealType.toLowerCase()];
 
-            const mealData = await mealResponse.json();
-            const mealContent = mealData[mealType];
-
-            if (mealContent) {
-                const titleMap = { breakfast: "오늘의 아침", lunch: "오늘의 점심", dinner: "오늘의 저녁" };
-                new Notification(`${schoolName} ${titleMap[mealType]} 🍗`, {
-                    body: mealContent.length > 80 ? mealContent.substring(0, 80) + '...' : mealContent,
-                    icon: "{{ url_for('favicon') }}",
-                    tag: `${dateString}-${mealType}`
-                }).onclick = (event) => { event.preventDefault(); window.open(window.location.href, '_blank'); };
+            if (mealContent && mealContent !== "급식 정보 없음") {
+                const titleMap = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
+                const title = `${schoolName} 오늘의 ${titleMap[mealType]} 🍗`;
+                const options = {
+                    body: mealContent.substring(0, 100),
+                    icon: "{{ url_for('static', filename='favicon.svg') }}",
+                    tag: `${dateStr}-${mealType}`
+                };
+                new Notification(title, options).onclick = (e) => {
+                    e.preventDefault();
+                    window.open(window.location.href, '_blank');
+                };
             }
-        } catch (error) {
-            console.error('알림 전송 중 오류:', error);
-        }
+        } catch (error) { console.error('Error sending notification:', error); }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const notificationBtn = document.getElementById('notification-btn');
         const notificationModal = document.getElementById('notification-modal');
-        const closeBtn = notificationModal?.querySelector('.close');
-        const searchForm = document.getElementById('searchForm');
-        const loadingDiv = document.getElementById('loading');
         const notificationForm = document.getElementById('notification-form');
-        const toggleMonthBtn = document.getElementById('toggleMonthBtn');
-        const monthTable = document.getElementById('monthTable');
-
+        const loadingDiv = document.getElementById('loading');
+        
+        // Modal open/close logic
+        const notificationBtn = document.getElementById('notification-btn');
         if (notificationBtn) {
             notificationBtn.addEventListener('click', () => {
-                loadNotificationSettings();
+                const settingsStr = localStorage.getItem('notificationSettings');
+                const settings = settingsStr ? JSON.parse(settingsStr) : {};
+                document.getElementById('breakfast-enable').checked = settings.breakfast?.enabled || false;
+                document.getElementById('breakfast-time').value = settings.breakfast?.time || '07:30';
+                document.getElementById('lunch-enable').checked = settings.lunch?.enabled || false;
+                document.getElementById('lunch-time').value = settings.lunch?.time || '12:30';
+                document.getElementById('dinner-enable').checked = settings.dinner?.enabled || false;
+                document.getElementById('dinner-time').value = settings.dinner?.time || '18:30';
+                const days = settings.days || [1, 2, 3, 4, 5];
+                document.querySelectorAll('.day-setting input[name="day"]').forEach(cb => {
+                    cb.checked = days.includes(parseInt(cb.value, 10));
+                });
                 notificationModal.style.display = 'block';
             });
         }
-        if (closeBtn) closeBtn.addEventListener('click', () => notificationModal.style.display = 'none');
+
+        const closeBtn = notificationModal.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => notificationModal.style.display = 'none');
+        }
         window.addEventListener('click', (event) => {
-            if (event.target == notificationModal) notificationModal.style.display = 'none';
+            if (event.target === notificationModal) {
+                notificationModal.style.display = 'none';
+            }
         });
 
-        if (searchForm) {
-            searchForm.addEventListener('submit', () => loadingDiv.style.display = 'flex');
-        }
+        // Form submission
+        document.getElementById('regionForm').addEventListener('submit', () => {
+            if(loadingDiv) loadingDiv.style.display = 'flex';
+        });
 
         if (notificationForm) {
-            notificationForm.addEventListener('submit', function(event) {
+            notificationForm.addEventListener('submit', async function(event) {
                 event.preventDefault();
-                const selectedDays = Array.from(document.querySelectorAll('.day-setting input:checked')).map(cb => parseInt(cb.value));
+                if (!getCookie('school_code')) {
+                    alert('먼저 학교를 검색해주세요.');
+                    return;
+                }
+                
                 const settings = {
                     breakfast: { enabled: document.getElementById('breakfast-enable').checked, time: document.getElementById('breakfast-time').value },
                     lunch: { enabled: document.getElementById('lunch-enable').checked, time: document.getElementById('lunch-time').value },
                     dinner: { enabled: document.getElementById('dinner-enable').checked, time: document.getElementById('dinner-time').value },
-                    days: selectedDays
+                    days: Array.from(document.querySelectorAll('.day-setting input:checked')).map(cb => parseInt(cb.value, 10))
                 };
                 localStorage.setItem('notificationSettings', JSON.stringify(settings));
+
+                if (!('Notification' in window)) {
+                    alert('이 브라우저는 알림을 지원하지 않습니다.');
+                    return;
+                }
+                
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    alert('알림이 저장되었습니다.');
+                    await scheduleNextNotifications();
+                } else {
+                    alert('알림 권한이 거부되었습니다.');
+                }
                 notificationModal.style.display = 'none';
-                // 저장 버튼을 눌렀을 때만 권한 요청 및 스케줄링 실행
-                requestAndScheduleNotifications();
             });
         }
         
+        // Toggle month table
+        const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+        const monthTable = document.getElementById('monthTable');
         if (toggleMonthBtn && monthTable) {
-             toggleMonthBtn.addEventListener('click', function() {
+            toggleMonthBtn.addEventListener('click', function() {
                 const isHidden = monthTable.style.display === 'none';
                 monthTable.style.display = isHidden ? 'block' : 'none';
-                toggleMonthBtn.innerHTML = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 전체보기';
-                if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                this.textContent = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
+                if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth' });
             });
         }
-        
-        // 페이지 로드 시, 이미 권한이 부여된 상태라면 자동으로 알림 스케줄링
-        if ('Notification' in window && Notification.permission === 'granted') {
-            if (getCookie('school_code') && localStorage.getItem('notificationSettings')) {
-                scheduleNextNotifications();
-            }
+
+        // iOS guide
+        const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = () => window.navigator.standalone === true;
+        const iosGuide = document.getElementById('ios-webapp-guide');
+        if (iosGuide && isIOS() && !isStandalone() && !localStorage.getItem('ios-guide-dismissed')) {
+            setTimeout(() => iosGuide.classList.add('show'), 1500);
         }
+        const dismissBtn = document.getElementById('dismiss-ios-btn');
+        if(dismissBtn) dismissBtn.addEventListener('click', () => {
+            iosGuide.classList.remove('show');
+            localStorage.setItem('ios-guide-dismissed', 'true');
+        });
+
+        // Initial schedule on load if permission already granted
+        if (Notification.permission === 'granted') {
+            scheduleNextNotifications();
+        }
+
+        if (loadingDiv) loadingDiv.style.display = 'none';
+
+        // Pre-fill form from cookies
+        document.getElementById('school_name').value = decodeURIComponent(getCookie('school_name') || '');
+        document.getElementById('region').value = getCookie('region_name') || '';
     });
 </script>
 </body>
