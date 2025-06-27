@@ -564,11 +564,13 @@ def inject_today_date():
     return dict(today_date=datetime.now(KST).strftime("%Y%m%d"))
 
 # --- 라우트 (Routes) ---
+# --- 라우트 (Routes) ---
 @app.route("/", methods=["GET", "POST"])
 def index():
     error_message = request.args.get('error_message')
     region_cookie = request.cookies.get('region_name')
     school_name_encoded = request.cookies.get('school_name')
+    school_code_cookie = request.cookies.get('school_code')
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
 
     # POST 요청 (학교 검색) 처리
@@ -596,9 +598,23 @@ def index():
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
     
-    # GET 요청 시에는 항상 검색 페이지를 보여줌
-    return render_template('school_meal.html', regions=regions, error_message=error_message, region=region_cookie, school_name=school_name_cookie)
-
+    # GET 요청 처리
+    # 1. 쿠키에 학교 정보가 있고 error_message가 없으면 해당 학교 페이지로 리다이렉트
+    if school_code_cookie and not error_message:
+        app.logger.info(f"Redirecting to school meal page for school_code: {school_code_cookie}")
+        return redirect(url_for('school_meal_view', school_code=school_code_cookie))
+    
+    # 2. error_message가 있거나 쿠키가 없으면 검색 페이지 표시
+    # error_message가 있는 경우에만 기존 쿠키 값들을 폼에 미리 채워넣음
+    if error_message:
+        return render_template('school_meal.html', 
+                             regions=regions, 
+                             error_message=error_message, 
+                             region=region_cookie, 
+                             school_name=school_name_cookie)
+    else:
+        # 일반적인 첫 방문 또는 쿠키가 없는 경우 - 깨끗한 검색 페이지
+        return render_template('school_meal.html', regions=regions)
 
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
