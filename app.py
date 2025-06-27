@@ -27,6 +27,10 @@ blocked_ips = set()
 
 # 보안 설정
 SECURITY_CONFIG = {
+    'rate_limit_window': 3,  # 3초
+    'rate_limit_requests': 50,  # 30개 요청까지
+    'failed_attempt_threshold': 5,  # 5회 실패시 차단
+    'auto_block_duration': 3600,  # 1시간 자동 차단
     'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
     'path_traversal_protection': True,  # 경로 탐색 공격 차단
 }
@@ -701,7 +705,7 @@ def namufile1():
 
 @app.route("/sitemap.xml")
 def sitemap():
-    return send_file("sitemap.xml", mimetype="application/xml")
+    return send_from_directory(directory=os.getcwd(), path="sitemap.xml", mimetype="application/xml")
 
 # --- 탬퍼몽키 스크립트 ---
 STATIC_DIR = app.root_path
