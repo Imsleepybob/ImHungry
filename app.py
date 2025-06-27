@@ -703,13 +703,9 @@ def manifest():
 def namufile1():
     return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
-@app.route("/sitemap.xml")
+@app.route('/sitemap.xml')
 def sitemap():
-    return send_from_directory(
-        directory=os.getcwd(),
-        filename="sitemap.xml",
-        mimetype="application/xml"
-    )
+    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
 
 # --- 탬퍼몽키 스크립트 ---
 STATIC_DIR = app.root_path
