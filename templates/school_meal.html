@@ -157,11 +157,10 @@ body { word-break: keep-all; }
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
   <div id="loading" class="loading-container"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
-  {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
-  {% if school_name %}
+{% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
+  {% if school_name and week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
-    {% if week_meals %}
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
@@ -205,12 +204,13 @@ body { word-break: keep-all; }
         </table>
        </div>
     </div>
-    {% else %}
+  </div>
+  {% elif school_name and not week_meals %}
+  <div class="meal-container">
+    <h2 class="school-title">{{ school_name }} 급식 정보</h2>
     <div class="no-info">급식 정보가 없습니다.</div>
-    {% endif %}
   </div>
   {% endif %}
-</div>
 
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
