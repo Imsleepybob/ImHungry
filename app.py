@@ -706,7 +706,9 @@ def namufile1():
 @app.route('/sitemap.xml')
 def sitemap():
     try:
-        response = make_response(send_from_directory('static', 'sitemap.xml'))
+        with open('static/sitemap.xml', 'r', encoding='utf-8') as f:
+            content = f.read()
+        response = make_response(content)
         response.headers['Content-Type'] = 'application/xml; charset=utf-8'
         return response
     except FileNotFoundError:
