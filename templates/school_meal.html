@@ -73,24 +73,36 @@ cursor: pointer; transition: all 0.3s ease; }
 white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
 body { word-break: keep-all; }
+
 #ad-desktop, #bodyad-desktop {
     display: none;
 }
-@media (min-width: 768px) {
-    #ad-desktop, #bodyad-desktop {
-        display: block;
-}
-    #ad-mobile, #bodyad-mobile {
-        display: none;
-}
-}
+
 #bodyad-desktop, #bodyad-mobile {
     text-align: center;
     margin: 10px auto;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease-in-out;
 }
+
+#bodyad-desktop.show-ad, #bodyad-mobile.show-ad {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 #ad-mobile, #ad-desktop {
-     text-align: center;
-margin: 0 auto;
+    text-align: center;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    #ad-desktop, #bodyad-desktop {
+        display: block;
+    }
+    #ad-mobile, #bodyad-mobile {
+        display: none;
+    }
 }
 </style>
 </head>
@@ -568,6 +580,18 @@ const savedSchool = getCookie('school_name');
         if(savedSchool && schoolNameInput) schoolNameInput.value = savedSchool;
         if(savedRegionName && regionSelect) regionSelect.value = savedRegionName;
 console.log("DOM Loaded and JS initialized.");
+
+setTimeout(() => {
+    const bodyAdDesktop = document.getElementById('bodyad-desktop');
+    const bodyAdMobile = document.getElementById('bodyad-mobile');
+    
+    if (bodyAdDesktop) {
+        bodyAdDesktop.classList.add('show-ad');
+    }
+    if (bodyAdMobile) {
+        bodyAdMobile.classList.add('show-ad');
+    }
+}, 1500);
     });
 </script>
 </body>
