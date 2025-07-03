@@ -79,28 +79,29 @@ body { word-break: keep-all; }
 }
 
 #bodyad-desktop, #bodyad-mobile {
+    display: none;
     text-align: center;
     margin: 10px auto;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.6s ease-in-out;
 }
 
 #bodyad-desktop.show-ad, #bodyad-mobile.show-ad {
-    opacity: 1;
-    transform: translateY(0);
+    display: block;
 }
 
 #ad-mobile, #ad-desktop {
     text-align: center;
     margin: 0 auto;
 }
-
+     
 @media (min-width: 768px) {
     #ad-desktop, #bodyad-desktop {
         display: block;
     }
     #ad-mobile, #bodyad-mobile {
+        display: none;
+    }
+    /* 지연 광고는 show-ad 클래스가 있을 때만 표시 */
+    #bodyad-desktop:not(.show-ad) {
         display: none;
     }
 }
