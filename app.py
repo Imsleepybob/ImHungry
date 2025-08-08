@@ -28,12 +28,27 @@ blocked_ips = set()
 # 보안 설정
 SECURITY_CONFIG = {
     'rate_limit_window': 3,  # 3초
-    'rate_limit_requests': 50,  # 30개 요청까지
+    'rate_limit_requests': 50,  # 50개 요청까지
     'failed_attempt_threshold': 5,  # 5회 실패시 차단
     'auto_block_duration': 3600,  # 1시간 자동 차단
     'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
     'path_traversal_protection': True,  # 경로 탐색 공격 차단
 }
+
+# 로그를 남기지 않을 경로들 정의
+NO_LOG_PATHS = [
+    '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
+    'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
+    '/logs/', '/stats', '/security/',  # 관리자 페이지들도 로그에서 제외
+    '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml'  # 정적 파일들
+]
+
+# 조용히 차단할 패턴들 (로그도 남기지 않음)
+SILENT_BLOCK_PATTERNS = [
+    '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
+    'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes', '.env', 'config',
+    '.git', '.sql', 'backup', 'shell', 'cmd', 'eval', '.asp', '.jsp', '.cgi'
+]
 
 # 의심스러운 패턴들
 SUSPICIOUS_PATTERNS = {
@@ -98,6 +113,22 @@ def get_client_ip():
         return request.access_route[0]
     else:
         return request.remote_addr
+
+def should_log_request(path, method=None):
+    """로그를 남길지 판단하는 함수"""
+    # 스팸/공격성 요청들 필터링
+    if any(pattern in path.lower() for pattern in NO_LOG_PATHS):
+        return False
+    
+    # HEAD 요청 제외
+    if method == 'HEAD':
+        return False
+        
+    return True
+
+def should_silent_block(path):
+    """조용히 차단할지 판단하는 함수"""
+    return any(pattern in path.lower() for pattern in SILENT_BLOCK_PATTERNS)
 
 def is_ip_blocked(ip_address):
     """IP가 차단 목록에 있는지 확인"""
@@ -222,18 +253,24 @@ def security_check():
     if is_admin_ip(client_ip):
         return
     
-    # 2. IP 차단 확인
+    # 2. 스팸 요청은 조용히 차단 (로그 없이)
+    if should_silent_block(request.path):
+        response = make_response('', 444)
+        response.headers['X-Silent-Block'] = 'true'
+        return response
+    
+    # 3. IP 차단 확인
     if is_ip_blocked(client_ip):
         log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
         abort(403)
     
-    # 3. Rate limiting 확인
+    # 4. Rate limiting 확인
     if is_rate_limited(client_ip):
         log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
         auto_block_ip(client_ip, "Rate limit exceeded", 300)  # 5분 임시 차단
         abort(429)
     
-    # 4. 의심스러운 요청 패턴 확인
+    # 5. 의심스러운 요청 패턴 확인
     is_suspicious, suspicion_score, reasons = is_suspicious_request()
     if is_suspicious:
         log_security_incident(client_ip, "SUSPICIOUS_PATTERN", 
@@ -247,7 +284,7 @@ def security_check():
             # 중간 점수는 404로 응답 (존재하지 않는 것처럼)
             abort(404)
     
-    # 5. 경로 탐색 공격 방지
+    # 6. 경로 탐색 공격 방지
     if SECURITY_CONFIG['path_traversal_protection']:
         if '../' in request.path or '..\\' in request.path:
             log_security_incident(client_ip, "PATH_TRAVERSAL", request.path)
@@ -563,7 +600,23 @@ def format_date(value):
 def inject_today_date():
     return dict(today_date=datetime.now(KST).strftime("%Y%m%d"))
 
-# --- 라우트 (Routes) ---
+# --- 스팸 요청 처리용 조용한 라우트들 ---
+@app.route('/wp-<path:filename>')
+@app.route('/wp/<path:filename>')  
+@app.route('/<filename>.php')
+@app.route('/upload/<path:filename>')
+@app.route('/userfiles/<path:filename>')
+@app.route('/assets/<path:filename>')
+@app.route('/xmlrpc.php')
+@app.route('/wp-admin/<path:filename>')
+@app.route('/wp-content/<path:filename>')
+@app.route('/wp-includes/<path:filename>')
+def silent_spam_block(filename=None):
+    """스팸 요청들을 조용히 차단 (로그 없이)"""
+    response = make_response('', 444)
+    response.headers['X-Silent-Block'] = 'true'
+    return response
+
 # --- 라우트 (Routes) ---
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -908,22 +961,33 @@ def add_to_blacklist():
         return jsonify({'success': True, 'message': f'Added {ip_or_cidr} to blacklist'})
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
-        
-# --- 응답 로깅 (기존 + 접속 로그) ---
+
+# --- 응답 로깅 (개선된 버전) ---
 @app.after_request
 def after_request_func(response):
-    # 기존 앱 로그 (모든 요청에 대해 기록)
-    log_entry = (
-        f"IP: {get_client_ip()}, "
-        f"Method: {request.method}, "
-        f"URL: {request.url}, "
-        f"Status: {response.status_code}"
-    )
-    app.logger.info(log_entry)
+    # Silent block 표시가 있으면 로그 안 남김
+    if response.headers.get('X-Silent-Block'):
+        return response
     
-    # 새로운 접속 로그 (HEAD 요청 제외, 200/206 상태 코드만)
-    if request.method != 'HEAD':
-        log_access_request(response.status_code)
+    client_ip = get_client_ip()
+    request_path = request.path
+    request_method = request.method
+    status_code = response.status_code
+    
+    # 로그를 남길지 판단
+    if should_log_request(request_path, request_method):
+        # 기존 앱 로그
+        log_entry = (
+            f"IP: {client_ip}, "
+            f"Method: {request_method}, "
+            f"URL: {request.url}, "
+            f"Status: {status_code}"
+        )
+        app.logger.info(log_entry)
+        
+        # 접속 로그 (200/206 상태 코드만)
+        if status_code in [200, 206]:
+            log_access_request(status_code)
     
     return response
 
@@ -935,7 +999,8 @@ if __name__ == "__main__":
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
     app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
     app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
-        # 블랙리스트 파일 생성 (없는 경우)
+    
+    # 블랙리스트 파일 생성 (없는 경우)
     if not os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'w', encoding='utf-8') as f:
             f.write("# IP Blacklist - CIDR format\n")
@@ -944,5 +1009,7 @@ if __name__ == "__main__":
     
     app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks")
     app.logger.info(f"Security config: {SECURITY_CONFIG}")
+    app.logger.info(f"Silent block patterns: {len(SILENT_BLOCK_PATTERNS)} patterns loaded")
+    app.logger.info(f"No-log paths: {len(NO_LOG_PATHS)} paths configured")
     
     app.run(debug=False)
