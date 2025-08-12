@@ -263,16 +263,20 @@ def security_check():
         response.headers['Connection'] = 'close'
         return response
     
-    # 3. IP 차단 확인
+    # 3. IP 차단 확인 (444로 변경)
     if is_ip_blocked(client_ip):
         log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
-        abort(403)
+        response = make_response('', 444)
+        response.headers['Connection'] = 'close'
+        return response
     
-    # 4. Rate limiting 확인
+    # 4. Rate limiting 확인 (444로 변경)
     if is_rate_limited(client_ip):
         log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
-        auto_block_ip(client_ip, "Rate limit exceeded", 300)  # 5분 임시 차단
-        abort(429)
+        auto_block_ip(client_ip, "Rate limit exceeded", 864000)  # 24시간으로 변경
+        response = make_response('', 444)
+        response.headers['Connection'] = 'close'
+        return response
     
     # 5. 의심스러운 요청 패턴 확인
     is_suspicious, suspicion_score, reasons = is_suspicious_request()
@@ -280,20 +284,26 @@ def security_check():
         log_security_incident(client_ip, "SUSPICIOUS_PATTERN", 
                             f"Reasons: {', '.join(reasons)}", suspicion_score)
         
-        # 점수가 높으면 자동 차단
-        if suspicion_score >= 20:
+        # 점수가 높으면 자동 차단 (444로 변경)
+        if suspicion_score >= 15:  # 20 → 15로 더 엄격하게
             auto_block_ip(client_ip, f"High suspicion score: {suspicion_score}")
-            abort(403)
-        elif suspicion_score >= 15:
-            # 중간 점수는 404로 응답 (존재하지 않는 것처럼)
-            abort(404)
+            response = make_response('', 444)
+            response.headers['Connection'] = 'close'
+            return response
+        elif suspicion_score >= 10:  # 15 → 10으로 더 엄격하게
+            # 중간 점수도 444로 응답
+            response = make_response('', 444)
+            response.headers['Connection'] = 'close'
+            return response
     
-    # 6. 경로 탐색 공격 방지
+    # 6. 경로 탐색 공격 방지 (444로 변경)
     if SECURITY_CONFIG['path_traversal_protection']:
         if '../' in request.path or '..\\' in request.path:
             log_security_incident(client_ip, "PATH_TRAVERSAL", request.path)
             auto_block_ip(client_ip, "Path traversal attempt")
-            abort(403)
+            response = make_response('', 444)
+            response.headers['Connection'] = 'close'
+            return response
 
 # 보안 로거 설정
 def setup_security_logging():
