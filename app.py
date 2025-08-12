@@ -28,9 +28,9 @@ blocked_ips = set()
 # 보안 설정
 SECURITY_CONFIG = {
     'rate_limit_window': 3,  # 3초
-    'rate_limit_requests': 50,  # 50개 요청까지
-    'failed_attempt_threshold': 5,  # 5회 실패시 차단
-    'auto_block_duration': 3600,  # 1시간 자동 차단
+    'rate_limit_requests': 25,  # 25개 요청까지
+    'failed_attempt_threshold': 1,  # 1회 실패시 차단
+    'auto_block_duration': 864000,  # 240시간 자동 차단
     'suspicious_ua_block': True,  # 의심스러운 User-Agent 차단
     'path_traversal_protection': True,  # 경로 탐색 공격 차단
 }
@@ -47,7 +47,11 @@ NO_LOG_PATHS = [
 SILENT_BLOCK_PATTERNS = [
     '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
     'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes', '.env', 'config',
-    '.git', '.sql', 'backup', 'shell', 'cmd', 'eval', '.asp', '.jsp', '.cgi'
+    '.git', '.sql', 'backup', 'shell', 'cmd', 'eval', '.asp', '.jsp', '.cgi',
+    '/user', '/users', '/client', '/clients', '/order', '/orders',
+    '/invoice', '/refund', '/statement', '/card', '/authorization',
+    '/authorize', '/private-data', '/archives', '/saving', '/savings',
+    '/ebank', '/ebanking', '/balance'
 ]
 
 # 의심스러운 패턴들
@@ -253,10 +257,10 @@ def security_check():
     if is_admin_ip(client_ip):
         return
     
-    # 2. 스팸 요청은 조용히 차단 (로그 없이)
+    # 2. 스팸 요청은 조용히 차단 (444로 변경)
     if should_silent_block(request.path):
         response = make_response('', 444)
-        response.headers['X-Silent-Block'] = 'true'
+        response.headers['Connection'] = 'close'
         return response
     
     # 3. IP 차단 확인
