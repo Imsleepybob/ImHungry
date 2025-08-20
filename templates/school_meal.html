@@ -198,6 +198,27 @@ class="form-group">
   {% if school_name and week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
+       {% if today_meal %}
+<div class="meal-card today-meal">
+  <h3 class="meal-title">오늘 급식 정보 🍽</h3>
+  <table class="meal-table today-table">
+    <thead>
+      <tr>
+        <th>아침</th>
+        <th>점심</th>
+        <th>저녁</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{% if today_meal.breakfast != "급식 정보 없음" %}{{ today_meal.breakfast | safe }}{% else %}<span class="no-meal">정보 없음</span>{% endif %}</td>
+        <td>{% if today_meal.lunch != "급식 정보 없음" %}{{ today_meal.lunch | safe }}{% else %}<span class="no-meal">정보 없음</span>{% endif %}</td>
+        <td>{% if today_meal.dinner != "급식 정보 없음" %}{{ today_meal.dinner | safe }}{% else %}<span class="no-meal">정보 없음</span>{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
