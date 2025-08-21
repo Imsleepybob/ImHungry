@@ -2,7 +2,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     margin: 0;
     background-color: #f9f9f9;
-    color: #333;
+color: #333;
 }
 
 .container {
@@ -18,12 +18,12 @@ body {
     align-items: center;
     padding: 16px 20px;
     background-color: #fff;
-    border-bottom: 1px solid #e5e5e5;
+border-bottom: 1px solid #e5e5e5;
     position: sticky;
     top: 0;
     z-index: 1000;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.3s ease;
+transition: box-shadow 0.3s ease;
 }
 
 .main-header:hover {
@@ -67,7 +67,7 @@ body {
     height: 2px;
     bottom: 0;
     left: 0;
-    background-color: #007aff;
+background-color: #007aff;
     transition: width 0.3s ease;
 }
 
@@ -82,7 +82,7 @@ body {
     right: 20px;
     background-color: #007bff;
     color: white;
-    padding: 10px 15px;
+padding: 10px 15px;
     border-radius: 50%;
     font-size: 18px;
     width: 45px;
@@ -91,7 +91,7 @@ body {
     align-items: center;
     justify-content: center;
     border: none;
-    cursor: pointer;
+cursor: pointer;
     z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
@@ -125,7 +125,7 @@ body {
     background-color: #ffffff;
     padding: 24px;
     border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     max-width: 600px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -144,7 +144,7 @@ label {
     margin-bottom: 8px;
     font-weight: 500;
     color: #555;
-    font-size: 0.95rem;
+font-size: 0.95rem;
 }
 
 input[type="text"], select {
@@ -153,7 +153,7 @@ input[type="text"], select {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-sizing: border-box;
-    font-size: 16px;
+font-size: 16px;
     transition: all 0.3s ease;
     background-color: #f8f9fa;
 }
@@ -161,13 +161,13 @@ input[type="text"], select {
 input[type="text"]:focus, select:focus {
     outline: none;
     border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
     background-color: #fff;
 }
 
 .submit-btn {
     display: inline-block;
-    padding: 12px 20px;
+padding: 12px 20px;
     background-color: #007bff;
     color: #fff;
     border: none;
@@ -176,20 +176,20 @@ input[type="text"]:focus, select:focus {
     font-size: 16px;
     font-weight: 500;
     width: 100%;
-    transition: all 0.3s ease;
+transition: all 0.3s ease;
 }
 
 .submit-btn:hover {
     background-color: #0056b3;
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
 /* 모달 스타일 */
 .modal {
     display: none;
     position: fixed;
-    z-index: 2000;
+z-index: 2000;
     left: 0;
     top: 0;
     width: 100%;
@@ -197,7 +197,7 @@ input[type="text"]:focus, select:focus {
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
     opacity: 0;
-    transition: opacity 0.3s ease;
+transition: opacity 0.3s ease;
 }
 
 .modal.show {
@@ -206,13 +206,13 @@ input[type="text"]:focus, select:focus {
 
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
+margin: 15% auto;
     padding: 25px;
     border: none;
     width: 80%;
     max-width: 400px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transform: scale(0.9);
     transition: all 0.3s ease;
     position: relative;
@@ -226,7 +226,7 @@ input[type="text"]:focus, select:focus {
     position: absolute;
     right: 20px;
     top: 15px;
-    color: #aaa;
+color: #aaa;
     font-size: 28px;
     font-weight: bold;
     transition: all 0.2s ease;
@@ -235,14 +235,14 @@ input[type="text"]:focus, select:focus {
 .close:hover {
     color: #333;
     transform: scale(1.2);
-    cursor: pointer;
+cursor: pointer;
 }
 
-/* 급식 테이블 스타일 */
+/* 급식 테이블 스타일 - 현대적인 디자인 */
 .meal-container {
     padding: 10px 0;
     max-width: 850px;
-    margin: 0 auto;
+margin: 0 auto;
 }
 
 .school-title {
@@ -252,8 +252,7 @@ input[type="text"]:focus, select:focus {
     color: #333;
     font-weight: 600;
     position: relative;
-    padding-bottom: 12px;
-    animation: pulse 2s infinite;
+padding-bottom: 12px;
 }
 
 .school-title::after {
@@ -263,7 +262,7 @@ input[type="text"]:focus, select:focus {
     left: 50%;
     transform: translateX(-50%);
     width: 80px;
-    height: 3px;
+height: 3px;
     background-color: #007bff;
     border-radius: 3px;
 }
@@ -271,7 +270,7 @@ input[type="text"]:focus, select:focus {
 .meal-card {
     background-color: #fff;
     border-radius: 16px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
     padding: 25px;
     margin-bottom: 30px;
     transition: all 0.4s ease;
@@ -300,7 +299,7 @@ input[type="text"]:focus, select:focus {
     height: 100%;
     width: 4px;
     background-color: #faa41a;
-    border-radius: 4px;
+border-radius: 4px;
 }
 
 .meal-table-container {
@@ -311,16 +310,16 @@ input[type="text"]:focus, select:focus {
 .meal-table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0;
+border-spacing: 0;
     overflow: hidden;
 }
 
 .meal-table thead th {
-    background: #f1f5ff;
-    color: #222;
+    background-color: #f8f9fa;
+    color: #555;
     font-weight: 600;
     padding: 16px;
-    text-align: center;
+text-align: left;
     border-bottom: 2px solid #e9ecef;
     position: sticky;
     top: 0;
@@ -335,13 +334,9 @@ input[type="text"]:focus, select:focus {
     transition: all 0.2s ease;
 }
 
-.meal-row:nth-child(even) {
-    background-color: #fafafa;
-}
-
 .meal-row:hover {
-    background-color: #eef6ff;
-    transform: none;
+    background-color: #f5f9ff;
+    transform: translateX(5px);
 }
 
 .date-cell {
@@ -355,27 +350,6 @@ input[type="text"]:focus, select:focus {
     padding: 16px;
     line-height: 1.6;
     border-bottom: 1px solid #e9ecef;
-    position: relative;
-}
-
-/* 오늘 급식 정보 스타일 */
-.today-meal {
-    background: linear-gradient(135deg, #fff7e6, #ffffff);
-    border-left: 6px solid #faa41a;
-}
-
-.today-table th {
-    text-align: center;
-    font-size: 1rem;
-    background-color: #ffe0b3;
-    color: #333;
-}
-
-.today-table td {
-    text-align: center;
-    padding: 18px;
-    border-bottom: 1px solid #eee;
-    vertical-align: top;
 }
 
 /* 월간 급식표 토글 버튼 */
@@ -383,21 +357,21 @@ input[type="text"]:focus, select:focus {
     display: block;
     margin: 0 auto 30px;
     padding: 12px 24px;
-    background-color: #f8f9fa;
+background-color: #f8f9fa;
     color: #333;
     border: 1px solid #ddd;
     border-radius: 30px;
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     font-weight: 500;
 }
 
 .toggle-month-btn:hover {
     background-color: #e9ecef;
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-month-btn.active {
@@ -436,7 +410,7 @@ input[type="text"]:focus, select:focus {
 .loading-container {
     display: none;
     flex-direction: column;
-    align-items: center;
+align-items: center;
     justify-content: center;
     padding: 40px 0;
 }
@@ -445,7 +419,7 @@ input[type="text"]:focus, select:focus {
     width: 50px;
     height: 50px;
     border: 5px solid #f3f3f3;
-    border-top: 5px solid #007bff;
+border-top: 5px solid #007bff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
@@ -453,7 +427,8 @@ input[type="text"]:focus, select:focus {
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    100% { transform: rotate(360deg);
+}
 }
 
 /* iOS 웹앱 가이드 */
@@ -462,7 +437,7 @@ input[type="text"]:focus, select:focus {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(100%);
-    background-color: rgba(0, 0, 0, 0.8);
+background-color: rgba(0, 0, 0, 0.8);
     border-radius: 16px;
     padding: 15px 20px;
     width: 90%;
@@ -470,7 +445,7 @@ input[type="text"]:focus, select:focus {
     color: white;
     z-index: 1000;
     opacity: 0;
-    transition: all 0.5s ease;
+transition: all 0.5s ease;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
@@ -493,7 +468,7 @@ input[type="text"]:focus, select:focus {
     border: none;
     border-radius: 20px;
     padding: 8px 16px;
-    margin-top: 10px;
+margin-top: 10px;
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -510,7 +485,7 @@ input[type="text"]:focus, select:focus {
     padding: 15px;
     border-radius: 8px;
     margin: 20px 0;
-    text-align: center;
+text-align: center;
     border-left: 4px solid #e55;
     font-weight: 500;
     animation: fadeIn 0.5s ease;
@@ -518,7 +493,8 @@ input[type="text"]:focus, select:focus {
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    to { opacity: 1;
+transform: translateY(0); }
 }
 
 /* 입력 시간 스타일 */
@@ -526,7 +502,7 @@ input[type="time"] {
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    width: 100%;
+width: 100%;
     background-color: #f8f9fa;
     box-sizing: border-box;
     font-size: 16px;
@@ -581,25 +557,25 @@ input[type="time"]:focus {
 @media (max-width: 767px) {
     .meal-table th, .meal-table td {
         padding: 12px 10px;
-        font-size: 14px;
+font-size: 14px;
     }
     
     .school-title {
         font-size: 1.5rem;
-    }
+}
     
     .meal-title {
         font-size: 1.2rem;
-    }
+}
     
     .meal-card {
         padding: 15px;
-        border-radius: 12px;
+border-radius: 12px;
     }
     
     .notification-btn {
         top: 10px;
-        right: 10px;
+right: 10px;
         width: 38px;
         height: 38px;
         font-size: 16px;
@@ -607,7 +583,7 @@ input[type="time"]:focus {
     
     .menu-toggle {
         display: block;
-        background: none;
+background: none;
         border: none;
         font-size: 24px;
         cursor: pointer;
@@ -615,56 +591,58 @@ input[type="time"]:focus {
     
     .main-nav {
         display: none;
-        position: absolute;
+position: absolute;
         top: 60px;
         right: 0;
         background-color: white;
         width: 100%;
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         flex-direction: column;
-        border-radius: 0 0 12px 12px;
+border-radius: 0 0 12px 12px;
         overflow: hidden;
     }
     
     .main-nav.active {
         display: block;
-        animation: slideDown 0.3s ease;
+animation: slideDown 0.3s ease;
     }
     
     @keyframes slideDown {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
+        from { transform: translateY(-20px);
+opacity: 0; }
+        to { transform: translateY(0); opacity: 1;
+}
     }
     
     .main-nav ul {
         flex-direction: column;
-        width: 100%;
+width: 100%;
     }
     
     .main-nav ul li {
         border-bottom: 1px solid #eee;
-    }
+}
     
     .main-nav ul li:last-child {
         border-bottom: none;
-    }
+}
     
     .main-nav ul li a {
         display: block;
-        padding: 15px;
+padding: 15px;
         text-decoration: none;
         color: #333;
         transition: all 0.2s ease;
-    }
+}
     
     .main-nav ul li a:hover {
         background-color: #f5f9ff;
-        padding-left: 20px;
+padding-left: 20px;
     }
     
     .form-group {
         margin-bottom: 15px;
-    }
+}
     
     .allergy-list {
         columns: 1;
@@ -674,16 +652,20 @@ input[type="time"]:focus {
 }
 
 /* 식단 세부 항목 스타일링 */
-.menu-item {
-    display: inline-block;
-    margin-right: 5px;
+.menu-cell {
     position: relative;
 }
 
-/* 알레르기 정보 표시 */
+.menu-item {
+    display: inline-block;
+margin-right: 5px;
+    position: relative;
+}
+
+/* 알레르기 정보 표시 (숫자가 있는 경우) */
 .menu-cell span[data-allergy] {
     position: relative;
-    cursor: pointer;
+cursor: pointer;
 }
 
 .menu-cell span[data-allergy]::after {
@@ -693,7 +675,7 @@ input[type="time"]:focus {
     right: -5px;
     font-size: 10px;
     color: #e55;
-    font-weight: bold;
+font-weight: bold;
 }
 
 .menu-cell span[data-allergy]:hover {
@@ -706,7 +688,7 @@ input[type="time"]:focus {
     display: inline-block;
     margin: 2px 0;
     padding: 2px 0;
-    transition: all 0.2s ease;
+transition: all 0.2s ease;
     border-radius: 3px;
 }
 
@@ -714,32 +696,48 @@ input[type="time"]:focus {
     background-color: #fff8e1;
     padding: 2px 5px;
     transform: scale(1.05);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* 알림 모달 세부 스타일 */
+/* 애니메이션 효과 */
+@keyframes pulse {
+    0% { transform: scale(1);
+}
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1);
+}
+}
+
+.school-title {
+    animation: pulse 2s infinite;
+}
+
+/* 알림 모달 추가 스타일 */
 .notification-setting .meal-time-setting {
     display: flex;
-    align-items: center;
+align-items: center;
     margin-bottom: 15px;
 }
 
 .notification-setting .meal-time-setting label {
     margin: 0 10px;
     width: 40px;
+/* 고정 너비 */
     font-weight: 500;
 }
 
 .notification-setting .meal-time-setting input[type="checkbox"] {
     transform: scale(1.2);
     margin-right: 5px;
-    cursor: pointer;
+cursor: pointer;
 }
 
 .notification-setting .meal-time-setting input[type="time"] {
     flex: 1;
+/* 남은 공간 차지 */
     padding: 8px;
     margin-bottom: 0;
+/* 아래 여백 제거 */
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 15px;
@@ -764,6 +762,13 @@ input[type="time"]:focus {
     display: flex;
     justify-content: space-around;
     flex-wrap: wrap;
+/* 작은 화면에서 줄바꿈 */
+}
+
+.day-setting div > span { /* 각 요일 항목을 감싸는 span 등 사용 시 */
+    display: inline-flex;
+align-items: center;
+    margin-bottom: 5px; /* 줄바꿈 시 간격 */
 }
 
 .day-setting input[type="checkbox"] {
@@ -780,7 +785,7 @@ input[type="time"]:focus {
 
 .modal-content p {
     font-size: 0.9em;
-    color: #555;
+color: #555;
     margin-bottom: 20px;
     line-height: 1.4;
 }
@@ -798,28 +803,29 @@ input[type="time"]:focus {
     padding: 3px 8px;
     border-radius: 4px;
     margin-right: 8px;
-    font-size: 0.85em;
+font-size: 0.85em;
     min-width: 30px;
     text-align: center;
 }
 .meal-type p {
     display: inline;
     white-space: pre-line;
+/* 줄바꿈 적용 */
 }
 .no-meal {
     color: #888;
     font-style: italic;
 }
 
-/* 푸터 */
 .main-footer {
     background-color: #f8f9fa;
-    padding: 20px;
+padding: 20px;
     text-align: center;
     border-top: 1px solid #eee;
     color: #555;
     font-size: 0.85em;
     margin-top: 30px;
+/* Adjust as needed */
 }
 
 .footer-content {
@@ -835,11 +841,130 @@ input[type="time"]:focus {
 .footer-links a {
     color: #007bff;
     text-decoration: none;
-    margin: 0 10px;
+margin: 0 10px;
     transition: color 0.3s ease;
 }
 
 .footer-links a:hover {
     color: #0056b3;
     text-decoration: underline;
+}
+
+/* Styles for new static pages (terms.html, privacy.html) */
+.page-header {
+    background-color: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
+}
+
+.page-header h1 {
+    font-size: 2em;
+    color: #333;
+    margin: 0;
+}
+
+.page-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+    color: #444;
+}
+
+.page-content h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+.page-content p {
+    margin-bottom: 15px;
+}
+
+.page-footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+border-top: 1px solid #eee;
+    color: #777;
+    font-size: 0.8em;
+}
+
+.notification-setting .meal-time-setting { display: flex;
+align-items: center; margin-bottom: 15px; }
+.notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
+.notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2);
+margin-right: 5px; cursor: pointer; }
+.notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px;
+}
+.day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
+.day-setting strong { display: block; margin-bottom: 10px;
+}
+.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
+.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer;
+}
+.day-setting label { margin-right: 10px; cursor: pointer; }
+.modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px;
+}
+.modal { transition: opacity 0.3s ease-in-out; }
+#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%);
+background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0;
+transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none;
+}
+#ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
+.ios-webapp-guide-content { text-align: center; }
+.ios-webapp-guide-content p { color: white; margin-bottom: 12px;
+font-size: 15px; line-height: 1.5; }
+.share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle;
+border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
+.share-icon-guide svg { width: 18px; height: 18px;
+}
+.dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px;
+cursor: pointer; transition: all 0.3s ease; }
+.dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
+.meal-type { margin-bottom: 15px;
+}
+.meal-type:last-child { margin-bottom: 0; }
+.meal-type strong {
+    font-weight: bold;
+    margin-right: 8px;
+}
+.meal-type p { display: inline;
+white-space: pre-line; }
+.no-meal { color: #888; font-style: italic; }
+body { word-break: keep-all; }
+
+#ad-desktop, #bodyad-desktop {
+    display: none;
+}
+
+#bodyad-desktop, #bodyad-mobile {
+    display: none;
+    text-align: center;
+    margin: 10px auto;
+}
+
+#bodyad-desktop.show-ad, #bodyad-mobile.show-ad {
+    display: block;
+}
+
+#ad-mobile, #ad-desktop {
+    text-align: center;
+    margin: 0 auto;
+}
+     
+@media (min-width: 768px) {
+    #ad-desktop, #bodyad-desktop {
+        display: block;
+    }
+    #ad-mobile, #bodyad-mobile {
+        display: none;
+    }
+    /* 지연 광고는 show-ad 클래스가 있을 때만 표시 */
+    #bodyad-desktop:not(.show-ad) {
+        display: none;
+    }
 }
