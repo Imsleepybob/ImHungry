@@ -46,11 +46,11 @@ body {
     text-align: center;
     margin: 40px auto;
     padding: 40px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #007bff;
     border-radius: 20px;
     color: white;
     max-width: 800px;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 123, 255, 0.2);
 }
 
 .service-intro h1 {
@@ -356,7 +356,7 @@ input[type="text"]:focus, select:focus {
 }
 
 .meal-table thead th {
-    background-color: #3498db;
+    background-color: #007bff;
     color: white;
     font-weight: 600;
     padding: 18px 16px;
@@ -403,9 +403,9 @@ input[type="text"]:focus, select:focus {
 .date-cell {
     padding: 18px 16px;
     font-weight: 600;
-    color: #3498db;
+    color: #007bff;
     border-right: 1px solid #f0f2f5;
-    background-color: #fafbfc;
+    background-color: #f9f9f9;
     font-size: 1rem;
 }
 
@@ -417,24 +417,45 @@ input[type="text"]:focus, select:focus {
 
 .today-meal {
     background: linear-gradient(135deg, #fff7e6, #ffffff);
-    border: 2px solid #f39c12;
-    box-shadow: 0 10px 30px rgba(243, 156, 18, 0.15);
+    border: 2px solid #faa41a;
+    box-shadow: 0 10px 30px rgba(250, 164, 26, 0.15);
 }
 
 .today-table th {
     text-align: center;
     font-size: 1.1rem;
-    background-color: #f39c12;
+    background-color: #faa41a;
     color: white;
     padding: 20px;
+    width: 33.33%;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.today-table th:last-child {
+    border-right: none;
 }
 
 .today-table td {
-    text-align: center;
+    text-align: left;
     padding: 24px 16px;
-    border-bottom: 1px solid #f8f9fa;
+    border-bottom: none;
+    border-right: 1px solid #f0f2f5;
     vertical-align: top;
     background-color: rgba(255, 255, 255, 0.9);
+    width: 33.33%;
+    position: relative;
+}
+
+.today-table td:last-child {
+    border-right: none;
+}
+
+.today-table td p {
+    white-space: pre-line;
+    line-height: 1.6;
+    margin: 0;
+    color: #444;
+    font-size: 0.95rem;
 }
 
 /* 월간 급식표 토글 버튼 */
