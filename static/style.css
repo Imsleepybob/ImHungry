@@ -335,7 +335,7 @@ text-align: left;
 }
 
 .meal-row:hover {
-    background-color: #f5f9ff;
+    background-color: #eef6ff;
     transform: translateX(3px);
 }
 
