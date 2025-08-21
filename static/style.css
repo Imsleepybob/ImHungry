@@ -336,7 +336,7 @@ text-align: left;
 
 .meal-row:hover {
     background-color: #f5f9ff;
-    transform: translateX(5px);
+    transform: translateX(3px);
 }
 
 .date-cell {
@@ -350,6 +350,25 @@ text-align: left;
     padding: 16px;
     line-height: 1.6;
     border-bottom: 1px solid #e9ecef;
+}
+
+.today-meal {
+    background: linear-gradient(135deg, #fff7e6, #ffffff);
+    border-left: 6px solid #faa41a;
+}
+
+.today-table th {
+    text-align: center;
+    font-size: 1rem;
+    background-color: #ffe0b3;
+    color: #333;
+}
+
+.today-table td {
+    text-align: center;
+    padding: 18px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
 }
 
 /* 월간 급식표 토글 버튼 */
