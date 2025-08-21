@@ -693,14 +693,38 @@ def school_meal_view(school_code):
         app.logger.warning(f"Failed to find school info for code: {school_code}")
         return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
 
-    # 급식 정보 가져오기
+    # 급식 정보 가져오기 (월 단위 원본 데이터)
     month_meals_data = get_month_meals(school_code, school_info['region_code'])
     
-    # 주간/월간 급식 데이터 가공
+    # 주간 급식 데이터 가공
     week_dates_list = get_week_dates()
-    week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
+    week_meals_data = {
+        date_str: month_meals_data.get(date_str, {
+            "breakfast": "급식 정보 없음",
+            "lunch": "급식 정보 없음",
+            "dinner": "급식 정보 없음"
+        })
+        for date_str in week_dates_list
+    }
+
+    # 월간 급식 데이터 가공
     month_dates_list = get_month_dates()
-    full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
+    full_month_meals_data = {
+        date_str: month_meals_data.get(date_str, {
+            "breakfast": "급식 정보 없음",
+            "lunch": "급식 정보 없음",
+            "dinner": "급식 정보 없음"
+        })
+        for date_str in month_dates_list
+    }
+
+    # 오늘 날짜 (YYYYMMDD) 기준으로 급식 정보 추출
+    today_str = datetime.now().strftime("%Y%m%d")
+    today_meal = month_meals_data.get(today_str, {
+        "breakfast": "급식 정보 없음",
+        "lunch": "급식 정보 없음",
+        "dinner": "급식 정보 없음"
+    })
 
     # 해당 지역의 이름 찾기
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
@@ -711,6 +735,7 @@ def school_meal_view(school_code):
         regions=regions,
         school_name=school_info['name'],
         school_code=school_info['code'],
+        today_meal=today_meal,              # ✅ 오늘 급식 추가
         week_meals=week_meals_data,
         month_meals=full_month_meals_data,
         loading=False,
