@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
-<meta name="description" content="초중고등학교의 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
+<meta name="description" content="가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
 <title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <meta property="og:type" content="website">
 <meta property="og:title" content="{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미">
@@ -146,7 +146,6 @@ body { word-break: keep-all; }
     transition: all 0.3s ease;
 }
 
-/* 각 식사별로 다른 색상 적용 */
 .today-meal-item:nth-child(1) {
     background: #fff8e1;
     border-color: #ffb74d;
@@ -227,8 +226,7 @@ body { word-break: keep-all; }
     }
     #ad-mobile, #bodyad-mobile {
         display: none;
-    }
-    /* 지연 광고는 show-ad 클래스가 있을 때만 표시 */
+    }/
     #bodyad-desktop:not(.show-ad) {
         display: none;
     }
@@ -336,19 +334,19 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
         </h3>
         <div class="today-meal-grid">
             <div class="today-meal-item">
-                <div class="today-meal-type">🌅 아침</div>
+                <div class="today-meal-type">🍎 아침</div>
                 <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">
                     {{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}
                 </div>
             </div>
             <div class="today-meal-item">
-                <div class="today-meal-type">☀️ 점심</div>
+                <div class="today-meal-type">🍔 점심</div>
                 <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">
                     {{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}
                 </div>
             </div>
             <div class="today-meal-item">
-                <div class="today-meal-type">🌙 저녁</div>
+                <div class="today-meal-type">🍝 저녁</div>
                 <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">
                     {{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}
                 </div>
