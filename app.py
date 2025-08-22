@@ -475,42 +475,84 @@ regions = {
 school_cache = {}
 meal_cache = {}
 
+def expand_school_name(school_name):
+    """학교명 축약어를 풀어서 반환합니다."""
+    expansions = {
+        '여고': '여자고등학교',
+        '남고': '남자고등학교',
+        '외고': '외국어고등학교',
+        '과고': '과학고등학교',
+        '예고': '예술고등학교',
+        '체고': '체육고등학교',
+        '공고': '공업고등학교',
+        '상고': '상업고등학교',
+        '농고': '농업고등학교',
+        '마이스터고': '마이스터고등학교',
+        '특성화고': '특성화고등학교',
+        '여중': '여자중학교',
+        '남중': '남자중학교',
+        '초등': '초등학교',
+        '초': '초등학교'
+    }
+    
+    expanded_name = school_name
+    for abbr, full in expansions.items():
+        if expanded_name.endswith(abbr):
+            expanded_name = expanded_name[:-len(abbr)] + full
+            break
+    
+    return expanded_name
+    
 # --- 핵심 함수 ---
 def get_school_code(school_name, region_code):
     """학교 이름과 지역 코드로 NEIS API에서 학교 코드와 전체 이름을 조회합니다."""
-    cache_key = f"{region_code}_{school_name}"
-    if cache_key in school_cache:
-        return school_cache[cache_key]
+    # 축약어 확장 처리 추가
+    expanded_name = expand_school_name(school_name)
+    
+    # 캐시 확인 (원래 이름과 확장된 이름 모두)
+    cache_keys = [f"{region_code}_{school_name}", f"{region_code}_{expanded_name}"]
+    for cache_key in cache_keys:
+        if cache_key in school_cache:
+            return school_cache[cache_key]
 
-    url = "https://open.neis.go.kr/hub/schoolInfo"
-    params = {
-        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
-        "ATPT_OFCDC_SC_CODE": region_code, "SCHUL_NM": school_name
-    }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+    # API 요청 시도 (원래 이름 먼저, 그 다음 확장된 이름)
+    search_terms = [school_name]
+    if expanded_name != school_name:
+        search_terms.append(expanded_name)
+    
+    for search_term in search_terms:
+        url = "https://open.neis.go.kr/hub/schoolInfo"
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
+            "ATPT_OFCDC_SC_CODE": region_code, "SCHUL_NM": search_term
+        }
+        try:
+            response = requests.get(url, params=params, timeout=5)
+            response.raise_for_status()
+            data = response.json()
 
-        if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
-            school_data = data["schoolInfo"][1]["row"][0]
-            school_code_val = school_data["SD_SCHUL_CODE"]
-            full_school_name = school_data["SCHUL_NM"]
-            
-            school_info_result = {
-                'code': school_code_val,
-                'name': full_school_name,
-                'region_code': region_code
-            }
-            # 다양한 키로 캐시 저장
-            school_cache[cache_key] = school_info_result
-            school_cache[f"{region_code}_{full_school_name}"] = school_info_result
-            school_cache[school_code_val] = school_info_result # 학교 코드로도 캐시
-            return school_info_result
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error fetching school code (Request) for {school_name}: {e}")
-    except Exception as e:
-        app.logger.error(f"Error fetching school code (General) for {school_name}: {e}")
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                school_code_val = school_data["SD_SCHUL_CODE"]
+                full_school_name = school_data["SCHUL_NM"]
+                
+                school_info_result = {
+                    'code': school_code_val,
+                    'name': full_school_name,
+                    'region_code': region_code
+                }
+                
+                # 모든 검색어로 캐시 저장
+                for term in [school_name, expanded_name, full_school_name]:
+                    school_cache[f"{region_code}_{term}"] = school_info_result
+                school_cache[school_code_val] = school_info_result
+                
+                return school_info_result
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Error fetching school code (Request) for {search_term}: {e}")
+        except Exception as e:
+            app.logger.error(f"Error fetching school code (General) for {search_term}: {e}")
+    
     return None
 
 def find_school_by_code(school_code):
@@ -696,6 +738,14 @@ def school_meal_view(school_code):
     # 급식 정보 가져오기
     month_meals_data = get_month_meals(school_code, school_info['region_code'])
     
+    # 오늘 급식 데이터 추가
+    today_str = datetime.now(KST).strftime('%Y%m%d')
+    today_meal = month_meals_data.get(today_str, {
+        "breakfast": "급식 정보 없음", 
+        "lunch": "급식 정보 없음", 
+        "dinner": "급식 정보 없음"
+    })
+    
     # 주간/월간 급식 데이터 가공
     week_dates_list = get_week_dates()
     week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
@@ -711,6 +761,8 @@ def school_meal_view(school_code):
         regions=regions,
         school_name=school_info['name'],
         school_code=school_info['code'],
+        today_meal=today_meal,  # 오늘 급식 데이터 추가
+        today_date=today_str,   # 오늘 날짜 추가
         week_meals=week_meals_data,
         month_meals=full_month_meals_data,
         loading=False,
@@ -742,6 +794,95 @@ def get_school_meal(school_code, date):
         return jsonify(meal_data)
     except Exception as e:
         app.logger.error(f"Error in get_school_meal API: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/schools/search')
+def search_schools_autocomplete():
+    """학교 검색 자동완성 API"""
+    query = request.args.get('q', '').strip()
+    region_name = request.args.get('region', '').strip()
+    
+    if not query or len(query) < 2:
+        return jsonify([])
+    
+    if not region_name or region_name not in regions:
+        return jsonify([])
+    
+    region_code = regions[region_name]
+    
+    # 원래 검색어와 축약어 확장 버전 모두 시도
+    search_terms = [query]
+    expanded_query = expand_school_name(query)
+    if expanded_query != query:
+        search_terms.append(expanded_query)
+    
+    schools = []
+    
+    for search_term in search_terms:
+        url = "https://open.neis.go.kr/hub/schoolInfo"
+        params = {
+            "KEY": API_KEY, 
+            "Type": "json", 
+            "pIndex": 1, 
+            "pSize": 10,  # 최대 10개까지
+            "ATPT_OFCDC_SC_CODE": region_code, 
+            "SCHUL_NM": search_term
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=3)
+            response.raise_for_status()
+            data = response.json()
+            
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                for school_data in data["schoolInfo"][1]["row"]:
+                    school_info = {
+                        'code': school_data["SD_SCHUL_CODE"],
+                        'name': school_data["SCHUL_NM"],
+                        'region_code': school_data["ATPT_OFCDC_SC_CODE"]
+                    }
+                    
+                    # 중복 제거
+                    if not any(s['code'] == school_info['code'] for s in schools):
+                        schools.append(school_info)
+                        
+                        # 캐시에도 저장
+                        cache_key = f"{region_code}_{school_data['SCHUL_NM']}"
+                        school_cache[cache_key] = school_info
+                        school_cache[school_data["SD_SCHUL_CODE"]] = school_info
+            
+            if len(schools) >= 10:  # 충분한 결과가 있으면 중단
+                break
+                
+        except Exception as e:
+            app.logger.error(f"Error in autocomplete search for '{search_term}': {e}")
+            continue
+    
+    return jsonify(schools[:10])  # 최대 10개 반환
+
+@app.route('/api/meals/today/<school_code>')
+def get_today_meal(school_code):
+    """오늘의 급식 정보를 반환합니다."""
+    school_info = find_school_by_code(school_code)
+    if not school_info:
+        return jsonify({"error": "School not found"}), 404
+    
+    try:
+        today_str = datetime.now(KST).strftime('%Y%m%d')
+        month_meals = get_month_meals(school_code, school_info['region_code'])
+        today_meal = month_meals.get(today_str, {
+            "breakfast": "급식 정보 없음", 
+            "lunch": "급식 정보 없음", 
+            "dinner": "급식 정보 없음"
+        })
+        
+        return jsonify({
+            "date": today_str,
+            "formatted_date": datetime.now(KST).strftime('%Y년 %m월 %d일'),
+            "meal": today_meal
+        })
+    except Exception as e:
+        app.logger.error(f"Error in get_today_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/current_time')
