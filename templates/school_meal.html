@@ -327,8 +327,6 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
 {% if school_name and today_meal %}
-<div class="meal-container">
-    <h2 class="school-title">{{ school_name }} 급식 정보</h2>
     
     <!-- 오늘 급식 정보 카드 -->
     <div class="today-meal-card">
@@ -413,6 +411,7 @@ safe }}</p></div>{% endif %}
       </div>
     </div>
   </div>
+{% endif %}
   {% elif school_name and not week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
