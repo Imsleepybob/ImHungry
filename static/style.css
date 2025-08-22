@@ -1,9 +1,8 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     margin: 0;
-    background-color: #f5f7fa;
-    color: #333;
-    line-height: 1.6;
+    background-color: #f9f9f9;
+color: #333;
 }
 
 .container {
@@ -19,12 +18,12 @@ body {
     align-items: center;
     padding: 16px 20px;
     background-color: #fff;
-    border-bottom: 1px solid #e5e5e5;
+border-bottom: 1px solid #e5e5e5;
     position: sticky;
     top: 0;
     z-index: 1000;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    transition: box-shadow 0.3s ease;
+transition: box-shadow 0.3s ease;
 }
 
 .main-header:hover {
@@ -39,40 +38,6 @@ body {
 
 .main-header .logo:hover {
     transform: scale(1.05);
-}
-
-/* 서비스 제목 및 설명 추가 */
-.service-intro {
-    text-align: center;
-    margin: 40px auto;
-    padding: 40px 20px;
-    background-color: #007bff;
-    border-radius: 20px;
-    color: white;
-    max-width: 800px;
-    box-shadow: 0 10px 30px rgba(0, 123, 255, 0.2);
-}
-
-.service-intro h1 {
-    font-size: 2.8rem;
-    margin-bottom: 16px;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.service-intro .subtitle {
-    font-size: 1.3rem;
-    margin-bottom: 12px;
-    opacity: 0.95;
-    font-weight: 500;
-}
-
-.service-intro .description {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.7;
 }
 
 /* 내비게이션 스타일 */
@@ -102,7 +67,7 @@ body {
     height: 2px;
     bottom: 0;
     left: 0;
-    background-color: #007aff;
+background-color: #007aff;
     transition: width 0.3s ease;
 }
 
@@ -117,7 +82,7 @@ body {
     right: 20px;
     background-color: #007bff;
     color: white;
-    padding: 10px 15px;
+padding: 10px 15px;
     border-radius: 50%;
     font-size: 18px;
     width: 45px;
@@ -126,7 +91,7 @@ body {
     align-items: center;
     justify-content: center;
     border: none;
-    cursor: pointer;
+cursor: pointer;
     z-index: 1001;
     transition: all 0.3s ease;
     box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
@@ -158,37 +123,37 @@ body {
 .search-form {
     margin: 20px auto;
     background-color: #ffffff;
-    padding: 32px;
-    border-radius: 16px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    padding: 24px;
+    border-radius: 12px;
+box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     max-width: 600px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .search-form:hover {
     transform: translateY(-5px);
-    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 
 .form-group {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 label {
     display: block;
-    margin-bottom: 10px;
-    font-weight: 600;
-    color: #444;
-    font-size: 1rem;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+font-size: 0.95rem;
 }
 
 input[type="text"], select {
     width: 100%;
-    padding: 16px;
-    border: 2px solid #e1e8ed;
-    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     box-sizing: border-box;
-    font-size: 16px;
+font-size: 16px;
     transition: all 0.3s ease;
     background-color: #f8f9fa;
 }
@@ -196,37 +161,35 @@ input[type="text"], select {
 input[type="text"]:focus, select:focus {
     outline: none;
     border-color: #007bff;
-    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.15);
+box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
     background-color: #fff;
-    transform: translateY(-2px);
 }
 
 .submit-btn {
     display: inline-block;
-    padding: 16px 24px;
+padding: 12px 20px;
     background-color: #007bff;
     color: #fff;
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     width: 100%;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+transition: all 0.3s ease;
 }
 
 .submit-btn:hover {
     background-color: #0056b3;
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+    transform: translateY(-2px);
+box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
 /* 모달 스타일 */
 .modal {
     display: none;
     position: fixed;
-    z-index: 2000;
+z-index: 2000;
     left: 0;
     top: 0;
     width: 100%;
@@ -234,7 +197,7 @@ input[type="text"]:focus, select:focus {
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.5);
     opacity: 0;
-    transition: opacity 0.3s ease;
+transition: opacity 0.3s ease;
 }
 
 .modal.show {
@@ -243,13 +206,13 @@ input[type="text"]:focus, select:focus {
 
 .modal-content {
     background-color: #fefefe;
-    margin: 15% auto;
-    padding: 30px;
+margin: 15% auto;
+    padding: 25px;
     border: none;
     width: 80%;
-    max-width: 450px;
-    border-radius: 16px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    border-radius: 12px;
+box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transform: scale(0.9);
     transition: all 0.3s ease;
     position: relative;
@@ -263,7 +226,7 @@ input[type="text"]:focus, select:focus {
     position: absolute;
     right: 20px;
     top: 15px;
-    color: #aaa;
+color: #aaa;
     font-size: 28px;
     font-weight: bold;
     transition: all 0.2s ease;
@@ -272,24 +235,24 @@ input[type="text"]:focus, select:focus {
 .close:hover {
     color: #333;
     transform: scale(1.2);
-    cursor: pointer;
+cursor: pointer;
 }
 
 /* 급식 테이블 스타일 - 현대적인 디자인 */
 .meal-container {
-    padding: 20px 0;
-    max-width: 900px;
-    margin: 0 auto;
+    padding: 10px 0;
+    max-width: 850px;
+margin: 0 auto;
 }
 
 .school-title {
     text-align: center;
-    font-size: 2rem;
-    margin-bottom: 40px;
-    color: #2c3e50;
-    font-weight: 700;
+    font-size: 1.8rem;
+    margin-bottom: 30px;
+    color: #333;
+    font-weight: 600;
     position: relative;
-    padding-bottom: 16px;
+padding-bottom: 12px;
 }
 
 .school-title::after {
@@ -299,35 +262,33 @@ input[type="text"]:focus, select:focus {
     left: 50%;
     transform: translateX(-50%);
     width: 80px;
-    height: 4px;
+height: 3px;
     background-color: #007bff;
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .meal-card {
     background-color: #fff;
-    border-radius: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    padding: 30px;
+    border-radius: 16px;
+box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    padding: 25px;
     margin-bottom: 30px;
     transition: all 0.4s ease;
     overflow: hidden;
-    border: 1px solid #f0f2f5;
 }
 
 .meal-card:hover {
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
-    transform: translateY(-8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-5px);
 }
 
 .meal-title {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     margin-top: 0;
-    margin-bottom: 24px;
-    color: #2c3e50;
+    margin-bottom: 20px;
+    color: #333;
     position: relative;
-    padding-left: 16px;
-    font-weight: 600;
+    padding-left: 12px;
 }
 
 .meal-title::before {
@@ -337,148 +298,80 @@ input[type="text"]:focus, select:focus {
     top: 0;
     height: 100%;
     width: 4px;
-    background-color: #007bff;
-    border-radius: 4px;
+    background-color: #faa41a;
+border-radius: 4px;
 }
 
 .meal-table-container {
     overflow-x: auto;
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
 }
 
 .meal-table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0;
+border-spacing: 0;
     overflow: hidden;
-    border-radius: 16px;
 }
 
 .meal-table thead th {
-    background-color: #007bff;
-    color: white;
+    background-color: #f8f9fa;
+    color: #555;
     font-weight: 600;
-    padding: 18px 16px;
-    text-align: left;
-    border-bottom: none;
+    padding: 16px;
+text-align: left;
+    border-bottom: 2px solid #e9ecef;
     position: sticky;
     top: 0;
     z-index: 10;
-    font-size: 1rem;
 }
 
 .meal-table th:first-child {
-    width: 140px;
-    border-radius: 16px 0 0 0;
-}
-
-.meal-table th:last-child {
-    border-radius: 0 16px 0 0;
+    width: 120px;
 }
 
 .meal-row {
-    transition: all 0.3s ease;
-    border-bottom: 1px solid #f8f9fa;
+    transition: all 0.2s ease;
 }
 
 .meal-row:hover {
-    background-color: #f8f9ff;
+    background-color: #f5f9ff;
     transform: translateX(5px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.meal-row:last-child {
-    border-bottom: none;
-}
-
-.meal-row:last-child .date-cell {
-    border-radius: 0 0 0 16px;
-}
-
-.meal-row:last-child .menu-cell {
-    border-radius: 0 0 16px 0;
 }
 
 .date-cell {
-    padding: 18px 16px;
-    font-weight: 600;
-    color: #007bff;
-    border-right: 1px solid #f0f2f5;
-    background-color: #f9f9f9;
-    font-size: 1rem;
+    padding: 16px;
+    font-weight: 500;
+    color: #0066cc;
+    border-bottom: 1px solid #e9ecef;
 }
 
 .menu-cell {
-    padding: 18px 16px;
-    line-height: 1.7;
-    background-color: #fff;
-}
-
-.today-meal {
-    background: linear-gradient(135deg, #fff7e6, #ffffff);
-    border: 2px solid #faa41a;
-    box-shadow: 0 10px 30px rgba(250, 164, 26, 0.15);
-}
-
-.today-table th {
-    text-align: center;
-    font-size: 1.1rem;
-    background-color: #faa41a;
-    color: white;
-    padding: 20px;
-    width: 33.33%;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.today-table th:last-child {
-    border-right: none;
-}
-
-.today-table td {
-    text-align: left;
-    padding: 24px 16px;
-    border-bottom: none;
-    border-right: 1px solid #f0f2f5;
-    vertical-align: top;
-    background-color: rgba(255, 255, 255, 0.9);
-    width: 33.33%;
-    position: relative;
-}
-
-.today-table td:last-child {
-    border-right: none;
-}
-
-.today-table td p {
-    white-space: pre-line;
+    padding: 16px;
     line-height: 1.6;
-    margin: 0;
-    color: #444;
-    font-size: 0.95rem;
+    border-bottom: 1px solid #e9ecef;
 }
 
 /* 월간 급식표 토글 버튼 */
 .toggle-month-btn {
     display: block;
     margin: 0 auto 30px;
-    padding: 14px 28px;
-    background-color: #f8f9fa;
-    color: #495057;
-    border: 2px solid #dee2e6;
-    border-radius: 50px;
+    padding: 12px 24px;
+background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 30px;
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-weight: 600;
+box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    font-weight: 500;
 }
 
 .toggle-month-btn:hover {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
+    background-color: #e9ecef;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-month-btn.active {
@@ -495,30 +388,29 @@ input[type="text"]:focus, select:focus {
 .share-btn {
     display: block;
     margin: -20px auto 20px;
-    padding: 12px 24px;
+    padding: 10px 20px;
     background-color: #f8f9fa;
-    color: #495057;
-    border: 2px solid #dee2e6;
-    border-radius: 50px;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 30px;
     cursor: pointer;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .share-btn:hover {
-    background-color: #28a745;
-    color: white;
-    border-color: #28a745;
+    background-color: #e9ecef;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 /* 로딩 애니메이션 */
 .loading-container {
     display: none;
     flex-direction: column;
-    align-items: center;
+align-items: center;
     justify-content: center;
     padding: 40px 0;
 }
@@ -527,7 +419,7 @@ input[type="text"]:focus, select:focus {
     width: 50px;
     height: 50px;
     border: 5px solid #f3f3f3;
-    border-top: 5px solid #007bff;
+border-top: 5px solid #007bff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
@@ -535,7 +427,8 @@ input[type="text"]:focus, select:focus {
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    100% { transform: rotate(360deg);
+}
 }
 
 /* iOS 웹앱 가이드 */
@@ -544,21 +437,16 @@ input[type="text"]:focus, select:focus {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(100%);
-    background-color: rgba(0, 0, 0, 0.85);
+background-color: rgba(0, 0, 0, 0.8);
     border-radius: 16px;
-    padding: 20px 25px;
+    padding: 15px 20px;
     width: 90%;
     max-width: 400px;
     color: white;
     z-index: 1000;
     opacity: 0;
-    transition: all 0.5s ease;
+transition: all 0.5s ease;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-#ios-webapp-guide.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
 }
 
 .ios-webapp-guide-content {
@@ -580,7 +468,7 @@ input[type="text"]:focus, select:focus {
     border: none;
     border-radius: 20px;
     padding: 8px 16px;
-    margin-top: 10px;
+margin-top: 10px;
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -594,10 +482,10 @@ input[type="text"]:focus, select:focus {
 .error-message {
     background-color: #fee;
     color: #e55;
-    padding: 20px;
-    border-radius: 12px;
+    padding: 15px;
+    border-radius: 8px;
     margin: 20px 0;
-    text-align: center;
+text-align: center;
     border-left: 4px solid #e55;
     font-weight: 500;
     animation: fadeIn 0.5s ease;
@@ -605,7 +493,8 @@ input[type="text"]:focus, select:focus {
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    to { opacity: 1;
+transform: translateY(0); }
 }
 
 /* 입력 시간 스타일 */
@@ -613,7 +502,7 @@ input[type="time"] {
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
-    width: 100%;
+width: 100%;
     background-color: #f8f9fa;
     box-sizing: border-box;
     font-size: 16px;
@@ -632,19 +521,20 @@ input[type="time"]:focus {
 .allergy-info-container {
     max-width: 850px;
     margin: 40px auto 20px;
-    padding: 30px;
+    padding: 25px;
     background-color: #fff;
-    border-radius: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
 }
 
 .allergy-info-container h4 {
     margin-top: 0;
-    margin-bottom: 24px;
-    font-size: 1.4rem;
-    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    color: #333;
     text-align: center;
-    font-weight: 600;
+    position: relative;
+    padding-left: 12px;
 }
 
 .allergy-list {
@@ -654,83 +544,288 @@ input[type="time"]:focus {
     list-style-position: inside;
     padding-left: 0;
     margin: 0;
-    gap: 20px;
 }
 
 .allergy-list li {
-    font-size: 0.95rem;
+    font-size: 0.9em;
     color: #555;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     line-height: 1.6;
-    padding: 8px 12px;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 767px) {
+    .meal-table th, .meal-table td {
+        padding: 12px 10px;
+font-size: 14px;
+    }
+    
+    .school-title {
+        font-size: 1.5rem;
+}
+    
+    .meal-title {
+        font-size: 1.2rem;
+}
+    
+    .meal-card {
+        padding: 15px;
+border-radius: 12px;
+    }
+    
+    .notification-btn {
+        top: 10px;
+right: 10px;
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+    
+    .menu-toggle {
+        display: block;
+background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    
+    .main-nav {
+        display: none;
+position: absolute;
+        top: 60px;
+        right: 0;
+        background-color: white;
+        width: 100%;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        flex-direction: column;
+border-radius: 0 0 12px 12px;
+        overflow: hidden;
+    }
+    
+    .main-nav.active {
+        display: block;
+animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from { transform: translateY(-20px);
+opacity: 0; }
+        to { transform: translateY(0); opacity: 1;
+}
+    }
+    
+    .main-nav ul {
+        flex-direction: column;
+width: 100%;
+    }
+    
+    .main-nav ul li {
+        border-bottom: 1px solid #eee;
+}
+    
+    .main-nav ul li:last-child {
+        border-bottom: none;
+}
+    
+    .main-nav ul li a {
+        display: block;
+padding: 15px;
+        text-decoration: none;
+        color: #333;
+        transition: all 0.2s ease;
+}
+    
+    .main-nav ul li a:hover {
+        background-color: #f5f9ff;
+padding-left: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+}
+    
+    .allergy-list {
+        columns: 1;
+        -webkit-columns: 1;
+        -moz-columns: 1;
+    }
+}
+
+/* 식단 세부 항목 스타일링 */
+.menu-cell {
+    position: relative;
+}
+
+.menu-item {
+    display: inline-block;
+margin-right: 5px;
+    position: relative;
+}
+
+/* 알레르기 정보 표시 (숫자가 있는 경우) */
+.menu-cell span[data-allergy] {
+    position: relative;
+cursor: pointer;
+}
+
+.menu-cell span[data-allergy]::after {
+    content: attr(data-allergy);
+    position: absolute;
+    top: -2px;
+    right: -5px;
+    font-size: 10px;
+    color: #e55;
+font-weight: bold;
+}
+
+.menu-cell span[data-allergy]:hover {
+    color: #007bff;
+    text-decoration: underline;
+}
+
+/* 메뉴 호버 효과 */
+.menu-highlight {
+    display: inline-block;
+    margin: 2px 0;
+    padding: 2px 0;
+transition: all 0.2s ease;
+    border-radius: 3px;
+}
+
+.menu-highlight:hover {
+    background-color: #fff8e1;
+    padding: 2px 5px;
+    transform: scale(1.05);
+box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* 애니메이션 효과 */
+@keyframes pulse {
+    0% { transform: scale(1);
+}
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1);
+}
+}
+
+.school-title {
+    animation: pulse 2s infinite;
+}
+
+/* 알림 모달 추가 스타일 */
+.notification-setting .meal-time-setting {
+    display: flex;
+align-items: center;
+    margin-bottom: 15px;
+}
+
+.notification-setting .meal-time-setting label {
+    margin: 0 10px;
+    width: 40px;
+/* 고정 너비 */
+    font-weight: 500;
+}
+
+.notification-setting .meal-time-setting input[type="checkbox"] {
+    transform: scale(1.2);
+    margin-right: 5px;
+cursor: pointer;
+}
+
+.notification-setting .meal-time-setting input[type="time"] {
+    flex: 1;
+/* 남은 공간 차지 */
+    padding: 8px;
+    margin-bottom: 0;
+/* 아래 여백 제거 */
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+.day-setting {
+    margin-top: 20px;
+    margin-bottom: 25px;
     background-color: #f8f9fa;
+    padding: 15px;
     border-radius: 8px;
-    transition: all 0.2s ease;
-    break-inside: avoid;
 }
 
-.allergy-list li:hover {
-    background-color: #e3f2fd;
-    transform: translateX(3px);
+.day-setting strong {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #333;
 }
 
-/* 식사 타입 스타일 개선 */
+.day-setting div {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+/* 작은 화면에서 줄바꿈 */
+}
+
+.day-setting div > span { /* 각 요일 항목을 감싸는 span 등 사용 시 */
+    display: inline-flex;
+align-items: center;
+    margin-bottom: 5px; /* 줄바꿈 시 간격 */
+}
+
+.day-setting input[type="checkbox"] {
+    margin-right: 5px;
+    cursor: pointer;
+    transform: scale(1.1);
+}
+
+.day-setting label {
+    margin-right: 10px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.modal-content p {
+    font-size: 0.9em;
+color: #555;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
 .meal-type {
-    margin-bottom: 16px;
-    padding: 12px;
-    border-radius: 10px;
-    background-color: #f8f9fa;
-    border-left: 4px solid #007bff;
-    transition: all 0.3s ease;
+    margin-bottom: 15px;
 }
-
-.meal-type:hover {
-    background-color: #e3f2fd;
-    transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .meal-type:last-child {
     margin-bottom: 0;
 }
-
 .meal-type strong {
     display: inline-block;
-    background-color: #007bff;
+    background-color: #faa41a;
     color: white;
-    padding: 4px 10px;
-    border-radius: 6px;
-    margin-right: 10px;
-    font-size: 0.85rem;
-    min-width: 35px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+font-size: 0.85em;
+    min-width: 30px;
     text-align: center;
-    font-weight: 600;
 }
-
 .meal-type p {
     display: inline;
     white-space: pre-line;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: #495057;
+/* 줄바꿈 적용 */
 }
-
 .no-meal {
-    color: #999;
+    color: #888;
     font-style: italic;
-    text-align: center;
-    padding: 20px;
-    font-size: 1rem;
 }
 
 .main-footer {
     background-color: #f8f9fa;
-    padding: 30px 20px;
+padding: 20px;
     text-align: center;
-    border-top: 1px solid #dee2e6;
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin-top: 40px;
+    border-top: 1px solid #eee;
+    color: #555;
+    font-size: 0.85em;
+    margin-top: 30px;
+/* Adjust as needed */
 }
 
 .footer-content {
@@ -739,16 +834,15 @@ input[type="time"]:focus {
 }
 
 .footer-content p {
-    margin-bottom: 12px;
-    line-height: 1.6;
+    margin-bottom: 10px;
+    line-height: 1.5;
 }
 
 .footer-links a {
     color: #007bff;
     text-decoration: none;
-    margin: 0 12px;
-    transition: all 0.3s ease;
-    font-weight: 500;
+margin: 0 10px;
+    transition: color 0.3s ease;
 }
 
 .footer-links a:hover {
@@ -756,198 +850,45 @@ input[type="time"]:focus {
     text-decoration: underline;
 }
 
-/* 알림 설정 스타일 개선 */
-.notification-setting .meal-time-setting {
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 16px;
-    background-color: #f8f9fa;
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.notification-setting .meal-time-setting:hover {
-    background-color: #e3f2fd;
-}
-
-.notification-setting .meal-time-setting label {
-    margin: 0 15px;
-    width: 50px;
-    font-weight: 600;
-    color: #495057;
-}
-
-.notification-setting .meal-time-setting input[type="checkbox"] {
-    transform: scale(1.3);
-    margin-right: 8px;
-    cursor: pointer;
-    accent-color: #007bff;
-}
-
-.notification-setting .meal-time-setting input[type="time"] {
-    flex: 1;
-    padding: 12px;
-    margin-bottom: 0;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    font-size: 15px;
-    transition: all 0.3s ease;
-}
-
-.notification-setting .meal-time-setting input[type="time"]:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
-}
-
-.day-setting {
-    margin-top: 24px;
-    margin-bottom: 30px;
+/* Styles for new static pages (terms.html, privacy.html) */
+.page-header {
     background-color: #f8f9fa;
     padding: 20px;
-    border-radius: 12px;
-    border: 1px solid #dee2e6;
-}
-
-.day-setting strong {
-    display: block;
-    margin-bottom: 16px;
-    font-weight: 600;
-    color: #495057;
-    font-size: 1.1rem;
-}
-
-.day-setting div {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.day-setting input[type="checkbox"] {
-    margin-right: 6px;
-    cursor: pointer;
-    transform: scale(1.2);
-    accent-color: #007bff;
-}
-
-.day-setting label {
-    margin-right: 15px;
-    cursor: pointer;
-    font-size: 15px;
-    font-weight: 500;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-.day-setting label:hover {
-    background-color: #e3f2fd;
-}
-
-.modal-content p {
-    font-size: 0.9em;
-    color: #6c757d;
+    text-align: center;
+border-bottom: 1px solid #eee;
     margin-bottom: 20px;
-    line-height: 1.5;
 }
 
-/* 반응형 스타일 */
-@media (max-width: 767px) {
-    .service-intro {
-        margin: 20px 15px;
-        padding: 30px 15px;
-    }
-    
-    .service-intro h1 {
-        font-size: 2.2rem;
-    }
-    
-    .service-intro .subtitle {
-        font-size: 1.1rem;
-    }
-    
-    .service-intro .description {
-        font-size: 1rem;
-    }
-    
-    .meal-table th, .meal-table td {
-        padding: 12px 10px;
-        font-size: 14px;
-    }
-    
-    .school-title {
-        font-size: 1.6rem;
-    }
-    
-    .meal-title {
-        font-size: 1.3rem;
-    }
-    
-    .meal-card {
-        padding: 20px;
-        border-radius: 16px;
-        margin: 15px;
-    }
-    
-    .notification-btn {
-        top: 15px;
-        right: 15px;
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
-    }
-    
-    .search-form {
-        margin: 20px 15px;
-        padding: 24px;
-    }
-    
-    .allergy-list {
-        columns: 1;
-        -webkit-columns: 1;
-        -moz-columns: 1;
-    }
-    
-    .day-setting div {
-        justify-content: center;
-        gap: 8px;
-    }
-    
-    .day-setting label {
-        margin-right: 8px;
-        font-size: 14px;
-    }
+.page-header h1 {
+    font-size: 2em;
+    color: #333;
+    margin: 0;
 }
 
-/* 광고 영역 */
-#ad-desktop, #bodyad-desktop {
-    display: none;
-}
-
-#bodyad-desktop, #bodyad-mobile {
-    display: none;
-    text-align: center;
-    margin: 10px auto;
-}
-
-#bodyad-desktop.show-ad, #bodyad-mobile.show-ad {
-    display: block;
-}
-
-#ad-mobile, #ad-desktop {
-    text-align: center;
+.page-content {
+    max-width: 800px;
     margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+    color: #444;
 }
-     
-@media (min-width: 768px) {
-    #ad-desktop, #bodyad-desktop {
-        display: block;
-    }
-    #ad-mobile, #bodyad-mobile {
-        display: none;
-    }
-    #bodyad-desktop:not(.show-ad) {
-        display: none;
-    }
+
+.page-content h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin-top: 25px;
+    margin-bottom: 10px;
+}
+
+.page-content p {
+    margin-bottom: 15px;
+}
+
+.page-footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+border-top: 1px solid #eee;
+    color: #777;
+    font-size: 0.8em;
 }
