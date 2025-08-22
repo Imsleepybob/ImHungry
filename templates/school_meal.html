@@ -74,6 +74,134 @@ white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
 body { word-break: keep-all; }
 
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.autocomplete-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background-color: #f8f9ff;
+}
+
+.autocomplete-item.selected {
+    background-color: #667eea;
+    color: white;
+}
+
+.today-meal-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.today-meal-title {
+    text-align: center;
+    font-size: 1.4em;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.today-meal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.today-meal-item {
+    border-radius: 10px;
+    padding: 15px;
+    text-align: center;
+    border: 2px solid #f0f0f0;
+    transition: all 0.3s ease;
+}
+
+/* 각 식사별로 다른 색상 적용 */
+.today-meal-item:nth-child(1) {
+    background: #fff8e1;
+    border-color: #ffb74d;
+}
+
+.today-meal-item:nth-child(2) {
+    background: #e8f5e8;
+    border-color: #66bb6a;
+}
+
+.today-meal-item:nth-child(3) {
+    background: #e3f2fd;
+    border-color: #42a5f5;
+}
+
+.today-meal-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.today-meal-type {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.today-meal-menu {
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-line;
+    word-break: keep-all;
+    color: #555;
+}
+
+.no-meal-today {
+    color: #999;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .today-meal-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .today-meal-item {
+        padding: 12px;
+    }
+    
+    .today-meal-type {
+        font-size: 1em;
+    }
+}
+
 #ad-desktop, #bodyad-desktop {
     display: none;
 }
