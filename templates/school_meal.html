@@ -604,10 +604,14 @@ console.log("Meal data received:", mealData);
 mealContent.substring(0, 80) + '...' : mealContent;
                 const titleMap = { breakfast: "아침", lunch: "점심", dinner: "저녁" };
 console.log(`Sending notification: ${titleMap[mealType]} - ${meal}`);
-                new Notification(`${schoolName} 오늘의 ${titleMap[mealType]} 🍗`, {
-                    body: meal, icon: "{{ url_for('favicon') }}", tag: `${dateString}-${mealType}`
-                }).onclick = (event) => { event.preventDefault();
-window.open(`/meal/${schoolCode}`, '_blank'); };
+new Notification(`${schoolName} 오늘의 ${titleMap[mealType]} 🍗`, {
+    body: meal, 
+    icon: "/favicon.svg", 
+    tag: `${dateString}-${mealType}`
+}).onclick = (event) => { 
+    event.preventDefault();
+    window.open(`/meal/${schoolCode}`, '_blank'); 
+};
             } else { console.log(`No ${mealType} for ${dateString}, skipping notification.`);
 }
         } catch (error) { console.error('알림 전송 오류:', error);
