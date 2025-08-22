@@ -74,115 +74,6 @@ white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
 body { word-break: keep-all; }
 
-/* 오늘 급식 전용 스타일 */
-.today-meal-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-}
-
-.today-meal-card h3 {
-    color: white;
-    margin-bottom: 20px;
-    text-align: center;
-    font-size: 1.3em;
-}
-
-.today-meal-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.today-meal-item {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    padding: 15px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    text-align: center;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.today-meal-item h4 {
-    color: white;
-    font-size: 1.1em;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-.today-meal-item p {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.9em;
-    line-height: 1.4;
-    white-space: pre-line;
-    margin: 0;
-}
-
-.today-meal-item.no-meal p {
-    color: rgba(255, 255, 255, 0.6);
-    font-style: italic;
-}
-
-@media (max-width: 768px) {
-    .today-meal-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .today-meal-item {
-        min-height: 80px;
-        padding: 12px;
-    }
-}
-
-/* 검색 자동완성 스타일 */
-.search-container {
-    position: relative;
-}
-
-.autocomplete-results {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #ddd;
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
-}
-
-.autocomplete-item {
-    padding: 12px 16px;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background-color 0.2s;
-}
-
-.autocomplete-item:hover {
-    background-color: #f8f9fa;
-}
-
-.autocomplete-item:last-child {
-    border-bottom: none;
-}
-
-.autocomplete-item.selected {
-    background-color: #e3f2fd;
-}
-
 #ad-desktop, #bodyad-desktop {
     display: none;
 }
@@ -272,7 +163,8 @@ body { word-break: keep-all; }
   <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" 
 stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
-      <div class="form-group">
+      <div 
+class="form-group">
         <label for="region">지역 선택</label>
         <select id="region" name="region" class="form-control">
           <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
@@ -281,21 +173,20 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
           {% endfor %}        
         </select>
       </div>
-      <div class="form-group search-container">
+      <div class="form-group">
         <label for="school_name">학교 이름 입력</label>
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off" placeholder="예: 서울고, 부산여고, 대구외고">
-        <div id="autocomplete-results" class="autocomplete-results"></div>
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control">
       </div>
       <button type="submit" class="submit-btn">검색</button>
   </form>
-<div id="bodyad-desktop">
+<div id=bodyad-desktop>
      <ins class="kakao_ad_area"
           data-ad-unit = "DAN-ODZjnUToMyS7iXmi"
           data-ad-width = "728"
           data-ad-height = "90"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
-<div id="bodyad-mobile">
+<div id=bodyad-mobile>
      <ins class="kakao_ad_area"
           data-ad-unit = "DAN-StDbNq6y1v7xZsfO"
           data-ad-width = "320"
@@ -304,31 +195,9 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
 </div>
   <div id="loading" class="loading-container"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
 {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
-
-  {% if school_name and today_meals %}
+  {% if school_name and week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
-    
-    <!-- 오늘 급식 정보 -->
-    <div class="today-meal-card">
-      <h3>오늘 급식 정보 🍽️ ({{ today_date | format_date }})</h3>
-      <div class="today-meal-grid">
-        <div class="today-meal-item {% if today_meals.breakfast == '급식 정보 없음' %}no-meal{% endif %}">
-          <h4>🌅 아침</h4>
-          <p>{{ today_meals.breakfast | safe }}</p>
-        </div>
-        <div class="today-meal-item {% if today_meals.lunch == '급식 정보 없음' %}no-meal{% endif %}">
-          <h4>☀️ 점심</h4>
-          <p>{{ today_meals.lunch | safe }}</p>
-        </div>
-        <div class="today-meal-item {% if today_meals.dinner == '급식 정보 없음' %}no-meal{% endif %}">
-          <h4>🌙 저녁</h4>
-          <p>{{ today_meals.dinner | safe }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 이번 주 급식 정보 -->
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
@@ -337,17 +206,22 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
           <tbody>
           {% for date, meal in week_meals.items() %}
             <tr class="meal-row">
-              <td class="date-cell">{{ date | format_date }}</td>
+              <td class="date-cell">{{ date |
+format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast |
+safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch |
+safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner |
+safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
+ 
       </div>
     </div>
        
@@ -359,33 +233,40 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
           <tbody>
           {% for date, meal in month_meals.items() %}
-            <tr class="meal-row">
-              <td class="date-cell">{{ date | format_date }}</td>
+         
+   <tr class="meal-row">
+              <td class="date-cell">{{ date |
+format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast |
+safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch |
+safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner |
+safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
+ 
       </div>
     </div>
   </div>
-  {% elif school_name and not today_meals %}
+  {% elif school_name and not week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
     <div class="no-info">급식 정보가 없습니다.</div>
   </div>
   {% endif %}
-
 <button id="share-btn" class="share-btn">🔗 공유하기</button>
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12" y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
+    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12" 
+y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
+</p>
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
 </div>
@@ -429,15 +310,12 @@ data-ad-height = "100"></ins>
       <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
       <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
     </div>
-    <p>&copy; 2025 ImHungry. All rights reserved.</p>
+    <p>&copy;
+2025 ImHungry. All rights reserved.</p>
   </div>
 </footer>
-
 <script>
     const regions_data = {{ regions | tojson | safe }};
-    let autocompleteTimeout;
-    let selectedIndex = -1;
-
 function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -448,123 +326,6 @@ if (parts.length === 2) {
 }
         } return null;
 }
-    
-    // 자동완성 기능
-    function setupAutocomplete() {
-        const schoolInput = document.getElementById('school_name');
-        const regionSelect = document.getElementById('region');
-        const resultsDiv = document.getElementById('autocomplete-results');
-        
-        if (!schoolInput || !regionSelect || !resultsDiv) return;
-
-        schoolInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            const region = regionSelect.value;
-            
-            clearTimeout(autocompleteTimeout);
-            selectedIndex = -1;
-            
-            if (query.length < 1 || !region) {
-                hideAutocomplete();
-                return;
-            }
-            
-            autocompleteTimeout = setTimeout(() => {
-                searchSchools(query, region);
-            }, 300);
-        });
-        
-        schoolInput.addEventListener('keydown', function(e) {
-            const items = resultsDiv.querySelectorAll('.autocomplete-item');
-            
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-                updateSelection(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, -1);
-                updateSelection(items);
-            } else if (e.key === 'Enter' && selectedIndex >= 0) {
-                e.preventDefault();
-                items[selectedIndex].click();
-            } else if (e.key === 'Escape') {
-                hideAutocomplete();
-            }
-        });
-        
-        // 외부 클릭 시 자동완성 숨기기
-        document.addEventListener('click', function(e) {
-            if (!schoolInput.contains(e.target) && !resultsDiv.contains(e.target)) {
-                hideAutocomplete();
-            }
-        });
-    }
-    
-    function searchSchools(query, regionName) {
-        const regionCode = regions_data[regionName];
-        if (!regionCode) return;
-        
-        fetch(`/api/search_schools?query=${encodeURIComponent(query)}&region_code=${regionCode}`)
-            .then(response => response.json())
-            .then(schools => {
-                showAutocomplete(schools);
-            })
-            .catch(error => {
-                console.error('검색 오류:', error);
-                hideAutocomplete();
-            });
-    }
-    
-    function showAutocomplete(schools) {
-        const resultsDiv = document.getElementById('autocomplete-results');
-        if (!schools || schools.length === 0) {
-            hideAutocomplete();
-            return;
-        }
-        
-        resultsDiv.innerHTML = '';
-        schools.forEach((school, index) => {
-            const item = document.createElement('div');
-            item.className = 'autocomplete-item';
-            item.textContent = school.name;
-            item.addEventListener('click', () => selectSchool(school));
-            resultsDiv.appendChild(item);
-        });
-        
-        resultsDiv.style.display = 'block';
-        selectedIndex = -1;
-    }
-    
-    function hideAutocomplete() {
-        const resultsDiv = document.getElementById('autocomplete-results');
-        if (resultsDiv) {
-            resultsDiv.style.display = 'none';
-            selectedIndex = -1;
-        }
-    }
-    
-    function updateSelection(items) {
-        items.forEach((item, index) => {
-            item.classList.toggle('selected', index === selectedIndex);
-        });
-    }
-    
-    function selectSchool(school) {
-        const schoolInput = document.getElementById('school_name');
-        const regionSelect = document.getElementById('region');
-        const regionName = Object.keys(regions_data).find(key => regions_data[key] === school.region_code);
-        
-        if (schoolInput && regionSelect && regionName) {
-            schoolInput.value = school.name;
-            regionSelect.value = regionName;
-            hideAutocomplete();
-            
-            // 자동으로 검색 실행
-            document.getElementById('regionForm').submit();
-        }
-    }
-
     function isIOS() { return [ 'iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod' ].includes(navigator.platform) ||
 (navigator.userAgent.includes("Mac") && "ontouchend" in document); }
     function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -703,14 +464,13 @@ window.open(`/meal/${schoolCode}`, '_blank'); };
         const schoolNameInput = document.getElementById("school_name");
         const loadingDiv = document.getElementById('loading');
         const notificationForm = document.getElementById('notification-form');
+ 
+
         const toggleMonthBtn = document.getElementById('toggleMonthBtn');
         const monthTable = document.getElementById('monthTable');
         const iosGuide = document.getElementById('ios-webapp-guide');
         const dismissBtn = document.getElementById('dismiss-ios-btn');
         const shareBtn = document.getElementById('share-btn');
-
-        // 자동완성 설정
-        setupAutocomplete();
 
         if (shareBtn) {
             shareBtn.addEventListener('click', async () => {
@@ -778,7 +538,8 @@ const settings = {
                     breakfast: { enabled: document.getElementById('breakfast-enable').checked, time: document.getElementById('breakfast-time').value },
                     lunch: { enabled: document.getElementById('lunch-enable').checked, time: document.getElementById('lunch-time').value },
                     dinner: { enabled: document.getElementById('dinner-enable').checked, time: document.getElementById('dinner-time').value },
-                    days: selectedDays
+                   
+  days: selectedDays
                 };
 console.log("Saving settings:", settings);
                 localStorage.setItem('notificationSettings', JSON.stringify(settings));
