@@ -420,16 +420,12 @@ safe }}</p></div>{% endif %}
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline 을 위해 쿠키를 사용합니다.
-계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
-    <div class="footer-links">
-      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
-      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
-      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
-    </div>
-    <p>&copy;
-2025 ImHungry. All rights reserved.</p>
+    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12" 
+y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
+</p>
+    <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
+</div>
 </footer>
 <script>
 const regions_data = {{ regions | tojson | safe }};
