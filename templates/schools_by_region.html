@@ -109,31 +109,31 @@
 
     <div class="container">
         <a href="/" class="back-btn">← 홈으로 돌아가기</a>
-        
+
         <div class="breadcrumb">
             <a href="/">홈</a> > {{ region_name }} 지역 학교
         </div>
-        
+
         <div class="region-header">
             <h1>{{ region_name }} 지역 학교 목록</h1>
             <p>아래 학교급을 선택하여 해당 지역의 학교들을 확인하세요</p>
         </div>
-        
-        <div class="school-level-grid">
-            {% for level, schools in schools_by_level.items() %}
-            {% if schools %}
-            <div class="level-card">
-                <div class="level-title">
-                    {% if level == "초등학교" %}🏫{% elif level == "중학교" %}🏫{% elif level == "고등학교" %}🏫{% elif level == "특수학교" %}🏫{% else %}🏫{% endif %}
-                    {{ level }}
-                    <span class="school-count">{{ schools|length }}개교</span>
-                </div>
-                <p>{{ region_name }} 지역의 {{ level }} {{ schools|length }}개교의 급식 정보를 확인할 수 있습니다.</p>
-                <a href="/schools/{{ region_name }}/{{ level }}" class="view-all-btn">{{ level }} 보기</a>
-            </div>
-            {% endif %}
-            {% endfor %}
+
+<div class="school-level-grid">
+    {% for level, schools in schools_by_level.items() %}
+    {% if schools %}
+    <div class="level-card">
+        <div class="level-title">
+            {% if level == "초등학교" %}🏫{% elif level == "중학교" %}🏫{% elif level == "고등학교" %}🏫{% elif level == "특수학교" %}🏫{% else %}🏫{% endif %}
+            {{ level }}
+            <span class="school-count">{{ schools|length }}개교</span>
         </div>
+        <p>{{ region_name }} 지역의 {{ level }} {{ schools|length }}개교의 급식 정보를 확인할 수 있습니다.</p>
+        <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=level) }}" class="view-all-btn">{{ level }} 보기</a>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
     </div>
 </body>
 </html>
