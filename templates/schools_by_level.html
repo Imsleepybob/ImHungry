@@ -120,22 +120,23 @@
     </header>
 
     <div class="container">
-        <a href="/schools/{{ region_name }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
-        
+        <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
+
         <div class="breadcrumb">
-            <a href="/">홈</a> > <a href="/schools/{{ region_name }}">{{ region_name }}</a> > {{ school_level }}
+            <a href="/">홈</a> > <a href="{{ url_for('schools_by_region', region_name=region_name) }}">{{ region_name }}</a> > {{ school_level }}
         </div>
-        
+
+
         <div class="level-header">
-            <h1>{{ region_name }} {{ school_level }}</h1>
+            <h1>{{ region_name }} {{ school_level }} 목록</h1>
             <p>원하는 학교를 선택하여 급식 정보를 확인하세요</p>
         </div>
-        
+
         {% if schools %}
         <div class="school-count-info">
             총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}이 있습니다.
         </div>
-        
+
         <div class="schools-grid">
             {% for school in schools %}
             <div class="school-card">
