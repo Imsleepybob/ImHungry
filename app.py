@@ -512,100 +512,129 @@ school_levels = {
 }
 
 def get_schools_by_region_and_level(region_code, school_level=None):
-    """지역별, 학교급별 학교 목록을 NEIS API에서 가져옵니다. (페이징 처리)"""
+    """지역별, 학교급별 학교 목록을 NEIS API에서 가져옵니다. (최적화된 버전)"""
     cache_key = f"schools_{region_code}_{school_level or 'all'}"
 
-    # 간단한 메모리 캐시
+    # 캐시 확인
     if hasattr(get_schools_by_region_and_level, 'cache'):
         if cache_key in get_schools_by_region_and_level.cache:
             return get_schools_by_region_and_level.cache[cache_key]
     else:
         get_schools_by_region_and_level.cache = {}
 
+    # 전체 학교 목록이 캐시에 있으면 필터링만 수행
+    all_schools_key = f"schools_{region_code}_all"
+    if school_level and all_schools_key in get_schools_by_region_and_level.cache:
+        all_schools = get_schools_by_region_and_level.cache[all_schools_key]
+        filtered_schools = []
+        level_keywords = school_levels.get(school_level, [])
+
+        for school in all_schools:
+            if any(keyword in school['name'] for keyword in level_keywords):
+                filtered_schools.append(school)
+
+        get_schools_by_region_and_level.cache[cache_key] = filtered_schools
+        return filtered_schools
+
     url = "https://open.neis.go.kr/hub/schoolInfo"
     schools = []
-    page = 1
-    per_page = 100  # 한 번에 100개씩 요청 (안전한 크기)
 
     try:
-        while True:
-            params = {
-                "KEY": API_KEY,
-                "Type": "json",
-                "pIndex": page,
-                "pSize": per_page,
-                "ATPT_OFCDC_SC_CODE": region_code
-            }
+        # 첫 번째 요청으로 전체 데이터 수 확인
+        params = {
+            "KEY": API_KEY,
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 300,  # 더 큰 크기로 요청
+            "ATPT_OFCDC_SC_CODE": region_code
+        }
 
-            app.logger.info(f"Fetching schools for {region_code}, page {page}")
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+        response = requests.get(url, params=params, timeout=15)  # 타임아웃 증가
+        response.raise_for_status()
+        data = response.json()
 
-            # API 응답 구조 확인
-            if "schoolInfo" not in data:
-                app.logger.warning(f"No schoolInfo in response for {region_code}, page {page}")
-                break
+        if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
+            app.logger.warning(f"No schools found for region {region_code}")
+            get_schools_by_region_and_level.cache[cache_key] = []
+            return []
 
-            school_info_list = data.get("schoolInfo")
-            if not school_info_list or len(school_info_list) < 2:
-                app.logger.warning(f"Invalid schoolInfo structure for {region_code}, page {page}")
-                break
+        # 첫 페이지 처리
+        rows = data["schoolInfo"][1].get("row", [])
+        for school_data in rows:
+            try:
+                school_name = school_data["SCHUL_NM"]
+                school_code = school_data["SD_SCHUL_CODE"]
 
-            rows = school_info_list[1].get("row")
-            if not rows:
-                app.logger.info(f"No more schools found for {region_code}, page {page}")
-                break
+                schools.append({
+                    'code': school_code,
+                    'name': school_name,
+                    'region_code': region_code
+                })
+            except KeyError:
+                continue
 
-            page_schools = []
-            for school_data in rows:
+        # 추가 페이지가 있는지 확인 (300개 이상인 경우에만)
+        if len(rows) >= 300:
+            page = 2
+            while page <= 10:  # 최대 10페이지까지만 (3000개 학교)
+                params["pIndex"] = page
                 try:
-                    school_name = school_data["SCHUL_NM"]
-                    school_code = school_data["SD_SCHUL_CODE"]
+                    response = requests.get(url, params=params, timeout=10)
+                    response.raise_for_status()
+                    data = response.json()
 
-                    # 학교급 필터링
-                    if school_level:
-                        level_keywords = school_levels.get(school_level, [])
-                        if not any(keyword in school_name for keyword in level_keywords):
+                    if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
+                        break
+
+                    rows = data["schoolInfo"][1].get("row", [])
+                    if not rows:
+                        break
+
+                    for school_data in rows:
+                        try:
+                            school_name = school_data["SCHUL_NM"]
+                            school_code = school_data["SD_SCHUL_CODE"]
+
+                            schools.append({
+                                'code': school_code,
+                                'name': school_name,
+                                'region_code': region_code
+                            })
+                        except KeyError:
                             continue
 
-                    page_schools.append({
-                        'code': school_code,
-                        'name': school_name,
-                        'region_code': region_code
-                    })
-                except KeyError as e:
-                    app.logger.warning(f"Missing key in school data: {e}")
-                    continue
+                    if len(rows) < 300:
+                        break
 
-            schools.extend(page_schools)
-
-            # 페이지당 결과가 per_page보다 적으면 마지막 페이지
-            if len(rows) < per_page:
-                app.logger.info(f"Last page reached for {region_code}, total schools: {len(schools)}")
-                break
-
-            page += 1
-
-            # 무한루프 방지 (최대 20페이지, 즉 2000개 학교까지)
-            if page > 20:
-                app.logger.warning(f"Max page limit reached for {region_code}")
-                break
+                    page += 1
+                except:
+                    break
 
         # 학교명으로 정렬
         schools.sort(key=lambda x: x['name'])
 
-        # 캐시에 저장
+        # 전체 목록 캐시 저장 (학교급 필터링 전)
+        if not school_level:
+            get_schools_by_region_and_level.cache[all_schools_key] = schools
+
+        # 학교급 필터링
+        if school_level:
+            level_keywords = school_levels.get(school_level, [])
+            filtered_schools = []
+            for school in schools:
+                if any(keyword in school['name'] for keyword in level_keywords):
+                    filtered_schools.append(school)
+            schools = filtered_schools
+
+        # 결과 캐시 저장
         get_schools_by_region_and_level.cache[cache_key] = schools
 
-        app.logger.info(f"Successfully fetched {len(schools)} schools for {region_code}, level: {school_level}")
+        app.logger.info(f"Fetched {len(schools)} schools for {region_code}, level: {school_level}")
         return schools
 
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Network error fetching schools for region {region_code}, level {school_level}: {e}")
-        return []
     except Exception as e:
-        app.logger.error(f"Unexpected error fetching schools for region {region_code}, level {school_level}: {e}")
+        app.logger.error(f"Error fetching schools for region {region_code}, level {school_level}: {e}")
+        get_schools_by_region_and_level.cache[cache_key] = []
         return []
 
 # --- 핵심 함수 ---
@@ -998,15 +1027,32 @@ def current_time():
 @app.route('/schools/<region_name>')
 def schools_by_region(region_name):
     """지역별 학교 목록 페이지"""
+    # URL 디코딩 처리
+    try:
+        from urllib.parse import unquote
+        region_name = unquote(region_name)
+    except:
+        pass
+
     if region_name not in regions:
         return redirect(url_for('index', error_message="유효하지 않은 지역입니다."))
 
     region_code = regions[region_name]
 
-    # 학교급별로 학교 목록 가져오기
+    # 학교급별로 학교 목록 가져오기 (비동기적으로 처리)
     schools_by_level = {}
-    for level in school_levels.keys():
-        schools_by_level[level] = get_schools_by_region_and_level(region_code, level)
+
+    # 전체 학교 목록을 먼저 가져오기
+    all_schools = get_schools_by_region_and_level(region_code)
+
+    # 메모리에서 필터링 (빠름)
+    for level, keywords in school_levels.items():
+        level_schools = []
+        for school in all_schools:
+            if any(keyword in school['name'] for keyword in keywords):
+                level_schools.append(school)
+        if level_schools:
+            schools_by_level[level] = level_schools
 
     # 접속 로그 기록
     log_access_request(200)
@@ -1019,6 +1065,14 @@ def schools_by_region(region_name):
 @app.route('/schools/<region_name>/<school_level>')
 def schools_by_region_and_level(region_name, school_level):
     """지역별, 학교급별 학교 목록 페이지"""
+    # URL 디코딩 처리
+    try:
+        from urllib.parse import unquote
+        region_name = unquote(region_name)
+        school_level = unquote(school_level)
+    except:
+        pass
+
     if region_name not in regions:
         return redirect(url_for('index', error_message="유효하지 않은 지역입니다."))
 
@@ -1026,7 +1080,15 @@ def schools_by_region_and_level(region_name, school_level):
         return redirect(url_for('schools_by_region', region_name=region_name))
 
     region_code = regions[region_name]
-    schools = get_schools_by_region_and_level(region_code, school_level)
+
+    # 캐시된 전체 목록에서 필터링 (매우 빠름)
+    all_schools = get_schools_by_region_and_level(region_code)
+    schools = []
+    keywords = school_levels.get(school_level, [])
+
+    for school in all_schools:
+        if any(keyword in school['name'] for keyword in keywords):
+            schools.append(school)
 
     # 접속 로그 기록
     log_access_request(200)
@@ -1036,6 +1098,30 @@ def schools_by_region_and_level(region_name, school_level):
                          school_level=school_level,
                          schools=schools,
                          regions=regions)
+
+# 3. 백그라운드에서 캐시 미리 로드하는 함수 추가
+def preload_school_cache():
+    """백그라운드에서 주요 지역의 학교 목록을 미리 캐시"""
+    import threading
+
+    def load_region(region_name, region_code):
+        try:
+            app.logger.info(f"Preloading schools for {region_name}")
+            get_schools_by_region_and_level(region_code)
+            app.logger.info(f"Completed preloading for {region_name}")
+        except Exception as e:
+            app.logger.error(f"Failed to preload {region_name}: {e}")
+
+    # 주요 지역부터 우선 로드
+    priority_regions = ["서울", "부산", "경기", "부산", "대구", "인천", "광주", "대전", "광주", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
+
+    for region_name in priority_regions:
+        if region_name in regions:
+            region_code = regions[region_name]
+            thread = threading.Thread(target=load_region, args=(region_name, region_code))
+            thread.daemon = True
+            thread.start()
+
 
 # --- 정적 파일 및 기타 라우트 ---
 @app.route('/robots.txt')
@@ -1313,5 +1399,12 @@ if __name__ == "__main__":
     app.logger.info(f"Security config: {SECURITY_CONFIG}")
     app.logger.info(f"Silent block patterns: {len(SILENT_BLOCK_PATTERNS)} patterns loaded")
     app.logger.info(f"No-log paths: {len(NO_LOG_PATHS)} paths configured")
+
+    import threading
+    preload_thread = threading.Thread(target=preload_school_cache)
+    preload_thread.daemon = True
+    preload_thread.start()
+
+    app.logger.info("Starting school cache preload in background...")
 
     app.run(debug=False)
