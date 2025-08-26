@@ -579,11 +579,11 @@ safe }}</p></div>{% endif %}
             <div class="region-card">
                 <div class="region-name">{{ region_name }}</div>
                 <div class="school-levels">
-                    <a href="/schools/{{ region_name }}/초등학교" class="level-link">초등학교</a>
-                    <a href="/schools/{{ region_name }}/중학교" class="level-link">중학교</a>
-                    <a href="/schools/{{ region_name }}/고등학교" class="level-link">고등학교</a>
-                    <a href="/schools/{{ region_name }}/특수학교" class="level-link">특수학교</a>
-                    <a href="/schools/{{ region_name }}" class="level-link">전체보기</a>
+                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='초등학교') }}" class="level-link">초등학교</a>
+                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='중학교') }}" class="level-link">중학교</a>
+                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='고등학교') }}" class="level-link">고등학교</a>
+                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='특수학교') }}" class="level-link">특수학교</a>
+                    <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="level-link">전체보기</a>
                 </div>
             </div>
             {% endfor %}
