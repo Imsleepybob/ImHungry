@@ -191,13 +191,159 @@ body { word-break: keep-all; }
         grid-template-columns: 1fr;
         gap: 10px;
     }
-    
+
     .today-meal-item {
         padding: 12px;
     }
-    
+
     .today-meal-type {
         font-size: 1em;
+    }
+}
+
+.manual-school-finder {
+    margin-top: 30px;
+    margin-bottom: 100px;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+}
+
+.manual-finder-header {
+    background: #faa41a;
+    color: white;
+    padding: 15px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.manual-finder-header:hover {
+    background: #e8930f;
+}
+
+.manual-finder-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.manual-finder-icon {
+    font-size: 1.2em;
+    transition: transform 0.3s ease;
+}
+
+.manual-finder-icon.expanded {
+    transform: rotate(180deg);
+}
+
+.manual-finder-content {
+    display: none;
+    padding: 20px;
+    background: #fafafa;
+}
+
+.manual-finder-content.show {
+    display: block;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 1000px;
+    }
+}
+
+.regions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.region-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.region-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.region-name {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.school-levels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.level-link {
+    background: #f0f0f0;
+    color: #555;
+    padding: 6px 12px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.level-link:hover {
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.finder-description {
+    color: #666;
+    font-size: 0.95em;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    border-left: 4px solid #faa41a;
+}
+
+@media (max-width: 768px) {
+    .regions-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .school-levels {
+        gap: 6px;
+    }
+
+    .level-link {
+        padding: 5px 10px;
+        font-size: 0.85em;
+    }
+
+    .manual-finder-content {
+        padding: 15px;
+    }
+
+    .manual-school-finder {
+        margin-bottom: 80px;
     }
 }
 
@@ -219,7 +365,7 @@ body { word-break: keep-all; }
     text-align: center;
     margin: 0 auto;
 }
-     
+
 @media (min-width: 768px) {
     #ad-desktop, #bodyad-desktop {
         display: block;
@@ -262,7 +408,7 @@ body { word-break: keep-all; }
             <div class="meal-time-setting"> <input type="checkbox" id="lunch-enable" name="lunch-enable"> <label for="lunch-enable"><strong>점심</strong></label> <input type="time" id="lunch-time" name="lunch-time"> </div>
             <div class="meal-time-setting"> <input type="checkbox" id="dinner-enable" name="dinner-enable"> <label for="dinner-enable"><strong>저녁</strong></label> <input type="time" id="dinner-time" name="dinner-time"> </div>
         </div>
-      
+
     <div class="day-setting">
             <strong>알림 요일</strong>
             <div> <input type="checkbox" id="day-sun" name="day" value="0"><label for="day-sun">일</label> <input type="checkbox" id="day-mon" name="day" value="1"><label for="day-mon">월</label> <input type="checkbox" id="day-tue" name="day" value="2"><label for="day-tue">화</label> <input type="checkbox" id="day-wed" name="day" value="3"><label for="day-wed">수</label> <input type="checkbox" id="day-thu" name="day" value="4"><label for="day-thu">목</label> <input type="checkbox" id="day-fri" name="day" value="5"><label for="day-fri">금</label> <input type="checkbox" id="day-sat" name="day" value="6"><label for="day-sat">토</label> </div>
@@ -286,7 +432,7 @@ body { word-break: keep-all; }
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div class="container">
-  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" 
+  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round"
 stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
 <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
     <div class="form-group">
@@ -295,7 +441,7 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
             <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
             {% for region_name_iter, region_code_iter in regions.items() %}
             <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
-            {% endfor %}        
+            {% endfor %}
         </select>
     </div>
     <div class="form-group autocomplete-container">
@@ -325,7 +471,7 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
 {% if school_name and today_meal %}
-    
+
     <!-- 오늘 급식 정보 카드 -->
     <div class="today-meal-card">
         <h3 class="today-meal-title">
@@ -376,10 +522,10 @@ safe }}</p></div>{% endif %}
           {% endfor %}
           </tbody>
         </table>
- 
+
       </div>
     </div>
-       
+
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
     <div class="meal-card month-meal" id="monthTable" style="display: none;">
       <h3 class="meal-title">이번 달 급식 정보🍱</h3>
@@ -388,7 +534,7 @@ safe }}</p></div>{% endif %}
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
           <tbody>
           {% for date, meal in month_meals.items() %}
-         
+
    <tr class="meal-row">
               <td class="date-cell">{{ date |
 format_date }}</td>
@@ -405,7 +551,7 @@ safe }}</p></div>{% endif %}
           {% endfor %}
           </tbody>
         </table>
- 
+
       </div>
     </div>
   </div>
@@ -416,11 +562,40 @@ safe }}</p></div>{% endif %}
     <div class="no-info">급식 정보가 없습니다.</div>
   </div>
   {% endif %}
+{% if not school_name or not week_meals %}
+<div class="manual-school-finder">
+    <div class="manual-finder-header" id="manualFinderToggle">
+        <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
+        <div class="manual-finder-icon" id="manualFinderIcon">▼</div>
+    </div>
+    <div class="manual-finder-content" id="manualFinderContent">
+        <div class="finder-description">
+            <strong>💡 팁:</strong> 학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
+            아래에서 원하는 지역을 선택한 후, 해당하는 학교급을 클릭하세요.
+        </div>
+
+        <div class="regions-grid">
+            {% for region_name, region_code in regions.items() %}
+            <div class="region-card">
+                <div class="region-name">{{ region_name }}</div>
+                <div class="school-levels">
+                    <a href="/schools/{{ region_name }}/초등학교" class="level-link">초등학교</a>
+                    <a href="/schools/{{ region_name }}/중학교" class="level-link">중학교</a>
+                    <a href="/schools/{{ region_name }}/고등학교" class="level-link">고등학교</a>
+                    <a href="/schools/{{ region_name }}/특수학교" class="level-link">특수학교</a>
+                    <a href="/schools/{{ region_name }}" class="level-link">전체보기</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 <button id="share-btn" class="share-btn">🔗 공유하기</button>
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12" 
+    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12"
 y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
 </p>
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
@@ -474,21 +649,21 @@ function dismissIOSGuide() {
 function loadNotificationSettings() {
     console.log("Loading notification settings...");
     const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
-    
+
     const breakfastEnable = document.getElementById('breakfast-enable');
     const breakfastTime = document.getElementById('breakfast-time');
     const lunchEnable = document.getElementById('lunch-enable');
     const lunchTime = document.getElementById('lunch-time');
     const dinnerEnable = document.getElementById('dinner-enable');
     const dinnerTime = document.getElementById('dinner-time');
-    
+
     if (breakfastEnable) breakfastEnable.checked = settings.breakfast?.enabled || false;
     if (breakfastTime) breakfastTime.value = settings.breakfast?.time || '07:00';
     if (lunchEnable) lunchEnable.checked = settings.lunch?.enabled || false;
     if (lunchTime) lunchTime.value = settings.lunch?.time || '12:00';
     if (dinnerEnable) dinnerEnable.checked = settings.dinner?.enabled || false;
     if (dinnerTime) dinnerTime.value = settings.dinner?.time || '18:00';
-    
+
     const days = settings.days || [1, 2, 3, 4, 5]; // Default Mon-Fri
     document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
         cb.checked = days.includes(parseInt(cb.value));
@@ -686,7 +861,32 @@ function selectSchool(item) {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
-    
+
+    // 수동 학교 찾기 토글 기능 (맨 먼저 처리)
+    const manualFinderToggle = document.getElementById('manualFinderToggle');
+    const manualFinderContent = document.getElementById('manualFinderContent');
+    const manualFinderIcon = document.getElementById('manualFinderIcon');
+
+    if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
+        console.log("Setting up manual school finder functionality");
+
+        manualFinderToggle.addEventListener('click', function() {
+            console.log("Manual finder toggle clicked!");
+            const isExpanded = manualFinderContent.classList.contains('show');
+
+            if (isExpanded) {
+                manualFinderContent.classList.remove('show');
+                manualFinderIcon.classList.remove('expanded');
+                manualFinderIcon.textContent = '▼';
+            } else {
+                manualFinderContent.classList.add('show');
+                manualFinderIcon.classList.add('expanded');
+                manualFinderIcon.textContent = '▲';
+            }
+        });
+    } // 이 중괄호가 빠져있었습니다!
+
+    // 기존 변수들 선언
     const schoolNameInput = document.getElementById("school_name");
     const regionSelect = document.getElementById("region");
     const autocompleteResults = document.getElementById("autocomplete-results");
@@ -714,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 자동완성 기능
     if (schoolNameInput && regionSelect && autocompleteResults) {
         console.log("Setting up autocomplete functionality");
-        
+
         // 입력 시 자동완성
         schoolNameInput.addEventListener('input', function() {
             const query = this.value.trim();
@@ -818,11 +1018,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (notificationBtn) {
         notificationBtn.addEventListener('click', openModal);
     }
-    
+
     if (closeBtn) {
         closeBtn.addEventListener('click', closeModal);
     }
-    
+
     // 모달 외부 클릭 시 닫기
     if (notificationModal) {
         window.addEventListener('click', (event) => {
@@ -858,16 +1058,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('먼저 학교를 검색해주세요.');
                 return;
             }
-            
+
             const selectedDays = Array.from(document.querySelectorAll('.day-setting input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
-            
+
             const breakfastEnable = document.getElementById('breakfast-enable');
             const breakfastTime = document.getElementById('breakfast-time');
             const lunchEnable = document.getElementById('lunch-enable');
             const lunchTime = document.getElementById('lunch-time');
             const dinnerEnable = document.getElementById('dinner-enable');
             const dinnerTime = document.getElementById('dinner-time');
-            
+
             const settings = {
                 breakfast: {
                     enabled: breakfastEnable ? breakfastEnable.checked : false,
@@ -883,7 +1083,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 days: selectedDays
             };
-            
+
             console.log("Saving settings:", settings);
             localStorage.setItem('notificationSettings', JSON.stringify(settings));
             alert('알림이 저장되었습니다.');
