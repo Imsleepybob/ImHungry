@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="급식알리미">
+    <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록입니다. 원하는 학교를 선택하여 급식 정보를 확인하세요.">
+    <title>{{ region_name }} {{ school_level }} 목록 - 급식알리미</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .breadcrumb {
+            margin: 20px 0;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        .breadcrumb a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+            color: #0056b3;
+        }
+        .level-header {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: #faa41a;
+            color: white;
+            border-radius: 15px;
+        }
+        .schools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .school-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .school-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .school-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.05em;
+        }
+        .view-meal-btn {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: background 0.3s ease;
+        }
+        .view-meal-btn:hover {
+            background: #0056b3;
+            text-decoration: none;
+            color: white;
+        }
+        .back-btn {
+            display: inline-block;
+            background: #f8f9fa;
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        .back-btn:hover {
+            background: #e9ecef;
+            text-decoration: none;
+        }
+        .no-schools {
+            text-align: center;
+            padding: 50px 20px;
+            color: #666;
+            font-size: 1.1em;
+        }
+        .school-count-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #666;
+        }
+        @media (max-width: 768px) {
+            .schools-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 기존 main-header 추가 -->
+    <header class="main-header">
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <a href="/schools/{{ region_name }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
+        
+        <div class="breadcrumb">
+            <a href="/">홈</a> > <a href="/schools/{{ region_name }}">{{ region_name }}</a> > {{ school_level }}
+        </div>
+        
+        <div class="level-header">
+            <h1>{{ region_name }} {{ school_level }}</h1>
+            <p>원하는 학교를 선택하여 급식 정보를 확인하세요</p>
+        </div>
+        
+        {% if schools %}
+        <div class="school-count-info">
+            총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}이 있습니다.
+        </div>
+        
+        <div class="schools-grid">
+            {% for school in schools %}
+            <div class="school-card">
+                <div class="school-name">{{ school.name }}</div>
+                <a href="/meal/{{ school.code }}" class="view-meal-btn">급식 정보 보기</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-schools">
+            {{ region_name }} 지역에는 해당하는 {{ school_level }}이 없습니다.
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
