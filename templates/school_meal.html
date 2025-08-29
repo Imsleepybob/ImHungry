@@ -795,10 +795,24 @@ async function sendNotification(mealType, notificationDate) {
 async function searchSchools(query, region) {
     try {
         const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`);
+
+        if (!response.ok) {
+            if (response.status === 500) {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    showErrorMessage(errorData.error);
+                    hideAutocomplete();
+                    return;
+                }
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const schools = await response.json();
         showAutocomplete(schools);
     } catch (error) {
         console.error('자동완성 검색 오류:', error);
+        showErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
         hideAutocomplete();
     }
 }
@@ -855,14 +869,12 @@ function selectSchool(item) {
     }
     hideAutocomplete();
 
-    // 직접 해당 학교 페이지로 이동
     window.location.href = `/meal/${schoolCode}`;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
 
-    // 수동 학교 찾기 토글 기능 (맨 먼저 처리)
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
     const manualFinderIcon = document.getElementById('manualFinderIcon');
@@ -884,9 +896,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 manualFinderIcon.textContent = '▲';
             }
         });
-    } // 이 중괄호가 빠져있었습니다!
+    }
 
-    // 기존 변수들 선언
     const schoolNameInput = document.getElementById("school_name");
     const regionSelect = document.getElementById("region");
     const autocompleteResults = document.getElementById("autocomplete-results");
@@ -915,21 +926,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (schoolNameInput && regionSelect && autocompleteResults) {
         console.log("Setting up autocomplete functionality");
 
-        // 입력 시 자동완성
         schoolNameInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            const region = regionSelect.value;
-            clearTimeout(autocompleteTimeout);
-            if (query.length < 2 || !region) {
-                hideAutocomplete();
-                return;
-            }
-            autocompleteTimeout = setTimeout(() => {
-                searchSchools(query, region);
-            }, 100);
-        });
+    const query = this.value.trim();
+    const region = regionSelect.value;
 
-        // 키보드 네비게이션
+    clearTimeout(autocompleteTimeout);
+
+    if (query.length < 2 || !region) {
+        hideAutocomplete();
+        return;
+    }
+
+    autocompleteTimeout = setTimeout(() => {
+        searchSchools(query, region);
+    }, 50);
+});
+
         schoolNameInput.addEventListener('keydown', function(e) {
             if (!autocompleteVisible) return;
             const items = autocompleteResults.querySelectorAll('.autocomplete-item');
@@ -949,12 +961,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // 지역 변경 시 자동완성 숨기기
         regionSelect.addEventListener('change', function() {
             hideAutocomplete();
         });
 
-        // 외부 클릭 시 자동완성 숨기기
         document.addEventListener('click', function(e) {
             if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
                 hideAutocomplete();
@@ -962,7 +972,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 공유 기능
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
             const schoolCode = getCookie('school_code');
@@ -992,7 +1001,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 모달 관련 함수들
     const openModal = () => {
         if (notificationModal) {
             console.log("Opening notification modal...");
@@ -1014,7 +1022,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // 이벤트 리스너 등록
     if (notificationBtn) {
         notificationBtn.addEventListener('click', openModal);
     }
@@ -1023,7 +1030,6 @@ document.addEventListener('DOMContentLoaded', function() {
         closeBtn.addEventListener('click', closeModal);
     }
 
-    // 모달 외부 클릭 시 닫기
     if (notificationModal) {
         window.addEventListener('click', (event) => {
             if (event.target === notificationModal) {
@@ -1036,7 +1042,6 @@ document.addEventListener('DOMContentLoaded', function() {
         dismissBtn.addEventListener('click', dismissIOSGuide);
     }
 
-    // 폼 제출 처리
     if (regionForm) {
         regionForm.addEventListener('submit', function(event) {
             if (!regionSelect || !regionSelect.value) {
@@ -1049,7 +1054,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 알림 설정 폼 처리
     if (notificationForm) {
         notificationForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -1092,7 +1096,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 월간 급식표 토글 기능
     if (toggleMonthBtn && monthTable) {
         console.log("Setting up month toggle functionality");
         toggleMonthBtn.addEventListener('click', function() {
