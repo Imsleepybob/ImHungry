@@ -810,6 +810,11 @@ def inject_today_date():
 @app.route('/wp-admin/<path:filename>')
 @app.route('/wp-content/<path:filename>')
 @app.route('/wp-includes/<path:filename>')
+@app.route('/.well-known/<path:filename>')
+@app.route('/cgi-bin')
+@app.route('/mini')
+@app.route('/plugins')
+@app.route('/.well-known')
 def silent_spam_block(filename=None):
     """스팸 요청들을 조용히 차단 (로그 없이)"""
     response = make_response('', 444)
