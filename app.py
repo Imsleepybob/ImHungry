@@ -654,6 +654,7 @@ def get_school_code(school_name, region_code):
     if expanded_name != school_name:
         search_terms.append(expanded_name)
 
+    api_error = False
     for search_term in search_terms:
         url = "https://open.neis.go.kr/hub/schoolInfo"
         params = {
@@ -682,10 +683,18 @@ def get_school_code(school_name, region_code):
                 school_cache[school_code_val] = school_info_result
 
                 return school_info_result
+        except requests.exceptions.Timeout:
+            app.logger.error(f"Error fetching school code (Timeout) for {search_term}: API timeout")
+            api_error = True
         except requests.exceptions.RequestException as e:
             app.logger.error(f"Error fetching school code (Request) for {search_term}: {e}")
+            api_error = True
         except Exception as e:
             app.logger.error(f"Error fetching school code (General) for {search_term}: {e}")
+
+    # API 오류가 발생한 경우 특별한 반환값
+    if api_error:
+        return "API_ERROR"
 
     return None
 
@@ -807,7 +816,6 @@ def silent_spam_block(filename=None):
     response.headers['X-Silent-Block'] = 'true'
     return response
 
-# --- 라우트 (Routes) ---
 @app.route("/", methods=["GET", "POST"])
 def index():
     error_message = request.args.get('error_message')
@@ -830,7 +838,15 @@ def index():
             return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
 
         school_info = get_school_code(school_name_input, region_code)
-        if school_info:
+
+        # API 오류 처리
+        if school_info == "API_ERROR":
+            return render_template('school_meal.html',
+                                 error_message="NEIS API에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+                                 regions=regions,
+                                 region=region_name,
+                                 school_name=school_name_input)
+        elif school_info:
             response = make_response(redirect(url_for('school_meal_view', school_code=school_info['code'])))
             # 쿠키 설정 시 quote 사용
             response.set_cookie('school_code', school_info['code'], max_age=60*60*24*30)
@@ -951,6 +967,7 @@ def search_schools_autocomplete():
         search_terms.append(expanded_query)
 
     schools = []
+    api_error = False
 
     for search_term in search_terms:
         url = "https://open.neis.go.kr/hub/schoolInfo"
@@ -988,9 +1005,18 @@ def search_schools_autocomplete():
             if len(schools) >= 10:  # 충분한 결과가 있으면 중단
                 break
 
+        except requests.exceptions.Timeout:
+            app.logger.error(f"Error in autocomplete search for '{search_term}': API timeout")
+            api_error = True
+            continue
         except Exception as e:
             app.logger.error(f"Error in autocomplete search for '{search_term}': {e}")
+            api_error = True
             continue
+
+    # API 오류가 발생하고 결과가 없는 경우 오류 응답
+    if api_error and len(schools) == 0:
+        return jsonify({"error": "NEIS API에 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}), 500
 
     return jsonify(schools[:10])  # 최대 10개 반환
 
