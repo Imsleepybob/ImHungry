@@ -847,7 +847,7 @@ def index():
         # API 오류 처리
         if school_info == "API_ERROR":
             return render_template('school_meal.html',
-                                 error_message="NEIS API에 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+                                 error_message="NEIS API에 오류가 발생하여 일시적으로 급식 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.",
                                  regions=regions,
                                  region=region_name,
                                  school_name=school_name_input)
@@ -1021,7 +1021,7 @@ def search_schools_autocomplete():
 
     # API 오류가 발생하고 결과가 없는 경우 오류 응답
     if api_error and len(schools) == 0:
-        return jsonify({"error": "NEIS API에 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}), 500
+        return jsonify({"error": "NEIS API에 오류가 발생하여 일시적으로 급식 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요."}), 500
 
     return jsonify(schools[:10])  # 최대 10개 반환
 
