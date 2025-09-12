@@ -601,6 +601,16 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
 </div>
+<footer class="main-footer">
+  <div class="footer-content">
+    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
+    <div class="footer-links">
+      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
+      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+    </div>
+    <p>&copy; 2025 ImHungry. All rights reserved.</p>
+  </div>
 </footer>
 <script>
 const regions_data = {{ regions | tojson | safe }};
@@ -608,6 +618,10 @@ const regions_data = {{ regions | tojson | safe }};
 let autocompleteTimeout;
 let autocompleteVisible = false;
 let selectedIndex = -1;
+// 캐싱 시스템 추가
+let searchCache = new Map();
+let lastQuery = '';
+let lastRegion = '';
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -664,7 +678,7 @@ function loadNotificationSettings() {
     if (dinnerEnable) dinnerEnable.checked = settings.dinner?.enabled || false;
     if (dinnerTime) dinnerTime.value = settings.dinner?.time || '18:00';
 
-    const days = settings.days || [1, 2, 3, 4, 5]; // Default Mon-Fri
+    const days = settings.days || [1, 2, 3, 4, 5];
     document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
         cb.checked = days.includes(parseInt(cb.value));
     });
@@ -682,16 +696,20 @@ function clearNotificationTimeouts() {
 async function requestAndScheduleNotifications() {
     console.log("Requesting permission and scheduling...");
     if (!('Notification' in window)) {
-        alert('이 브라우저는 알림을 지원하지 않습니다.');
+        console.warn('이 브라우저는 알림을 지원하지 않습니다.');
         return;
     }
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-        console.log("Permission granted. Scheduling...");
-        await scheduleNextNotifications();
-    } else {
-        console.warn("Permission denied.");
-        alert('알림 권한이 필요합니다. 설정을 확인해주세요.');
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log("Permission granted. Scheduling...");
+            await scheduleNextNotifications();
+        } else {
+            console.warn("Notification permission not granted (denied or default). Scheduling skipped.");
+        }
+    } catch (err) {
+        console.error('Notification permission request error:', err);
     }
 }
 
@@ -735,7 +753,7 @@ async function scheduleNextNotifications() {
                         const timeoutId = setTimeout(async () => {
                             console.log(`Triggering notification for ${mealType} at ${new Date()}`);
                             await sendNotification(mealType, nextTime);
-                            await scheduleNextNotifications(); // Reschedule *after* sending
+                            await scheduleNextNotifications();
                         }, delay);
                         notificationTimeouts.push(timeoutId);
                     } else {
@@ -792,7 +810,24 @@ async function sendNotification(mealType, notificationDate) {
     }
 }
 
+function showErrorMessage(message) {
+    console.error(message);
+}
+
 async function searchSchools(query, region) {
+    // 같은 쿼리면 스킵
+    if (query === lastQuery && region === lastRegion) return;
+
+    // 캐시 확인
+    const cacheKey = `${region}_${query}`;
+    if (searchCache.has(cacheKey)) {
+        const cachedResults = searchCache.get(cacheKey);
+        showAutocomplete(cachedResults);
+        lastQuery = query;
+        lastRegion = region;
+        return;
+    }
+
     try {
         const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`);
 
@@ -809,7 +844,15 @@ async function searchSchools(query, region) {
         }
 
         const schools = await response.json();
+
+        // 결과 캐싱 (5분간 유효)
+        searchCache.set(cacheKey, schools);
+        setTimeout(() => searchCache.delete(cacheKey), 300000);
+
         showAutocomplete(schools);
+        lastQuery = query;
+        lastRegion = region;
+
     } catch (error) {
         console.error('자동완성 검색 오류:', error);
         showErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
@@ -825,6 +868,13 @@ function showAutocomplete(schools) {
         hideAutocomplete();
         return;
     }
+
+    // 중복 렌더링 방지: 같은 결과라면 다시 그리지 않음
+    const currentHTML = schools.map(school => school.name).join('|');
+    if (autocompleteResults.dataset.lastRender === currentHTML) {
+        return;
+    }
+    autocompleteResults.dataset.lastRender = currentHTML;
 
     autocompleteResults.innerHTML = '';
 
@@ -926,22 +976,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (schoolNameInput && regionSelect && autocompleteResults) {
         console.log("Setting up autocomplete functionality");
 
+        // 입력 시 자동완성 - 개선된 버전
         schoolNameInput.addEventListener('input', function() {
-    const query = this.value.trim();
-    const region = regionSelect.value;
+            const query = this.value.trim();
+            const region = regionSelect.value;
 
-    clearTimeout(autocompleteTimeout);
+            // 기존 타이머 클리어
+            clearTimeout(autocompleteTimeout);
 
-    if (query.length < 2 || !region) {
-        hideAutocomplete();
-        return;
-    }
+            if (query.length < 1 || !region) {
+                hideAutocomplete();
+                lastQuery = '';
+                lastRegion = '';
+                return;
+            }
 
-    autocompleteTimeout = setTimeout(() => {
-        searchSchools(query, region);
-    }, 50);
-});
+            // 50ms 디바운스로 단축 (기존보다 대폭 단축)
+            autocompleteTimeout = setTimeout(() => {
+                searchSchools(query, region);
+            }, 50);
+        });
 
+        // 키보드 네비게이션
         schoolNameInput.addEventListener('keydown', function(e) {
             if (!autocompleteVisible) return;
             const items = autocompleteResults.querySelectorAll('.autocomplete-item');
@@ -961,10 +1017,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        // 지역 변경 시 자동완성 숨기기 및 캐시 클리어
         regionSelect.addEventListener('change', function() {
             hideAutocomplete();
+            // 캐시 클리어 및 변수 초기화
+            searchCache.clear();
+            lastQuery = '';
+            lastRegion = '';
         });
 
+        // 외부 클릭 시 자동완성 숨기기
         document.addEventListener('click', function(e) {
             if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
                 hideAutocomplete();
@@ -972,6 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 공유 기능
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
             const schoolCode = getCookie('school_code');
@@ -1001,6 +1064,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 모달 관련 함수들
     const openModal = () => {
         if (notificationModal) {
             console.log("Opening notification modal...");
@@ -1022,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // 이벤트 리스너 등록
     if (notificationBtn) {
         notificationBtn.addEventListener('click', openModal);
     }
@@ -1030,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function() {
         closeBtn.addEventListener('click', closeModal);
     }
 
+    // 모달 외부 클릭 시 닫기
     if (notificationModal) {
         window.addEventListener('click', (event) => {
             if (event.target === notificationModal) {
@@ -1042,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dismissBtn.addEventListener('click', dismissIOSGuide);
     }
 
+    // 폼 제출 처리
     if (regionForm) {
         regionForm.addEventListener('submit', function(event) {
             if (!regionSelect || !regionSelect.value) {
@@ -1054,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 알림 설정 폼 처리
     if (notificationForm) {
         notificationForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -1096,6 +1164,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 월간 급식표 토글 기능
     if (toggleMonthBtn && monthTable) {
         console.log("Setting up month toggle functionality");
         toggleMonthBtn.addEventListener('click', function() {
