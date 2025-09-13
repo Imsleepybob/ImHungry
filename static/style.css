@@ -2,7 +2,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     margin: 0;
     background-color: #f9f9f9;
-color: #333;
+    color: #333;
 }
 
 .container {
@@ -18,12 +18,12 @@ color: #333;
     align-items: center;
     padding: 16px 20px;
     background-color: #fff;
-border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid #e5e5e5;
     position: sticky;
     top: 0;
     z-index: 1000;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-transition: box-shadow 0.3s ease;
+    transition: box-shadow 0.3s ease;
 }
 
 .main-header:hover {
@@ -67,40 +67,12 @@ transition: box-shadow 0.3s ease;
     height: 2px;
     bottom: 0;
     left: 0;
-background-color: #007aff;
+    background-color: #007aff;
     transition: width 0.3s ease;
 }
 
 .main-nav ul li a:hover::after {
     width: 100%;
-}
-
-/* 알림 버튼 스타일 */
-.notification-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background-color: #007bff;
-    color: white;
-padding: 10px 15px;
-    border-radius: 50%;
-    font-size: 18px;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-cursor: pointer;
-    z-index: 1001;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
-}
-
-.notification-btn:hover {
-    background-color: #0056b3;
-    transform: scale(1.1);
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
 }
 
 /* 로고 스타일 */
@@ -125,7 +97,7 @@ cursor: pointer;
     background-color: #ffffff;
     padding: 24px;
     border-radius: 12px;
-box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     max-width: 600px;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -144,7 +116,7 @@ label {
     margin-bottom: 8px;
     font-weight: 500;
     color: #555;
-font-size: 0.95rem;
+    font-size: 0.95rem;
 }
 
 input[type="text"], select {
@@ -153,7 +125,7 @@ input[type="text"], select {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-sizing: border-box;
-font-size: 16px;
+    font-size: 16px;
     transition: all 0.3s ease;
     background-color: #f8f9fa;
 }
@@ -161,13 +133,13 @@ font-size: 16px;
 input[type="text"]:focus, select:focus {
     outline: none;
     border-color: #007bff;
-box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
     background-color: #fff;
 }
 
 .submit-btn {
     display: inline-block;
-padding: 12px 20px;
+    padding: 12px 20px;
     background-color: #007bff;
     color: #fff;
     border: none;
@@ -176,73 +148,20 @@ padding: 12px 20px;
     font-size: 16px;
     font-weight: 500;
     width: 100%;
-transition: all 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .submit-btn:hover {
     background-color: #0056b3;
     transform: translateY(-2px);
-box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
-}
-
-/* 모달 스타일 */
-.modal {
-    display: none;
-    position: fixed;
-z-index: 2000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.5);
-    opacity: 0;
-transition: opacity 0.3s ease;
-}
-
-.modal.show {
-    opacity: 1;
-}
-
-.modal-content {
-    background-color: #fefefe;
-margin: 15% auto;
-    padding: 25px;
-    border: none;
-    width: 80%;
-    max-width: 400px;
-    border-radius: 12px;
-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    transform: scale(0.9);
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.modal.show .modal-content {
-    transform: scale(1);
-}
-
-.close {
-    position: absolute;
-    right: 20px;
-    top: 15px;
-color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    transition: all 0.2s ease;
-}
-
-.close:hover {
-    color: #333;
-    transform: scale(1.2);
-cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
 }
 
 /* 급식 테이블 스타일 - 현대적인 디자인 */
 .meal-container {
     padding: 10px 0;
     max-width: 850px;
-margin: 0 auto;
+    margin: 0 auto;
 }
 
 .school-title {
@@ -252,7 +171,7 @@ margin: 0 auto;
     color: #333;
     font-weight: 600;
     position: relative;
-padding-bottom: 12px;
+    padding-bottom: 12px;
 }
 
 .school-title::after {
@@ -262,7 +181,7 @@ padding-bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
     width: 80px;
-height: 3px;
+    height: 3px;
     background-color: #007bff;
     border-radius: 3px;
 }
@@ -270,7 +189,7 @@ height: 3px;
 .meal-card {
     background-color: #fff;
     border-radius: 16px;
-box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
     padding: 25px;
     margin-bottom: 30px;
     transition: all 0.4s ease;
@@ -299,7 +218,7 @@ box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
     height: 100%;
     width: 4px;
     background-color: #faa41a;
-border-radius: 4px;
+    border-radius: 4px;
 }
 
 .meal-table-container {
@@ -310,7 +229,7 @@ border-radius: 4px;
 .meal-table {
     width: 100%;
     border-collapse: separate;
-border-spacing: 0;
+    border-spacing: 0;
     overflow: hidden;
 }
 
@@ -319,7 +238,7 @@ border-spacing: 0;
     color: #555;
     font-weight: 600;
     padding: 16px;
-text-align: left;
+    text-align: left;
     border-bottom: 2px solid #e9ecef;
     position: sticky;
     top: 0;
@@ -357,21 +276,21 @@ text-align: left;
     display: block;
     margin: 0 auto 30px;
     padding: 12px 24px;
-background-color: #f8f9fa;
+    background-color: #f8f9fa;
     color: #333;
     border: 1px solid #ddd;
     border-radius: 30px;
     font-size: 16px;
     cursor: pointer;
     transition: all 0.3s ease;
-box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     font-weight: 500;
 }
 
 .toggle-month-btn:hover {
     background-color: #e9ecef;
     transform: translateY(-2px);
-box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-month-btn.active {
@@ -410,7 +329,7 @@ box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 .loading-container {
     display: none;
     flex-direction: column;
-align-items: center;
+    align-items: center;
     justify-content: center;
     padding: 40px 0;
 }
@@ -419,7 +338,7 @@ align-items: center;
     width: 50px;
     height: 50px;
     border: 5px solid #f3f3f3;
-border-top: 5px solid #007bff;
+    border-top: 5px solid #007bff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
@@ -427,8 +346,7 @@ border-top: 5px solid #007bff;
 
 @keyframes spin {
     0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg);
-}
+    100% { transform: rotate(360deg); }
 }
 
 /* iOS 웹앱 가이드 */
@@ -437,7 +355,7 @@ border-top: 5px solid #007bff;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(100%);
-background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.8);
     border-radius: 16px;
     padding: 15px 20px;
     width: 90%;
@@ -445,7 +363,7 @@ background-color: rgba(0, 0, 0, 0.8);
     color: white;
     z-index: 1000;
     opacity: 0;
-transition: all 0.5s ease;
+    transition: all 0.5s ease;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
@@ -468,7 +386,7 @@ transition: all 0.5s ease;
     border: none;
     border-radius: 20px;
     padding: 8px 16px;
-margin-top: 10px;
+    margin-top: 10px;
     font-size: 14px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -485,7 +403,7 @@ margin-top: 10px;
     padding: 15px;
     border-radius: 8px;
     margin: 20px 0;
-text-align: center;
+    text-align: center;
     border-left: 4px solid #e55;
     font-weight: 500;
     animation: fadeIn 0.5s ease;
@@ -493,28 +411,7 @@ text-align: center;
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1;
-transform: translateY(0); }
-}
-
-/* 입력 시간 스타일 */
-input[type="time"] {
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-width: 100%;
-    background-color: #f8f9fa;
-    box-sizing: border-box;
-    font-size: 16px;
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
-}
-
-input[type="time"]:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-    background-color: #fff;
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* 알레르기 정보 스타일 */
@@ -557,33 +454,25 @@ input[type="time"]:focus {
 @media (max-width: 767px) {
     .meal-table th, .meal-table td {
         padding: 12px 10px;
-font-size: 14px;
+        font-size: 14px;
     }
     
     .school-title {
         font-size: 1.5rem;
-}
+    }
     
     .meal-title {
         font-size: 1.2rem;
-}
+    }
     
     .meal-card {
         padding: 15px;
-border-radius: 12px;
-    }
-    
-    .notification-btn {
-        top: 10px;
-right: 10px;
-        width: 38px;
-        height: 38px;
-        font-size: 16px;
+        border-radius: 12px;
     }
     
     .menu-toggle {
         display: block;
-background: none;
+        background: none;
         border: none;
         font-size: 24px;
         cursor: pointer;
@@ -591,58 +480,56 @@ background: none;
     
     .main-nav {
         display: none;
-position: absolute;
+        position: absolute;
         top: 60px;
         right: 0;
         background-color: white;
         width: 100%;
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         flex-direction: column;
-border-radius: 0 0 12px 12px;
+        border-radius: 0 0 12px 12px;
         overflow: hidden;
     }
     
     .main-nav.active {
         display: block;
-animation: slideDown 0.3s ease;
+        animation: slideDown 0.3s ease;
     }
     
     @keyframes slideDown {
-        from { transform: translateY(-20px);
-opacity: 0; }
-        to { transform: translateY(0); opacity: 1;
-}
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
     }
     
     .main-nav ul {
         flex-direction: column;
-width: 100%;
+        width: 100%;
     }
     
     .main-nav ul li {
         border-bottom: 1px solid #eee;
-}
+    }
     
     .main-nav ul li:last-child {
         border-bottom: none;
-}
+    }
     
     .main-nav ul li a {
         display: block;
-padding: 15px;
+        padding: 15px;
         text-decoration: none;
         color: #333;
         transition: all 0.2s ease;
-}
+    }
     
     .main-nav ul li a:hover {
         background-color: #f5f9ff;
-padding-left: 20px;
+        padding-left: 20px;
     }
     
     .form-group {
         margin-bottom: 15px;
-}
+    }
     
     .allergy-list {
         columns: 1;
@@ -658,14 +545,14 @@ padding-left: 20px;
 
 .menu-item {
     display: inline-block;
-margin-right: 5px;
+    margin-right: 5px;
     position: relative;
 }
 
 /* 알레르기 정보 표시 (숫자가 있는 경우) */
 .menu-cell span[data-allergy] {
     position: relative;
-cursor: pointer;
+    cursor: pointer;
 }
 
 .menu-cell span[data-allergy]::after {
@@ -675,7 +562,7 @@ cursor: pointer;
     right: -5px;
     font-size: 10px;
     color: #e55;
-font-weight: bold;
+    font-weight: bold;
 }
 
 .menu-cell span[data-allergy]:hover {
@@ -688,7 +575,7 @@ font-weight: bold;
     display: inline-block;
     margin: 2px 0;
     padding: 2px 0;
-transition: all 0.2s ease;
+    transition: all 0.2s ease;
     border-radius: 3px;
 }
 
@@ -696,98 +583,18 @@ transition: all 0.2s ease;
     background-color: #fff8e1;
     padding: 2px 5px;
     transform: scale(1.05);
-box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 /* 애니메이션 효과 */
 @keyframes pulse {
-    0% { transform: scale(1);
-}
+    0% { transform: scale(1); }
     50% { transform: scale(1.05); }
-    100% { transform: scale(1);
-}
+    100% { transform: scale(1); }
 }
 
 .school-title {
     animation: pulse 2s infinite;
-}
-
-/* 알림 모달 추가 스타일 */
-.notification-setting .meal-time-setting {
-    display: flex;
-align-items: center;
-    margin-bottom: 15px;
-}
-
-.notification-setting .meal-time-setting label {
-    margin: 0 10px;
-    width: 40px;
-/* 고정 너비 */
-    font-weight: 500;
-}
-
-.notification-setting .meal-time-setting input[type="checkbox"] {
-    transform: scale(1.2);
-    margin-right: 5px;
-cursor: pointer;
-}
-
-.notification-setting .meal-time-setting input[type="time"] {
-    flex: 1;
-/* 남은 공간 차지 */
-    padding: 8px;
-    margin-bottom: 0;
-/* 아래 여백 제거 */
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 15px;
-}
-
-.day-setting {
-    margin-top: 20px;
-    margin-bottom: 25px;
-    background-color: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-}
-
-.day-setting strong {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: 600;
-    color: #333;
-}
-
-.day-setting div {
-    display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-/* 작은 화면에서 줄바꿈 */
-}
-
-.day-setting div > span { /* 각 요일 항목을 감싸는 span 등 사용 시 */
-    display: inline-flex;
-align-items: center;
-    margin-bottom: 5px; /* 줄바꿈 시 간격 */
-}
-
-.day-setting input[type="checkbox"] {
-    margin-right: 5px;
-    cursor: pointer;
-    transform: scale(1.1);
-}
-
-.day-setting label {
-    margin-right: 10px;
-    cursor: pointer;
-    font-size: 15px;
-}
-
-.modal-content p {
-    font-size: 0.9em;
-color: #555;
-    margin-bottom: 20px;
-    line-height: 1.4;
 }
 
 .meal-type {
@@ -803,14 +610,13 @@ color: #555;
     padding: 3px 8px;
     border-radius: 4px;
     margin-right: 8px;
-font-size: 0.85em;
+    font-size: 0.85em;
     min-width: 30px;
     text-align: center;
 }
 .meal-type p {
     display: inline;
     white-space: pre-line;
-/* 줄바꿈 적용 */
 }
 .no-meal {
     color: #888;
@@ -819,13 +625,12 @@ font-size: 0.85em;
 
 .main-footer {
     background-color: #f8f9fa;
-padding: 20px;
+    padding: 20px;
     text-align: center;
     border-top: 1px solid #eee;
     color: #555;
     font-size: 0.85em;
     margin-top: 30px;
-/* Adjust as needed */
 }
 
 .footer-content {
@@ -841,7 +646,7 @@ padding: 20px;
 .footer-links a {
     color: #007bff;
     text-decoration: none;
-margin: 0 10px;
+    margin: 0 10px;
     transition: color 0.3s ease;
 }
 
@@ -855,7 +660,7 @@ margin: 0 10px;
     background-color: #f8f9fa;
     padding: 20px;
     text-align: center;
-border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #eee;
     margin-bottom: 20px;
 }
 
@@ -888,7 +693,7 @@ border-bottom: 1px solid #eee;
     text-align: center;
     padding: 20px;
     margin-top: 30px;
-border-top: 1px solid #eee;
+    border-top: 1px solid #eee;
     color: #777;
     font-size: 0.8em;
 }
