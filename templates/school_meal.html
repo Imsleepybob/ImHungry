@@ -30,12 +30,12 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
      crossorigin="anonymous"></script>
 <style>
-.notification-setting .meal-time-setting { display: flex;
+.meal-time-setting { display: flex;
 align-items: center; margin-bottom: 15px; }
-.notification-setting .meal-time-setting label { margin: 0 10px; width: 40px; }
-.notification-setting .meal-time-setting input[type="checkbox"] { transform: scale(1.2);
+.meal-time-setting label { margin: 0 10px; width: 40px; }
+.meal-time-setting input[type="checkbox"] { transform: scale(1.2);
 margin-right: 5px; cursor: pointer; }
-.notification-setting .meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px;
+.meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px;
 }
 .day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
 .day-setting strong { display: block; margin-bottom: 10px;
@@ -393,30 +393,7 @@ body { word-break: keep-all; }
       <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
     </a>
   </div>
-  <button class="notification-btn" id="notification-btn">🔔</button>
 </header>
-<div id="notification-modal" class="modal">
-  <div class="modal-content">
-    <span class="close">&times;</span>
-    <h2>알림 설정</h2>
-    <form id="notification-form">
-        <p>알림을 받고 싶은 식사와 요일을 선택하세요.
-알림 기능은 PC에서만 제공되며, 브라우저의 백그라운드에 본 페이지가 열려있어야 합니다.
-급식이 없는 날은 알림이 울리지 않습니다.</p>
-        <div class="notification-setting">
-            <div class="meal-time-setting"> <input type="checkbox" id="breakfast-enable" name="breakfast-enable"> <label for="breakfast-enable"><strong>아침</strong></label> <input type="time" id="breakfast-time" name="breakfast-time"> </div>
-            <div class="meal-time-setting"> <input type="checkbox" id="lunch-enable" name="lunch-enable"> <label for="lunch-enable"><strong>점심</strong></label> <input type="time" id="lunch-time" name="lunch-time"> </div>
-            <div class="meal-time-setting"> <input type="checkbox" id="dinner-enable" name="dinner-enable"> <label for="dinner-enable"><strong>저녁</strong></label> <input type="time" id="dinner-time" name="dinner-time"> </div>
-        </div>
-
-    <div class="day-setting">
-            <strong>알림 요일</strong>
-            <div> <input type="checkbox" id="day-sun" name="day" value="0"><label for="day-sun">일</label> <input type="checkbox" id="day-mon" name="day" value="1"><label for="day-mon">월</label> <input type="checkbox" id="day-tue" name="day" value="2"><label for="day-tue">화</label> <input type="checkbox" id="day-wed" name="day" value="3"><label for="day-wed">수</label> <input type="checkbox" id="day-thu" name="day" value="4"><label for="day-thu">목</label> <input type="checkbox" id="day-fri" name="day" value="5"><label for="day-fri">금</label> <input type="checkbox" id="day-sat" name="day" value="6"><label for="day-sat">토</label> </div>
-        </div>
-        <button type="submit" class="submit-btn">저장</button>
-    </form>
-  </div>
-</div>
 <div id="ad-mobile">
 <ins class="kakao_ad_area"
          data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
@@ -660,156 +637,6 @@ function dismissIOSGuide() {
     }
 }
 
-function loadNotificationSettings() {
-    console.log("Loading notification settings...");
-    const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
-
-    const breakfastEnable = document.getElementById('breakfast-enable');
-    const breakfastTime = document.getElementById('breakfast-time');
-    const lunchEnable = document.getElementById('lunch-enable');
-    const lunchTime = document.getElementById('lunch-time');
-    const dinnerEnable = document.getElementById('dinner-enable');
-    const dinnerTime = document.getElementById('dinner-time');
-
-    if (breakfastEnable) breakfastEnable.checked = settings.breakfast?.enabled || false;
-    if (breakfastTime) breakfastTime.value = settings.breakfast?.time || '07:00';
-    if (lunchEnable) lunchEnable.checked = settings.lunch?.enabled || false;
-    if (lunchTime) lunchTime.value = settings.lunch?.time || '12:00';
-    if (dinnerEnable) dinnerEnable.checked = settings.dinner?.enabled || false;
-    if (dinnerTime) dinnerTime.value = settings.dinner?.time || '18:00';
-
-    const days = settings.days || [1, 2, 3, 4, 5];
-    document.querySelectorAll('.day-setting input[type="checkbox"]').forEach(cb => {
-        cb.checked = days.includes(parseInt(cb.value));
-    });
-    console.log("Settings loaded:", settings);
-}
-
-let notificationTimeouts = [];
-
-function clearNotificationTimeouts() {
-    console.log("Clearing all notifications timeouts.");
-    notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
-    notificationTimeouts = [];
-}
-
-async function requestAndScheduleNotifications() {
-    console.log("Requesting permission and scheduling...");
-    if (!('Notification' in window)) {
-        console.warn('이 브라우저는 알림을 지원하지 않습니다.');
-        return;
-    }
-
-    try {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            console.log("Permission granted. Scheduling...");
-            await scheduleNextNotifications();
-        } else {
-            console.warn("Notification permission not granted (denied or default). Scheduling skipped.");
-        }
-    } catch (err) {
-        console.error('Notification permission request error:', err);
-    }
-}
-
-async function scheduleNextNotifications() {
-    clearNotificationTimeouts();
-    const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
-    const schoolCode = getCookie('school_code');
-    if (!settings || !schoolCode) {
-        console.log("No settings or school code, skipping schedule.");
-        return;
-    }
-
-    try {
-        const response = await fetch('/current_time');
-        const data = await response.json();
-        const now = new Date(data.current_time);
-        console.log("Current KST:", now);
-
-        const mealTypes = ['breakfast', 'lunch', 'dinner'];
-        mealTypes.forEach(mealType => {
-            if (settings[mealType]?.enabled && settings[mealType]?.time && settings.days) {
-                const [hours, minutes] = settings[mealType].time.split(':');
-                settings.days.forEach(dayOfWeek => {
-                    let nextTime = new Date(now);
-
-                    nextTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-                    let currentDay = now.getDay();
-                    let dayDiff = dayOfWeek - currentDay;
-
-                    if (dayDiff < 0) {
-                        dayDiff += 7;
-                    }
-                    nextTime.setDate(now.getDate() + dayDiff);
-                    if (nextTime <= now) {
-                        nextTime.setDate(nextTime.getDate() + 7);
-                    }
-                    const delay = nextTime.getTime() - now.getTime();
-
-                    if (delay > 0) {
-                        console.log(`Scheduling ${mealType} for ${nextTime} (Delay: ${Math.round(delay/1000)}s)`);
-                        const timeoutId = setTimeout(async () => {
-                            console.log(`Triggering notification for ${mealType} at ${new Date()}`);
-                            await sendNotification(mealType, nextTime);
-                            await scheduleNextNotifications();
-                        }, delay);
-                        notificationTimeouts.push(timeoutId);
-                    } else {
-                        console.warn(`Could not schedule ${mealType} for day ${dayOfWeek}, time is past.`);
-                    }
-                });
-            }
-        });
-    } catch (error) {
-        console.error('Error during scheduling:', error);
-    }
-}
-
-async function sendNotification(mealType, notificationDate) {
-    if (Notification.permission !== 'granted') return;
-    const schoolCode = getCookie('school_code');
-    const schoolName = getCookie('school_name');
-    if (!schoolCode || !schoolName) return;
-    try {
-        const dateString = notificationDate.toISOString().slice(0, 10).replace(/-/g, '');
-        console.log(`Fetching meal for ${schoolName} (${schoolCode}) on ${dateString}`);
-        const mealResponse = await fetch(`/api/meals/${schoolCode}/${dateString}`);
-        if (!mealResponse.ok) {
-            console.error("API Fetch Error:", mealResponse.statusText);
-            return;
-        }
-        const mealData = await mealResponse.json();
-        console.log("Meal data received:", mealData);
-
-        const mealContent = mealData[mealType];
-        if (mealContent && mealContent !== "급식 정보 없음") {
-            const meal = mealContent.length > 80 ?
-                mealContent.substring(0, 80) + '...' : mealContent;
-            const titleMap = {
-                breakfast: "아침",
-                lunch: "점심",
-                dinner: "저녁"
-            };
-            console.log(`Sending notification: ${titleMap[mealType]} - ${meal}`);
-            const notification = new Notification(`${schoolName} 오늘의 ${titleMap[mealType]} 🍗`, {
-                body: meal,
-                icon: "/favicon.svg",
-                tag: `${dateString}-${mealType}`
-            });
-            notification.onclick = function(event) {
-                event.preventDefault();
-                window.open(`/meal/${schoolCode}`, '_blank');
-            };
-        } else {
-            console.log(`No ${mealType} for ${dateString}, skipping notification.`);
-        }
-    } catch (error) {
-        console.error('알림 전송 오류:', error);
-    }
-}
-
 function showErrorMessage(message) {
     console.error(message);
 }
@@ -951,12 +778,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const schoolNameInput = document.getElementById("school_name");
     const regionSelect = document.getElementById("region");
     const autocompleteResults = document.getElementById("autocomplete-results");
-    const notificationBtn = document.getElementById('notification-btn');
-    const notificationModal = document.getElementById('notification-modal');
-    const closeBtn = document.querySelector('#notification-modal .close');
     const regionForm = document.getElementById('regionForm');
     const loadingDiv = document.getElementById('loading');
-    const notificationForm = document.getElementById('notification-form');
     const toggleMonthBtn = document.getElementById('toggleMonthBtn');
     const monthTable = document.getElementById('monthTable');
     const iosGuide = document.getElementById('ios-webapp-guide');
@@ -967,7 +790,6 @@ document.addEventListener('DOMContentLoaded', function() {
         schoolNameInput: !!schoolNameInput,
         regionSelect: !!regionSelect,
         autocompleteResults: !!autocompleteResults,
-        notificationBtn: !!notificationBtn,
         toggleMonthBtn: !!toggleMonthBtn,
         monthTable: !!monthTable
     });
@@ -1064,46 +886,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 모달 관련 함수들
-    const openModal = () => {
-        if (notificationModal) {
-            console.log("Opening notification modal...");
-            loadNotificationSettings();
-            notificationModal.style.display = 'block';
-            setTimeout(() => {
-                notificationModal.style.opacity = '1';
-            }, 10);
-        }
-    };
-
-    const closeModal = () => {
-        if (notificationModal) {
-            console.log("Closing notification modal...");
-            notificationModal.style.opacity = '0';
-            setTimeout(() => {
-                notificationModal.style.display = 'none';
-            }, 300);
-        }
-    };
-
-    // 이벤트 리스너 등록
-    if (notificationBtn) {
-        notificationBtn.addEventListener('click', openModal);
-    }
-
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeModal);
-    }
-
-    // 모달 외부 클릭 시 닫기
-    if (notificationModal) {
-        window.addEventListener('click', (event) => {
-            if (event.target === notificationModal) {
-                closeModal();
-            }
-        });
-    }
-
     if (dismissBtn) {
         dismissBtn.addEventListener('click', dismissIOSGuide);
     }
@@ -1118,49 +900,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (loadingDiv) loadingDiv.style.display = 'flex';
-        });
-    }
-
-    // 알림 설정 폼 처리
-    if (notificationForm) {
-        notificationForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            const schoolCode = getCookie('school_code');
-            if (!schoolCode) {
-                alert('먼저 학교를 검색해주세요.');
-                return;
-            }
-
-            const selectedDays = Array.from(document.querySelectorAll('.day-setting input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
-
-            const breakfastEnable = document.getElementById('breakfast-enable');
-            const breakfastTime = document.getElementById('breakfast-time');
-            const lunchEnable = document.getElementById('lunch-enable');
-            const lunchTime = document.getElementById('lunch-time');
-            const dinnerEnable = document.getElementById('dinner-enable');
-            const dinnerTime = document.getElementById('dinner-time');
-
-            const settings = {
-                breakfast: {
-                    enabled: breakfastEnable ? breakfastEnable.checked : false,
-                    time: breakfastTime ? breakfastTime.value : '07:00'
-                },
-                lunch: {
-                    enabled: lunchEnable ? lunchEnable.checked : false,
-                    time: lunchTime ? lunchTime.value : '12:00'
-                },
-                dinner: {
-                    enabled: dinnerEnable ? dinnerEnable.checked : false,
-                    time: dinnerTime ? dinnerTime.value : '18:00'
-                },
-                days: selectedDays
-            };
-
-            console.log("Saving settings:", settings);
-            localStorage.setItem('notificationSettings', JSON.stringify(settings));
-            alert('알림이 저장되었습니다.');
-            closeModal();
-            requestAndScheduleNotifications();
         });
     }
 
@@ -1191,12 +930,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 iosGuide.classList.add('show');
             }, 10);
         }, 1000);
-    }
-
-    if ('Notification' in window && Notification.permission === 'granted') {
-        if (getCookie('school_code')) {
-            requestAndScheduleNotifications();
-        }
     }
 
     if (loadingDiv) {
