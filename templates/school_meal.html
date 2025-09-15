@@ -74,6 +74,7 @@ white-space: pre-line; }
 .no-meal { color: #888; font-style: italic; }
 body { word-break: keep-all; }
 
+/* 개선된 자동완성 스타일 - z-index 최적화 */
 .autocomplete-container {
     position: relative;
 }
@@ -87,18 +88,19 @@ body { word-break: keep-all; }
     border: 1px solid #ddd;
     border-top: none;
     border-radius: 0 0 8px 8px;
-    max-height: 200px;
+    max-height: 250px; /* 높이 증가 */
     overflow-y: auto;
-    z-index: 1000;
+    z-index: 9999; /* 매우 높은 z-index로 광고 위에 표시 */
     display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25); /* 그림자 강화 */
 }
 
 .autocomplete-item {
-    padding: 12px 15px;
+    padding: 14px 16px; /* 패딩 증가 */
     cursor: pointer;
     border-bottom: 1px solid #f0f0f0;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    font-size: 0.95em;
 }
 
 .autocomplete-item:last-child {
@@ -107,11 +109,29 @@ body { word-break: keep-all; }
 
 .autocomplete-item:hover {
     background-color: #f8f9ff;
+    transform: translateX(2px);
 }
 
 .autocomplete-item.selected {
     background-color: #667eea;
     color: white;
+}
+
+/* 로딩 상태 표시 */
+.autocomplete-loading {
+    padding: 12px 16px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    background-color: #f9f9f9;
+}
+
+.autocomplete-error {
+    padding: 12px 16px;
+    text-align: center;
+    color: #d32f2f;
+    background-color: #ffebee;
+    font-size: 0.9em;
 }
 
 .today-meal-card {
@@ -198,6 +218,10 @@ body { word-break: keep-all; }
 
     .today-meal-type {
         font-size: 1em;
+    }
+
+    .autocomplete-results {
+        max-height: 200px;
     }
 }
 
@@ -372,7 +396,7 @@ body { word-break: keep-all; }
     }
     #ad-mobile, #bodyad-mobile {
         display: none;
-    }/
+    }
     #bodyad-desktop:not(.show-ad) {
         display: none;
     }
@@ -423,7 +447,7 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
     </div>
     <div class="form-group autocomplete-container">
         <label for="school_name">학교 이름 입력</label>
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off" placeholder="학교명을 입력하세요">
         <div id="autocomplete-results" class="autocomplete-results"></div>
     </div>
     <button type="submit" class="submit-btn">검색</button>
@@ -590,16 +614,19 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
   </div>
 </footer>
 <script>
+// 성능 최적화된 자동완성 스크립트
 const regions_data = {{ regions | tojson | safe }};
 
+// 전역 변수들
 let autocompleteTimeout;
 let autocompleteVisible = false;
 let selectedIndex = -1;
-// 캐싱 시스템 추가
 let searchCache = new Map();
 let lastQuery = '';
 let lastRegion = '';
+let isSearching = false;
 
+// 유틸리티 함수들
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -639,11 +666,25 @@ function dismissIOSGuide() {
 
 function showErrorMessage(message) {
     console.error(message);
+    const autocompleteResults = document.getElementById("autocomplete-results");
+    if (autocompleteResults) {
+        autocompleteResults.innerHTML = `<div class="autocomplete-error">${message}</div>`;
+        autocompleteResults.style.display = 'block';
+    }
 }
 
+function showLoadingState() {
+    const autocompleteResults = document.getElementById("autocomplete-results");
+    if (autocompleteResults) {
+        autocompleteResults.innerHTML = '<div class="autocomplete-loading">검색 중...</div>';
+        autocompleteResults.style.display = 'block';
+    }
+}
+
+// 개선된 디바운싱 검색 함수
 async function searchSchools(query, region) {
-    // 같은 쿼리면 스킵
-    if (query === lastQuery && region === lastRegion) return;
+    // 검색 중이거나 같은 쿼리면 스킵
+    if (isSearching || (query === lastQuery && region === lastRegion)) return;
 
     // 캐시 확인
     const cacheKey = `${region}_${query}`;
@@ -655,15 +696,24 @@ async function searchSchools(query, region) {
         return;
     }
 
+    isSearching = true;
+    showLoadingState();
+
     try {
-        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3초 타임아웃
+
+        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             if (response.status === 500) {
                 const errorData = await response.json();
                 if (errorData.error) {
                     showErrorMessage(errorData.error);
-                    hideAutocomplete();
                     return;
                 }
             }
@@ -681,9 +731,15 @@ async function searchSchools(query, region) {
         lastRegion = region;
 
     } catch (error) {
-        console.error('자동완성 검색 오류:', error);
-        showErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        if (error.name === 'AbortError') {
+            showErrorMessage('검색 시간이 초과되었습니다. 다시 시도해주세요.');
+        } else {
+            console.error('자동완성 검색 오류:', error);
+            showErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        }
         hideAutocomplete();
+    } finally {
+        isSearching = false;
     }
 }
 
@@ -692,11 +748,13 @@ function showAutocomplete(schools) {
     if (!autocompleteResults) return;
 
     if (schools.length === 0) {
-        hideAutocomplete();
+        autocompleteResults.innerHTML = '<div class="autocomplete-error">검색 결과가 없습니다.</div>';
+        autocompleteResults.style.display = 'block';
+        autocompleteVisible = true;
         return;
     }
 
-    // 중복 렌더링 방지: 같은 결과라면 다시 그리지 않음
+    // 중복 렌더링 방지
     const currentHTML = schools.map(school => school.name).join('|');
     if (autocompleteResults.dataset.lastRender === currentHTML) {
         return;
@@ -746,21 +804,37 @@ function selectSchool(item) {
     }
     hideAutocomplete();
 
+    // 페이지 이동 전 로딩 표시
+    const loadingDiv = document.getElementById('loading');
+    if (loadingDiv) {
+        loadingDiv.style.display = 'flex';
+    }
+
     window.location.href = `/meal/${schoolCode}`;
 }
 
+// DOM 로드 완료 후 초기화
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
 
+    // 요소들 가져오기
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
     const manualFinderIcon = document.getElementById('manualFinderIcon');
+    const schoolNameInput = document.getElementById("school_name");
+    const regionSelect = document.getElementById("region");
+    const autocompleteResults = document.getElementById("autocomplete-results");
+    const regionForm = document.getElementById('regionForm');
+    const loadingDiv = document.getElementById('loading');
+    const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+    const monthTable = document.getElementById('monthTable');
+    const iosGuide = document.getElementById('ios-webapp-guide');
+    const dismissBtn = document.getElementById('dismiss-ios-btn');
+    const shareBtn = document.getElementById('share-btn');
 
+    // 수동 학교 찾기 토글
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
-        console.log("Setting up manual school finder functionality");
-
         manualFinderToggle.addEventListener('click', function() {
-            console.log("Manual finder toggle clicked!");
             const isExpanded = manualFinderContent.classList.contains('show');
 
             if (isExpanded) {
@@ -775,30 +849,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const schoolNameInput = document.getElementById("school_name");
-    const regionSelect = document.getElementById("region");
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    const regionForm = document.getElementById('regionForm');
-    const loadingDiv = document.getElementById('loading');
-    const toggleMonthBtn = document.getElementById('toggleMonthBtn');
-    const monthTable = document.getElementById('monthTable');
-    const iosGuide = document.getElementById('ios-webapp-guide');
-    const dismissBtn = document.getElementById('dismiss-ios-btn');
-    const shareBtn = document.getElementById('share-btn');
-
-    console.log("Elements found:", {
-        schoolNameInput: !!schoolNameInput,
-        regionSelect: !!regionSelect,
-        autocompleteResults: !!autocompleteResults,
-        toggleMonthBtn: !!toggleMonthBtn,
-        monthTable: !!monthTable
-    });
-
-    // 자동완성 기능
+    // 자동완성 기능 설정
     if (schoolNameInput && regionSelect && autocompleteResults) {
-        console.log("Setting up autocomplete functionality");
-
-        // 입력 시 자동완성 - 개선된 버전
+        // 입력 시 자동완성 - 개선된 디바운싱
         schoolNameInput.addEventListener('input', function() {
             const query = this.value.trim();
             const region = regionSelect.value;
@@ -813,16 +866,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // 50ms 디바운스로 단축 (기존보다 대폭 단축)
+            // 20ms 디바운스로 매우 빠른 반응
             autocompleteTimeout = setTimeout(() => {
                 searchSchools(query, region);
-            }, 50);
+            }, 20);
         });
 
         // 키보드 네비게이션
         schoolNameInput.addEventListener('keydown', function(e) {
             if (!autocompleteVisible) return;
             const items = autocompleteResults.querySelectorAll('.autocomplete-item');
+            
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
@@ -839,10 +893,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // 지역 변경 시 자동완성 숨기기 및 캐시 클리어
+        // 지역 변경 시 캐시 클리어
         regionSelect.addEventListener('change', function() {
             hideAutocomplete();
-            // 캐시 클리어 및 변수 초기화
             searchCache.clear();
             lastQuery = '';
             lastRegion = '';
