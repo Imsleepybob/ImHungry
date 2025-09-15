@@ -343,21 +343,39 @@ class AccessLogFormatter(logging.Formatter):
         record.referrer = getattr(record, 'referrer', 'N/A')
         return super().format(record)
 
+# 개선된 앱 로그 포맷터 (User-Agent 추가)
+class AppLogFormatter(logging.Formatter):
+    def format(self, record):
+        # Flask request context가 있을 때만 request 정보 추가
+        try:
+            from flask import has_request_context
+            if has_request_context():
+                client_ip = get_client_ip()
+                user_agent = request.headers.get('User-Agent', 'N/A')[:200]  # 200자로 제한
+                record.request_info = f"IP: {client_ip}, UA: {user_agent}"
+            else:
+                record.request_info = "No request context"
+        except:
+            record.request_info = "N/A"
+        
+        return super().format(record)
+
 def setup_logging():
     """로깅 시스템 초기화"""
     # 기본 로거 설정
     logging.basicConfig(level=logging.INFO)
 
-    # 1. 앱 로그 핸들러 (기본 앱 로그)
+    # 1. 앱 로그 핸들러 (개선된 포맷터 사용)
     app_handler = RotatingFileHandler(
         APP_LOG_PATH,
         maxBytes=10*1024*1024,  # 10MB
         backupCount=5,
         encoding='utf-8'
     )
-    app_handler.setFormatter(logging.Formatter(
-        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-    ))
+    app_formatter = AppLogFormatter(
+        '[%(asctime)s] %(levelname)s in %(module)s: %(message)s - %(request_info)s'
+    )
+    app_handler.setFormatter(app_formatter)
 
     # 2. 접속 로그 핸들러
     access_handler = RotatingFileHandler(
@@ -472,8 +490,45 @@ regions = {
     "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
     "경남": "S10", "제주": "T10"
 }
+
+# 개선된 캐싱 시스템 - 3단계 캐시 구조
+from threading import Lock
+import pickle
+
+# 메모리 캐시
 school_cache = {}
 meal_cache = {}
+# 자동완성 전용 고속 캐시 추가
+autocomplete_cache = {}
+autocomplete_cache_lock = Lock()
+
+# 파일 기반 영구 캐시 (옵션)
+CACHE_DIR = os.path.join(os.getcwd(), 'cache')
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
+
+def save_cache_to_file(cache_name, data):
+    """캐시를 파일로 저장"""
+    try:
+        cache_file = os.path.join(CACHE_DIR, f"{cache_name}.cache")
+        with open(cache_file, 'wb') as f:
+            pickle.dump(data, f)
+    except Exception as e:
+        app.logger.error(f"Failed to save cache {cache_name}: {e}")
+
+def load_cache_from_file(cache_name):
+    """파일에서 캐시를 로드"""
+    try:
+        cache_file = os.path.join(CACHE_DIR, f"{cache_name}.cache")
+        if os.path.exists(cache_file):
+            # 파일이 24시간 이내에 생성된 것만 사용
+            file_age = time.time() - os.path.getmtime(cache_file)
+            if file_age < 86400:  # 24시간
+                with open(cache_file, 'rb') as f:
+                    return pickle.load(f)
+    except Exception as e:
+        app.logger.error(f"Failed to load cache {cache_name}: {e}")
+    return None
 
 def expand_school_name(school_name):
     """학교명 축약어를 풀어서 반환합니다."""
@@ -515,12 +570,18 @@ def get_schools_by_region_and_level(region_code, school_level=None):
     """지역별, 학교급별 학교 목록을 NEIS API에서 가져옵니다. (최적화된 버전)"""
     cache_key = f"schools_{region_code}_{school_level or 'all'}"
 
-    # 캐시 확인
+    # 메모리 캐시 확인
     if hasattr(get_schools_by_region_and_level, 'cache'):
         if cache_key in get_schools_by_region_and_level.cache:
             return get_schools_by_region_and_level.cache[cache_key]
     else:
         get_schools_by_region_and_level.cache = {}
+
+    # 파일 캐시에서 로드 시도
+    cached_data = load_cache_from_file(cache_key)
+    if cached_data:
+        get_schools_by_region_and_level.cache[cache_key] = cached_data
+        return cached_data
 
     # 전체 학교 목록이 캐시에 있으면 필터링만 수행
     all_schools_key = f"schools_{region_code}_all"
@@ -534,6 +595,7 @@ def get_schools_by_region_and_level(region_code, school_level=None):
                 filtered_schools.append(school)
 
         get_schools_by_region_and_level.cache[cache_key] = filtered_schools
+        save_cache_to_file(cache_key, filtered_schools)
         return filtered_schools
 
     url = "https://open.neis.go.kr/hub/schoolInfo"
@@ -549,7 +611,7 @@ def get_schools_by_region_and_level(region_code, school_level=None):
             "ATPT_OFCDC_SC_CODE": region_code
         }
 
-        response = requests.get(url, params=params, timeout=15)  # 타임아웃 증가
+        response = requests.get(url, params=params, timeout=8)  # 타임아웃 단축
         response.raise_for_status()
         data = response.json()
 
@@ -579,7 +641,7 @@ def get_schools_by_region_and_level(region_code, school_level=None):
             while page <= 10:  # 최대 10페이지까지만 (3000개 학교)
                 params["pIndex"] = page
                 try:
-                    response = requests.get(url, params=params, timeout=10)
+                    response = requests.get(url, params=params, timeout=5)
                     response.raise_for_status()
                     data = response.json()
 
@@ -616,6 +678,7 @@ def get_schools_by_region_and_level(region_code, school_level=None):
         # 전체 목록 캐시 저장 (학교급 필터링 전)
         if not school_level:
             get_schools_by_region_and_level.cache[all_schools_key] = schools
+            save_cache_to_file(all_schools_key, schools)
 
         # 학교급 필터링
         if school_level:
@@ -628,6 +691,7 @@ def get_schools_by_region_and_level(region_code, school_level=None):
 
         # 결과 캐시 저장
         get_schools_by_region_and_level.cache[cache_key] = schools
+        save_cache_to_file(cache_key, schools)
 
         app.logger.info(f"Fetched {len(schools)} schools for {region_code}, level: {school_level}")
         return schools
@@ -662,7 +726,7 @@ def get_school_code(school_name, region_code):
             "ATPT_OFCDC_SC_CODE": region_code, "SCHUL_NM": search_term
         }
         try:
-            response = requests.get(url, params=params, timeout=5)
+            response = requests.get(url, params=params, timeout=3)  # 타임아웃 단축
             response.raise_for_status()
             data = response.json()
 
@@ -760,7 +824,7 @@ def get_month_meals(school_code, region_code):
     meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
     try:
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, params=params, timeout=3)  # 타임아웃 단축
         response.raise_for_status()
         data = response.json()
 
@@ -951,9 +1015,10 @@ def get_school_meal(school_code, date):
         app.logger.error(f"Error in get_school_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
+# 개선된 자동완성 API
 @app.route('/api/schools/search')
 def search_schools_autocomplete():
-    """학교 검색 자동완성 API"""
+    """학교 검색 자동완성 API - 성능 최적화 버전"""
     query = request.args.get('q', '').strip()
     region_name = request.args.get('region', '').strip()
 
@@ -965,13 +1030,63 @@ def search_schools_autocomplete():
 
     region_code = regions[region_name]
 
-    # 원래 검색어와 축약어 확장 버전 모두 시도
+    # 자동완성 전용 캐시 확인
+    with autocomplete_cache_lock:
+        cache_key = f"auto_{region_code}_{query}"
+        if cache_key in autocomplete_cache:
+            cached_result = autocomplete_cache[cache_key]
+            # 캐시가 10분 이내면 사용
+            if time.time() - cached_result['timestamp'] < 600:
+                return jsonify(cached_result['data'])
+
+    # 먼저 메모리에 로드된 학교 목록에서 검색 (매우 빠름)
+    schools = []
+    
+    # 전체 학교 목록에서 빠른 검색
+    if hasattr(get_schools_by_region_and_level, 'cache'):
+        all_schools_key = f"schools_{region_code}_all"
+        if all_schools_key in get_schools_by_region_and_level.cache:
+            all_schools = get_schools_by_region_and_level.cache[all_schools_key]
+            
+            # 빠른 문자열 매칭
+            query_lower = query.lower()
+            expanded_query = expand_school_name(query).lower()
+            
+            for school in all_schools:
+                school_name_lower = school['name'].lower()
+                if (query_lower in school_name_lower or 
+                    expanded_query != query_lower and expanded_query in school_name_lower or
+                    school_name_lower.startswith(query_lower)):
+                    schools.append(school)
+                    if len(schools) >= 10:  # 최대 10개
+                        break
+
+    # 메모리 검색으로 결과가 충분하면 API 호출 생략
+    if len(schools) >= 5:
+        result = schools[:10]
+        
+        # 결과 캐싱
+        with autocomplete_cache_lock:
+            autocomplete_cache[cache_key] = {
+                'data': result,
+                'timestamp': time.time()
+            }
+            # 캐시 크기 제한 (1000개까지)
+            if len(autocomplete_cache) > 1000:
+                # 오래된 항목 삭제
+                old_keys = [k for k, v in autocomplete_cache.items() 
+                           if time.time() - v['timestamp'] > 600]
+                for old_key in old_keys[:500]:
+                    del autocomplete_cache[old_key]
+        
+        return jsonify(result)
+
+    # 메모리 검색 결과가 부족한 경우에만 API 호출
     search_terms = [query]
     expanded_query = expand_school_name(query)
     if expanded_query != query:
         search_terms.append(expanded_query)
 
-    schools = []
     api_error = False
 
     for search_term in search_terms:
@@ -980,13 +1095,13 @@ def search_schools_autocomplete():
             "KEY": API_KEY,
             "Type": "json",
             "pIndex": 1,
-            "pSize": 10,  # 최대 10개까지
+            "pSize": 10,
             "ATPT_OFCDC_SC_CODE": region_code,
             "SCHUL_NM": search_term
         }
 
         try:
-            response = requests.get(url, params=params, timeout=3)
+            response = requests.get(url, params=params, timeout=2)  # 더 짧은 타임아웃
             response.raise_for_status()
             data = response.json()
 
@@ -1003,27 +1118,36 @@ def search_schools_autocomplete():
                         schools.append(school_info)
 
                         # 캐시에도 저장
-                        cache_key = f"{region_code}_{school_data['SCHUL_NM']}"
-                        school_cache[cache_key] = school_info
+                        cache_key_school = f"{region_code}_{school_data['SCHUL_NM']}"
+                        school_cache[cache_key_school] = school_info
                         school_cache[school_data["SD_SCHUL_CODE"]] = school_info
 
-            if len(schools) >= 10:  # 충분한 결과가 있으면 중단
+            if len(schools) >= 10:
                 break
 
         except requests.exceptions.Timeout:
-            app.logger.error(f"Error in autocomplete search for '{search_term}': API timeout")
+            app.logger.debug(f"Autocomplete timeout for '{search_term}'")
             api_error = True
             continue
         except Exception as e:
-            app.logger.error(f"Error in autocomplete search for '{search_term}': {e}")
+            app.logger.debug(f"Autocomplete error for '{search_term}': {e}")
             api_error = True
             continue
 
-    # API 오류가 발생하고 결과가 없는 경우 오류 응답
-    if api_error and len(schools) == 0:
+    result = schools[:10]
+
+    # 결과 캐싱
+    with autocomplete_cache_lock:
+        autocomplete_cache[cache_key] = {
+            'data': result,
+            'timestamp': time.time()
+        }
+
+    # API 오류가 발생하고 결과가 없는 경우에만 오류 응답
+    if api_error and len(result) == 0:
         return jsonify({"error": "NEIS API에 오류가 발생하여 일시적으로 급식 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요."}), 500
 
-    return jsonify(schools[:10])  # 최대 10개 반환
+    return jsonify(result)
 
 @app.route('/api/meals/today/<school_code>')
 def get_today_meal(school_code):
@@ -1089,353 +1213,4 @@ def schools_by_region(region_name):
     log_access_request(200)
 
     return render_template('schools_by_region.html',
-                         region_name=region_name,
-                         schools_by_level=schools_by_level,
-                         regions=regions)
-
-@app.route('/schools/<region_name>/<school_level>')
-def schools_by_region_and_level(region_name, school_level):
-    """지역별, 학교급별 학교 목록 페이지"""
-    # URL 디코딩 처리
-    try:
-        from urllib.parse import unquote
-        region_name = unquote(region_name)
-        school_level = unquote(school_level)
-    except:
-        pass
-
-    if region_name not in regions:
-        return redirect(url_for('index', error_message="유효하지 않은 지역입니다."))
-
-    if school_level not in school_levels:
-        return redirect(url_for('schools_by_region', region_name=region_name))
-
-    region_code = regions[region_name]
-
-    # 캐시된 전체 목록에서 필터링 (매우 빠름)
-    all_schools = get_schools_by_region_and_level(region_code)
-    schools = []
-    keywords = school_levels.get(school_level, [])
-
-    for school in all_schools:
-        if any(keyword in school['name'] for keyword in keywords):
-            schools.append(school)
-
-    # 접속 로그 기록
-    log_access_request(200)
-
-    return render_template('schools_by_level.html',
-                         region_name=region_name,
-                         school_level=school_level,
-                         schools=schools,
-                         regions=regions)
-
-# 3. 백그라운드에서 캐시 미리 로드하는 함수 추가
-def preload_school_cache():
-    """백그라운드에서 주요 지역의 학교 목록을 미리 캐시"""
-    import threading
-
-    def load_region(region_name, region_code):
-        try:
-            app.logger.info(f"Preloading schools for {region_name}")
-            get_schools_by_region_and_level(region_code)
-            app.logger.info(f"Completed preloading for {region_name}")
-        except Exception as e:
-            app.logger.error(f"Failed to preload {region_name}: {e}")
-
-    # 주요 지역부터 우선 로드
-    priority_regions = ["서울", "부산", "경기", "부산", "대구", "인천", "광주", "대전", "광주", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
-
-    for region_name in priority_regions:
-        if region_name in regions:
-            region_code = regions[region_name]
-            thread = threading.Thread(target=load_region, args=(region_name, region_code))
-            thread.daemon = True
-            thread.start()
-
-
-# --- 정적 파일 및 기타 라우트 ---
-@app.route('/robots.txt')
-def robots_txt():
-    return send_from_directory(app.static_folder, 'robots.txt')
-
-@app.route('/favicon.svg')
-def favicon():
-    return send_from_directory(app.static_folder, 'favicon.svg')
-
-@app.route('/favicon.ico')
-def faviconico():
-    return send_from_directory(app.static_folder, 'favicon.svg') # svg로 통일 또는 ico 파일 준비
-
-@app.route('/manifest.json')
-def manifest():
-    return send_from_directory('static', 'manifest.json')
-
-@app.route("/It's Christmas Time Again.mp3")
-def namufile1():
-    return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
-
-@app.route('/sitemap.xml')
-def sitemap():
-    try:
-        with open('static/sitemap.xml', 'r', encoding='utf-8') as f:
-            content = f.read()
-        response = make_response(content)
-        response.headers['Content-Type'] = 'application/xml; charset=utf-8'
-        return response
-    except FileNotFoundError:
-        abort(404)
-
-# --- 탬퍼몽키 스크립트 ---
-STATIC_DIR = app.root_path
-
-@app.route('/namuboardextension.user.js')
-def serve_tampermonkey_script():
-    log_namuboard_access_request() # Log this specific access
-    try:
-        return send_from_directory(STATIC_DIR, 'namuboardextension.user.js', mimetype='application/javascript')
-    except FileNotFoundError:
-        return "파일 오류.", 404
-    except Exception as e:
-        app.logger.error(f"Error serving script: {e}")
-        return "서버 오류.", 500
-
-# --- 로그 확인용 엔드포인트 (개발/디버깅용) ---
-@app.route('/logs/access')
-def view_access_logs():
-    """접속 로그 확인 (관리자 IP만 허용)"""
-    client_ip = get_client_ip()
-
-    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
-
-    try:
-        if os.path.exists(ACCESS_LOG_PATH):
-            with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
-                lines = f.readlines() # 모든 줄 표시
-            return f'<h2>접속 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return '접속 로그 파일이 아직 생성되지 않았습니다.'
-    except Exception as e:
-        return f'접속 로그 파일 읽기 오류: {e}'
-
-@app.route('/logs/app')
-def view_app_logs():
-    """앱 로그 확인 (관리자 IP만 허용)"""
-    client_ip = get_client_ip()
-
-    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
-
-    try:
-        if os.path.exists(APP_LOG_PATH):
-            with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
-                lines = f.readlines() # 모든 줄 표시
-            return f'<h2>앱 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return '앱 로그 파일이 아직 생성되지 않았습니다.'
-    except Exception as e:
-        return f'앱 로그 파일 읽기 오류: {e}'
-
-@app.route('/logs/namuboard')
-def view_namuboard_logs():
-    """NamuBoard Extension 로그 확인 (관리자 IP만 허용)"""
-    client_ip = get_client_ip()
-
-    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to namuboard logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
-
-    try:
-        if os.path.exists(NAMUBOARD_LOG_PATH):
-            with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
-                lines = f.readlines() # 모든 줄 표시
-            return f'<h2>NamuBoard Extension 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
-    except Exception as e:
-        return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
-
-@app.route('/stats')
-def view_stats():
-    """접속 통계 (관리자 IP만 허용)"""
-    client_ip = get_client_ip()
-
-    # 관리자 IP 확인 또는 개발 모드 + 환경 변수 확인
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_STATS') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to stats from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
-
-    try:
-        if not os.path.exists(ACCESS_LOG_PATH):
-            return '접속 로그 파일이 없습니다.'
-
-        stats = {
-            'total_requests': 0,
-            'unique_ips': set(),
-            'status_codes': {},
-            'popular_paths': {},
-            'user_agents': {}
-        }
-
-        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
-            for line in f:
-                if 'IP:' in line:
-                    stats['total_requests'] += 1
-
-                    # IP 추출
-                    try:
-                        ip_start = line.find('IP: ') + 4
-                        ip_end = line.find(' -', ip_start)
-                        if ip_end > ip_start:
-                            ip = line[ip_start:ip_end]
-                            stats['unique_ips'].add(ip)
-                    except:
-                        pass
-
-                    # 상태 코드 추출
-                    try:
-                        status_start = line.find('Status: ') + 8
-                        status_end = line.find(' -', status_start)
-                        if status_end == -1:
-                            status_end = len(line)
-                        status = line[status_start:status_end].strip()
-                        stats['status_codes'][status] = stats['status_codes'].get(status, 0) + 1
-                    except:
-                        pass
-
-                    # 경로 추출
-                    try:
-                        path_start = line.find('Path: ') + 6
-                        path_end = line.find(' -', path_start)
-                        if path_end > path_start:
-                            path = line[path_start:path_end]
-                            stats['popular_paths'][path] = stats['popular_paths'].get(path, 0) + 1
-                    except:
-                        pass
-
-        stats['unique_ips'] = len(stats['unique_ips'])
-
-        return f'''
-        <h2>접속 통계</h2>
-        <p>총 요청 수: {stats['total_requests']}</p>
-        <p>고유 IP 수: {stats['unique_ips']}</p>
-
-        <h3>상태 코드별 통계:</h3>
-        <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in stats['status_codes'].items()])}</ul>
-
-        <h3>인기 경로 (Top 10):</h3>
-        <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in sorted(stats['popular_paths'].items(), key=lambda x: x[1], reverse=True)[:10]])}</ul>
-        '''
-
-    except Exception as e:
-        return f'통계 생성 오류: {e}'
-
-@app.route('/security/status')
-def security_status():
-    """보안 상태 확인 (관리자만)"""
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
-
-    status = {
-        'blocked_networks_count': len(BLOCKED_NETWORKS),
-        'temporarily_blocked_ips': len(blocked_ips),
-        'failed_attempts': dict(failed_attempts),
-        'active_connections': len(request_counts),
-        'security_config': SECURITY_CONFIG
-    }
-
-    return jsonify(status)
-
-# 블랙리스트 관리 엔드포인트
-@app.route('/security/blacklist/add', methods=['POST'])
-def add_to_blacklist():
-    """블랙리스트에 IP/CIDR 추가 (관리자만)"""
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
-
-    data = request.get_json()
-    ip_or_cidr = data.get('ip_or_cidr')
-    reason = data.get('reason', 'Manual addition')
-
-    if not ip_or_cidr:
-        return jsonify({'error': 'IP or CIDR required'}), 400
-
-    try:
-        # 형식 검증
-        ipaddress.ip_network(ip_or_cidr, strict=False)
-        save_to_blacklist(ip_or_cidr, reason)
-
-        # 메모리 목록도 업데이트
-        global BLOCKED_NETWORKS
-        BLOCKED_NETWORKS = load_ip_blacklist()
-
-        return jsonify({'success': True, 'message': f'Added {ip_or_cidr} to blacklist'})
-    except ValueError as e:
-        return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
-
-# --- 응답 로깅 (개선된 버전) ---
-@app.after_request
-def after_request_func(response):
-    # Silent block 표시가 있으면 로그 안 남김
-    if response.headers.get('X-Silent-Block'):
-        return response
-
-    client_ip = get_client_ip()
-    request_path = request.path
-    request_method = request.method
-    status_code = response.status_code
-
-    # 로그를 남길지 판단
-    if should_log_request(request_path, request_method):
-        # 기존 앱 로그
-        log_entry = (
-            f"IP: {client_ip}, "
-            f"Method: {request_method}, "
-            f"URL: {request.url}, "
-            f"Status: {status_code}"
-        )
-        app.logger.info(log_entry)
-
-        # 접속 로그 (200/206 상태 코드만)
-        if status_code in [200, 206]:
-            log_access_request(status_code)
-
-    return response
-
-# --- 앱 실행 ---
-if __name__ == "__main__":
-    # 로그 파일 경로 정보 출력
-    app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
-    app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
-    app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
-    app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
-    app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
-
-    # 블랙리스트 파일 생성 (없는 경우)
-    if not os.path.exists(BLACKLIST_FILE):
-        with open(BLACKLIST_FILE, 'w', encoding='utf-8') as f:
-            f.write("# IP Blacklist - CIDR format\n")
-            f.write("# Example: 192.168.1.0/24\n")
-            f.write("# 52.178.178.217/32  # Example blocked IP\n")
-
-    app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks")
-    app.logger.info(f"Security config: {SECURITY_CONFIG}")
-    app.logger.info(f"Silent block patterns: {len(SILENT_BLOCK_PATTERNS)} patterns loaded")
-    app.logger.info(f"No-log paths: {len(NO_LOG_PATHS)} paths configured")
-
-    import threading
-    preload_thread = threading.Thread(target=preload_school_cache)
-    preload_thread.daemon = True
-    preload_thread.start()
-
-    app.logger.info("Starting school cache preload in background...")
-
-    app.run(debug=False)
+                         region_name=region_
