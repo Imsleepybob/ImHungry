@@ -1212,7 +1212,7 @@ def schools_by_region(region_name):
     # 접속 로그 기록
     log_access_request(200)
 
- return render_template('schools_by_region.html',
+    return render_template('schools_by_region.html',
                          region_name=region_name,
                          schools_by_level=schools_by_level,
                          regions=regions)
