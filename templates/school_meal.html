@@ -614,17 +614,15 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
   </div>
 </footer>
 <script>
-// 성능 최적화된 자동완성 스크립트
+// 클라이언트 사이드 검색 구현 - 나무위키 스타일
 const regions_data = {{ regions | tojson | safe }};
 
 // 전역 변수들
-let autocompleteTimeout;
+let allSchoolsData = {}; // 지역별 전체 학교 데이터
 let autocompleteVisible = false;
 let selectedIndex = -1;
-let searchCache = new Map();
-let lastQuery = '';
-let lastRegion = '';
-let isSearching = false;
+let isComposing = false;
+let autocompleteTimeout;
 
 // 유틸리티 함수들
 function getCookie(name) {
@@ -664,12 +662,78 @@ function dismissIOSGuide() {
     }
 }
 
-function showErrorMessage(message) {
-    console.error(message);
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    if (autocompleteResults) {
-        autocompleteResults.innerHTML = `<div class="autocomplete-error">${message}</div>`;
-        autocompleteResults.style.display = 'block';
+// 페이지 로드 시 전체 학교 데이터 미리 로드
+async function preloadAllSchools() {
+    const loadingPromises = Object.entries(regions_data).map(async ([regionName, regionCode]) => {
+        try {
+            console.log(`Loading schools for ${regionName}...`);
+            const response = await fetch(`/api/schools/region/${regionCode}`);
+            if (response.ok) {
+                const schools = await response.json();
+                allSchoolsData[regionCode] = schools;
+                console.log(`✓ Loaded ${schools.length} schools for ${regionName}`);
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (error) {
+            console.error(`✗ Failed to load schools for ${regionName}:`, error);
+            allSchoolsData[regionCode] = []; // 빈 배열로 초기화
+        }
+    });
+
+    await Promise.all(loadingPromises);
+    console.log('🚀 All school data preloaded!');
+}
+
+// 클라이언트 사이드 검색 (즉시 결과)
+function searchSchoolsInstant(query, region) {
+    if (!query || query.length < 2 || !region) {
+        hideAutocomplete();
+        return;
+    }
+
+    const regionSchools = allSchoolsData[region] || [];
+    if (regionSchools.length === 0) {
+        // 데이터가 없으면 기존 API 방식으로 fallback
+        console.log('No local data, falling back to API search');
+        searchSchoolsAPI(query, region);
+        return;
+    }
+
+    // 클라이언트에서 즉시 필터링
+    const filteredSchools = regionSchools.filter(school => 
+        school.name.includes(query)
+    ).slice(0, 10); // 최대 10개만
+
+    console.log(`Instant search: "${query}" → ${filteredSchools.length} results`);
+    showAutocomplete(filteredSchools);
+}
+
+// API 방식 (fallback용)
+async function searchSchoolsAPI(query, region) {
+    showLoadingState();
+    
+    try {
+        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`);
+        
+        if (!response.ok) {
+            if (response.status === 500) {
+                const errorData = await response.json();
+                if (errorData.error) {
+                    showErrorMessage(errorData.error);
+                    return;
+                }
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const schools = await response.json();
+        console.log(`API search: "${query}" → ${schools.length} results`);
+        showAutocomplete(schools);
+    } catch (error) {
+        console.error('API search failed:', error);
+        showErrorMessage('검색 중 오류가 발생했습니다.');
+        hideAutocomplete();
     }
 }
 
@@ -681,83 +745,20 @@ function showLoadingState() {
     }
 }
 
-// 개선된 디바운싱 검색 함수
-async function searchSchools(query, region) {
-    // 검색 중이거나 같은 쿼리면 스킵
-    if (isSearching || (query === lastQuery && region === lastRegion)) return;
-
-    // 캐시 확인
-    const cacheKey = `${region}_${query}`;
-    if (searchCache.has(cacheKey)) {
-        const cachedResults = searchCache.get(cacheKey);
-        showAutocomplete(cachedResults);
-        lastQuery = query;
-        lastRegion = region;
-        return;
-    }
-
-    isSearching = true;
-    showLoadingState();
-
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3초 타임아웃
-
-        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query)}&region=${encodeURIComponent(region)}`, {
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            if (response.status === 500) {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    showErrorMessage(errorData.error);
-                    return;
-                }
-            }
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const schools = await response.json();
-
-        // 결과 캐싱 (5분간 유효)
-        searchCache.set(cacheKey, schools);
-        setTimeout(() => searchCache.delete(cacheKey), 300000);
-
-        showAutocomplete(schools);
-        lastQuery = query;
-        lastRegion = region;
-
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            showErrorMessage('검색 시간이 초과되었습니다. 다시 시도해주세요.');
-        } else {
-            console.error('자동완성 검색 오류:', error);
-            showErrorMessage('네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-        }
-        hideAutocomplete();
-    } finally {
-        isSearching = false;
+function showErrorMessage(message) {
+    const autocompleteResults = document.getElementById("autocomplete-results");
+    if (autocompleteResults) {
+        autocompleteResults.innerHTML = `<div class="autocomplete-error">${message}</div>`;
+        autocompleteResults.style.display = 'block';
     }
 }
 
 function showAutocomplete(schools) {
     const autocompleteResults = document.getElementById("autocomplete-results");
-    if (!autocompleteResults) return;
-
-    if (schools.length === 0) {
+    if (!autocompleteResults || schools.length === 0) {
         hideAutocomplete();
         return;
     }
-
-    // 중복 렌더링 방지
-    const currentHTML = schools.map(school => school.name).join('|');
-    if (autocompleteResults.dataset.lastRender === currentHTML) {
-        return;
-    }
-    autocompleteResults.dataset.lastRender = currentHTML;
 
     autocompleteResults.innerHTML = '';
 
@@ -767,7 +768,6 @@ function showAutocomplete(schools) {
         item.textContent = school.name;
         item.dataset.code = school.code;
         item.dataset.name = school.name;
-
         item.addEventListener('click', () => selectSchool(item));
         autocompleteResults.appendChild(item);
     });
@@ -794,21 +794,17 @@ function updateSelection(items) {
 
 function selectSchool(item) {
     const schoolNameInput = document.getElementById("school_name");
-    const schoolCode = item.dataset.code;
-    const schoolName = item.dataset.name;
-
     if (schoolNameInput) {
-        schoolNameInput.value = schoolName;
+        schoolNameInput.value = item.dataset.name;
     }
     hideAutocomplete();
 
-    // 페이지 이동 전 로딩 표시
     const loadingDiv = document.getElementById('loading');
     if (loadingDiv) {
         loadingDiv.style.display = 'flex';
     }
 
-    window.location.href = `/meal/${schoolCode}`;
+    window.location.href = `/meal/${item.dataset.code}`;
 }
 
 // DOM 로드 완료 후 초기화
@@ -830,6 +826,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const dismissBtn = document.getElementById('dismiss-ios-btn');
     const shareBtn = document.getElementById('share-btn');
 
+    // 백그라운드에서 전체 학교 데이터 로드
+    preloadAllSchools();
+
     // 수동 학교 찾기 토글
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
         manualFinderToggle.addEventListener('click', function() {
@@ -847,28 +846,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 자동완성 기능 설정
+    // 자동완성 기능 설정 - 즉시 검색
     if (schoolNameInput && regionSelect && autocompleteResults) {
-        // 입력 시 자동완성 - 개선된 디바운싱
-schoolNameInput.addEventListener('input', function() {
-    const query = this.value.trim();
-    const region = regionSelect.value;
+        
+        // IME 조합 시작/종료 처리
+        schoolNameInput.addEventListener('compositionstart', () => {
+            isComposing = true;
+            clearTimeout(autocompleteTimeout);
+        });
 
-    // 기존 타이머 클리어
-    clearTimeout(autocompleteTimeout);
+        schoolNameInput.addEventListener('compositionend', (e) => {
+            isComposing = false;
+            const query = e.target.value.trim();
+            const region = regionSelect.value;
+            
+            if (query.length >= 2 && region) {
+                // 조합 완료 후 즉시 검색
+                const hasLocalData = allSchoolsData[region] && allSchoolsData[region].length > 0;
+                if (hasLocalData) {
+                    searchSchoolsInstant(query, region);
+                } else {
+                    setTimeout(() => searchSchoolsAPI(query, region), 50);
+                }
+            }
+        });
 
-    if (query.length < 1 || !region) {
-        hideAutocomplete();
-        lastQuery = '';
-        lastRegion = '';
-        return;
-    }
+        // 입력 이벤트 - 즉시 검색
+        schoolNameInput.addEventListener('input', function() {
+            if (isComposing) return;
+            
+            const query = this.value.trim();
+            const region = regionSelect.value;
 
-    // 30ms로 더 단축하여 더 빠른 응답 (기존 50ms에서 30ms로)
-    autocompleteTimeout = setTimeout(() => {
-        searchSchools(query, region);
-    }, 30);
-});
+            clearTimeout(autocompleteTimeout);
+
+            if (query.length < 2 || !region) {
+                hideAutocomplete();
+                return;
+            }
+
+            // 로컬 데이터가 있으면 즉시, 없으면 API로 fallback
+            const hasLocalData = allSchoolsData[region] && allSchoolsData[region].length > 0;
+            
+            if (hasLocalData) {
+                // 로컬 데이터 있으면 즉시 검색 (디바운싱 없음)
+                searchSchoolsInstant(query, region);
+            } else {
+                // API 검색은 100ms 디바운싱
+                autocompleteTimeout = setTimeout(() => {
+                    if (!isComposing) {
+                        searchSchoolsAPI(query, region);
+                    }
+                }, 100);
+            }
+        });
 
         // 키보드 네비게이션
         schoolNameInput.addEventListener('keydown', function(e) {
@@ -891,18 +922,41 @@ schoolNameInput.addEventListener('input', function() {
             }
         });
 
-        // 지역 변경 시 캐시 클리어
+        // 지역 변경 시
         regionSelect.addEventListener('change', function() {
             hideAutocomplete();
-            searchCache.clear();
-            lastQuery = '';
-            lastRegion = '';
+            
+            // 기존 입력값이 있으면 새 지역으로 검색
+            const query = schoolNameInput.value.trim();
+            if (query.length >= 2 && this.value) {
+                const hasLocalData = allSchoolsData[this.value] && allSchoolsData[this.value].length > 0;
+                if (hasLocalData) {
+                    searchSchoolsInstant(query, this.value);
+                } else {
+                    setTimeout(() => searchSchoolsAPI(query, this.value), 100);
+                }
+            }
         });
 
         // 외부 클릭 시 자동완성 숨기기
         document.addEventListener('click', function(e) {
             if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
                 hideAutocomplete();
+            }
+        });
+
+        // 포커스 시 기존 입력값으로 검색
+        schoolNameInput.addEventListener('focus', function() {
+            const query = this.value.trim();
+            const region = regionSelect.value;
+            
+            if (query.length >= 2 && region) {
+                const hasLocalData = allSchoolsData[region] && allSchoolsData[region].length > 0;
+                if (hasLocalData) {
+                    searchSchoolsInstant(query, region);
+                } else {
+                    setTimeout(() => searchSchoolsAPI(query, region), 100);
+                }
             }
         });
     }
@@ -973,6 +1027,7 @@ schoolNameInput.addEventListener('input', function() {
         console.warn("Month toggle button or table not found!");
     }
 
+    // iOS 웹앱 가이드
     if (iosGuide && shouldShowGuide()) {
         console.log("Showing iOS Guide");
         setTimeout(() => {
@@ -987,6 +1042,7 @@ schoolNameInput.addEventListener('input', function() {
         loadingDiv.style.display = 'none';
     }
 
+    // 저장된 쿠키값 복원
     const savedSchool = getCookie('school_name');
     const savedRegionName = getCookie('region_name');
     if (savedSchool && schoolNameInput) {
@@ -1002,6 +1058,7 @@ schoolNameInput.addEventListener('input', function() {
 
     console.log("DOM Loaded and JS initialized successfully");
 
+    // 광고 표시 (기존 코드)
     setTimeout(() => {
         const bodyAdDesktop = document.getElementById('bodyad-desktop');
         const bodyAdMobile = document.getElementById('bodyad-mobile');
