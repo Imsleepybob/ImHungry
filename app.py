@@ -444,9 +444,8 @@ def clean_user_agent(user_agent_string):
     cleaned_ua = re.sub(r'^(Mozilla/\d\.\d\s\(.*\)|AppleWebKit/\d+\.\d+\s\(.*\)|KHTML,\s*like\s*Gecko\s*|Chrome/\d+\.\d+\.\d+\.\d+\s*|Safari/\d+\.\d+\s*|Edge/\d+\.\d+\s*|Firefox/\d+\.\d+\s*)+', '', user_agent_string).strip()
     return cleaned_ua[:200] # Ensure it's still capped at 200 characters
 
-# 접속 로그 기록 함수
 def log_access_request(status_code=200):
-    """접속 로그를 기록합니다."""
+    """접속 로그를 기록합니다. (User-Agent 정보 추가)"""
     # Only log GET and POST requests with status 200 or 206
     if request.method in ['GET', 'POST'] and status_code in [200, 206]:
         try:
@@ -1015,10 +1014,9 @@ def get_school_meal(school_code, date):
         app.logger.error(f"Error in get_school_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-# 개선된 자동완성 API
 @app.route('/api/schools/search')
 def search_schools_autocomplete():
-    """학교 검색 자동완성 API - 성능 최적화 버전"""
+    """학교 검색 자동완성 API - 응답 속도 개선"""
     query = request.args.get('q', '').strip()
     region_name = request.args.get('region', '').strip()
 
@@ -1030,78 +1028,61 @@ def search_schools_autocomplete():
 
     region_code = regions[region_name]
 
-    # 자동완성 전용 캐시 확인
-    with autocomplete_cache_lock:
-        cache_key = f"auto_{region_code}_{query}"
-        if cache_key in autocomplete_cache:
-            cached_result = autocomplete_cache[cache_key]
-            # 캐시가 10분 이내면 사용
-            if time.time() - cached_result['timestamp'] < 600:
-                return jsonify(cached_result['data'])
-
-    # 먼저 메모리에 로드된 학교 목록에서 검색 (매우 빠름)
-    schools = []
-    
-    # 전체 학교 목록에서 빠른 검색
-    if hasattr(get_schools_by_region_and_level, 'cache'):
-        all_schools_key = f"schools_{region_code}_all"
-        if all_schools_key in get_schools_by_region_and_level.cache:
-            all_schools = get_schools_by_region_and_level.cache[all_schools_key]
-            
-            # 빠른 문자열 매칭
-            query_lower = query.lower()
-            expanded_query = expand_school_name(query).lower()
-            
-            for school in all_schools:
-                school_name_lower = school['name'].lower()
-                if (query_lower in school_name_lower or 
-                    expanded_query != query_lower and expanded_query in school_name_lower or
-                    school_name_lower.startswith(query_lower)):
-                    schools.append(school)
-                    if len(schools) >= 10:  # 최대 10개
-                        break
-
-    # 메모리 검색으로 결과가 충분하면 API 호출 생략
-    if len(schools) >= 5:
-        result = schools[:10]
-        
-        # 결과 캐싱
-        with autocomplete_cache_lock:
-            autocomplete_cache[cache_key] = {
-                'data': result,
-                'timestamp': time.time()
-            }
-            # 캐시 크기 제한 (1000개까지)
-            if len(autocomplete_cache) > 1000:
-                # 오래된 항목 삭제
-                old_keys = [k for k, v in autocomplete_cache.items() 
-                           if time.time() - v['timestamp'] > 600]
-                for old_key in old_keys[:500]:
-                    del autocomplete_cache[old_key]
-        
-        return jsonify(result)
-
-    # 메모리 검색 결과가 부족한 경우에만 API 호출
+    # 원래 검색어와 축약어 확장 버전 모두 시도
     search_terms = [query]
     expanded_query = expand_school_name(query)
     if expanded_query != query:
         search_terms.append(expanded_query)
 
+    schools = []
     api_error = False
 
+    # 캐시 우선 검색 추가 - 속도 개선
+    cache_key = f"search_{region_code}_{query}"
+    if hasattr(search_schools_autocomplete, 'cache'):
+        if cache_key in search_schools_autocomplete.cache:
+            return jsonify(search_schools_autocomplete.cache[cache_key][:10])
+    else:
+        search_schools_autocomplete.cache = {}
+
+    # 전체 학교 목록에서 메모리 검색 시도 (매우 빠름)
+    all_schools_key = f"schools_{region_code}_all"
+    if hasattr(get_schools_by_region_and_level, 'cache') and all_schools_key in get_schools_by_region_and_level.cache:
+        all_schools = get_schools_by_region_and_level.cache[all_schools_key]
+        for school in all_schools:
+            if any(search_term.lower() in school['name'].lower() for search_term in search_terms):
+                schools.append(school)
+                if len(schools) >= 10:
+                    break
+        
+        # 메모리 검색으로 결과를 얻었으면 캐시하고 반환
+        if schools:
+            search_schools_autocomplete.cache[cache_key] = schools
+            # 캐시 TTL 설정 (5분)
+            import time
+            import threading
+            def clear_cache():
+                time.sleep(300)  # 5분
+                if cache_key in search_schools_autocomplete.cache:
+                    del search_schools_autocomplete.cache[cache_key]
+            threading.Thread(target=clear_cache, daemon=True).start()
+            
+            return jsonify(schools[:10])
+
+    # 메모리 검색에서 결과가 없으면 API 호출 (기존 로직)
     for search_term in search_terms:
         url = "https://open.neis.go.kr/hub/schoolInfo"
         params = {
             "KEY": API_KEY,
             "Type": "json",
             "pIndex": 1,
-            "pSize": 10,
+            "pSize": 10,  # 최대 10개까지
             "ATPT_OFCDC_SC_CODE": region_code,
             "SCHUL_NM": search_term
         }
 
         try:
-            response = requests.get(url, params=params, timeout=2)  # 더 짧은 타임아웃
+            response = requests.get(url, params=params, timeout=2)  # 타임아웃을 2초로 단축
             response.raise_for_status()
             data = response.json()
 
@@ -1122,32 +1103,35 @@ def search_schools_autocomplete():
                         school_cache[cache_key_school] = school_info
                         school_cache[school_data["SD_SCHUL_CODE"]] = school_info
 
-            if len(schools) >= 10:
+            if len(schools) >= 10:  # 충분한 결과가 있으면 중단
                 break
 
         except requests.exceptions.Timeout:
-            app.logger.debug(f"Autocomplete timeout for '{search_term}'")
+            app.logger.error(f"Error in autocomplete search for '{search_term}': API timeout")
             api_error = True
             continue
         except Exception as e:
-            app.logger.debug(f"Autocomplete error for '{search_term}': {e}")
+            app.logger.error(f"Error in autocomplete search for '{search_term}': {e}")
             api_error = True
             continue
 
-    result = schools[:10]
+    # 결과 캐시 저장
+    if schools:
+        search_schools_autocomplete.cache[cache_key] = schools
+        # 캐시 TTL 설정 (5분)
+        import time
+        import threading
+        def clear_cache():
+            time.sleep(300)  # 5분
+            if cache_key in search_schools_autocomplete.cache:
+                del search_schools_autocomplete.cache[cache_key]
+        threading.Thread(target=clear_cache, daemon=True).start()
 
-    # 결과 캐싱
-    with autocomplete_cache_lock:
-        autocomplete_cache[cache_key] = {
-            'data': result,
-            'timestamp': time.time()
-        }
-
-    # API 오류가 발생하고 결과가 없는 경우에만 오류 응답
-    if api_error and len(result) == 0:
+    # API 오류가 발생하고 결과가 없는 경우 오류 응답
+    if api_error and len(schools) == 0:
         return jsonify({"error": "NEIS API에 오류가 발생하여 일시적으로 급식 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요."}), 500
 
-    return jsonify(result)
+    return jsonify(schools[:10])  # 최대 10개 반환
 
 @app.route('/api/meals/today/<school_code>')
 def get_today_meal(school_code):
@@ -1505,7 +1489,6 @@ def add_to_blacklist():
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
 
-# --- 응답 로깅 (개선된 버전) ---
 @app.after_request
 def after_request_func(response):
     # Silent block 표시가 있으면 로그 안 남김
@@ -1516,15 +1499,17 @@ def after_request_func(response):
     request_path = request.path
     request_method = request.method
     status_code = response.status_code
+    user_agent = request.headers.get('User-Agent', 'Unknown')[:100]  # User-Agent 추가
 
     # 로그를 남길지 판단
     if should_log_request(request_path, request_method):
-        # 기존 앱 로그
+        # 기존 앱 로그 - User-Agent 정보 추가
         log_entry = (
             f"IP: {client_ip}, "
             f"Method: {request_method}, "
             f"URL: {request.url}, "
-            f"Status: {status_code}"
+            f"Status: {status_code}, "
+            f"UA: {user_agent}"  # User-Agent 정보 추가
         )
         app.logger.info(log_entry)
 
