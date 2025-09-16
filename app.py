@@ -343,16 +343,15 @@ class AccessLogFormatter(logging.Formatter):
         record.referrer = getattr(record, 'referrer', 'N/A')
         return super().format(record)
 
-# 개선된 앱 로그 포맷터 (User-Agent 추가)
 class AppLogFormatter(logging.Formatter):
     def format(self, record):
-        # Flask request context가 있을 때만 request 정보 추가
+        # Flask request context가 있을 때만 request 정보 추가 (간소화)
         try:
             from flask import has_request_context
             if has_request_context():
                 client_ip = get_client_ip()
-                user_agent = request.headers.get('User-Agent', 'N/A')[:200]  # 200자로 제한
-                record.request_info = f"IP: {client_ip}, UA: {user_agent}"
+                # User-Agent는 access.log에서만 기록하도록 제거
+                record.request_info = f"IP: {client_ip}"
             else:
                 record.request_info = "No request context"
         except:
@@ -1133,6 +1132,36 @@ def search_schools_autocomplete():
 
     return jsonify(schools[:10])  # 최대 10개 반환
 
+@app.route('/api/schools/region/<region_code>')
+def get_all_schools_in_region(region_code):
+    """특정 지역의 모든 학교 데이터를 반환 (클라이언트 사이드 검색용)"""
+    try:
+        # 지역 코드 유효성 검사
+        if region_code not in regions.values():
+            return jsonify({"error": "Invalid region code"}), 400
+        
+        # 캐시된 데이터 사용
+        schools = get_schools_by_region_and_level(region_code)
+        
+        # 데이터 압축을 위해 필요한 필드만 반환
+        simplified_schools = [
+            {
+                'code': school['code'],
+                'name': school['name']
+            }
+            for school in schools
+        ]
+        
+        # 캐시 헤더 설정
+        response = make_response(jsonify(simplified_schools))
+        response.headers['Cache-Control'] = 'public, max-age=3600'  # 1시간 캐시
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error in get_all_schools_in_region: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 @app.route('/api/meals/today/<school_code>')
 def get_today_meal(school_code):
     """오늘의 급식 정보를 반환합니다."""
@@ -1499,27 +1528,18 @@ def after_request_func(response):
     request_path = request.path
     request_method = request.method
     status_code = response.status_code
-    user_agent = request.headers.get('User-Agent', 'Unknown')[:100]  # User-Agent 추가
 
     # 로그를 남길지 판단
     if should_log_request(request_path, request_method):
-        # 기존 앱 로그 - User-Agent 정보 추가
-        log_entry = (
-            f"IP: {client_ip}, "
-            f"Method: {request_method}, "
-            f"URL: {request.url}, "
-            f"Status: {status_code}, "
-            f"UA: {user_agent}"  # User-Agent 정보 추가
-        )
-        app.logger.info(log_entry)
-
-        # 접속 로그 (200/206 상태 코드만)
+        # 접속 로그만 기록 (상세 정보는 여기서)
         if status_code in [200, 206]:
             log_access_request(status_code)
+        # 에러 상태 코드는 앱 로그에만 간단히 기록
+        elif status_code >= 400:
+            app.logger.warning(f"Error - Method: {request_method}, Path: {request_path}, Status: {status_code}")
 
     return response
 
-# --- 앱 실행 ---
 if __name__ == "__main__":
     # 로그 파일 경로 정보 출력
     app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
