@@ -88,11 +88,11 @@ body { word-break: keep-all; }
     border: 1px solid #ddd;
     border-top: none;
     border-radius: 0 0 8px 8px;
-    max-height: 250px; /* 높이 증가 */
+    max-height: 200px;
     overflow-y: auto;
-    z-index: 9999; /* 매우 높은 z-index로 광고 위에 표시 */
+    z-index: 2000;
     display: none;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.25); /* 그림자 강화 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .autocomplete-item {
@@ -748,9 +748,7 @@ function showAutocomplete(schools) {
     if (!autocompleteResults) return;
 
     if (schools.length === 0) {
-        autocompleteResults.innerHTML = '<div class="autocomplete-error">검색 결과가 없습니다.</div>';
-        autocompleteResults.style.display = 'block';
-        autocompleteVisible = true;
+        hideAutocomplete();
         return;
     }
 
@@ -852,25 +850,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // 자동완성 기능 설정
     if (schoolNameInput && regionSelect && autocompleteResults) {
         // 입력 시 자동완성 - 개선된 디바운싱
-        schoolNameInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            const region = regionSelect.value;
+schoolNameInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    const region = regionSelect.value;
 
-            // 기존 타이머 클리어
-            clearTimeout(autocompleteTimeout);
+    // 기존 타이머 클리어
+    clearTimeout(autocompleteTimeout);
 
-            if (query.length < 1 || !region) {
-                hideAutocomplete();
-                lastQuery = '';
-                lastRegion = '';
-                return;
-            }
+    if (query.length < 1 || !region) {
+        hideAutocomplete();
+        lastQuery = '';
+        lastRegion = '';
+        return;
+    }
 
-            // 20ms 디바운스로 매우 빠른 반응
-            autocompleteTimeout = setTimeout(() => {
-                searchSchools(query, region);
-            }, 20);
-        });
+    // 30ms로 더 단축하여 더 빠른 응답 (기존 50ms에서 30ms로)
+    autocompleteTimeout = setTimeout(() => {
+        searchSchools(query, region);
+    }, 30);
+});
 
         // 키보드 네비게이션
         schoolNameInput.addEventListener('keydown', function(e) {
