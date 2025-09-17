@@ -709,6 +709,10 @@ function dismissIOSGuide() {
     }
 }
 
+function removeSpaces(text) {
+    return text.replace(/\s/g, '');
+}
+
 function getCompleteCharacters(text) {
     return text.split('').filter(char => {
         const code = char.charCodeAt(0);
@@ -719,7 +723,8 @@ function getCompleteCharacters(text) {
 
 function isValidSearchQuery(query) {
     if (!query || query.length < 2) return false;
-    const completeText = getCompleteCharacters(query);
+    const spaceRemovedText = removeSpaces(query);
+    const completeText = getCompleteCharacters(spaceRemovedText);
     return completeText.length >= 2;
 }
 
@@ -758,11 +763,11 @@ function searchSchoolsInstant(query, region) {
         return;
     }
 
-    const searchQuery = getCompleteCharacters(query).toLowerCase();
+    const searchQuery = removeSpaces(getCompleteCharacters(query).toLowerCase());
     console.log(`Searching in ${regionSchools.length} schools for: "${searchQuery}"`);
 
     const filteredSchools = regionSchools.filter(school => {
-        const schoolName = school.name.toLowerCase();
+        const schoolName = removeSpaces(school.name.toLowerCase());
         const isMatch = schoolName.includes(searchQuery);
         if (isMatch) {
             console.log(`Match found: ${school.name}`);
@@ -770,8 +775,10 @@ function searchSchoolsInstant(query, region) {
         return isMatch;
     })
     .sort((a, b) => {
-        const aStarts = a.name.toLowerCase().startsWith(searchQuery);
-        const bStarts = b.name.toLowerCase().startsWith(searchQuery);
+        const aNameNoSpace = removeSpaces(a.name.toLowerCase());
+        const bNameNoSpace = removeSpaces(b.name.toLowerCase());
+        const aStarts = aNameNoSpace.startsWith(searchQuery);
+        const bStarts = bNameNoSpace.startsWith(searchQuery);
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
         return a.name.localeCompare(b.name);
@@ -800,7 +807,7 @@ async function searchSchoolsAPI(query, region) {
     showLoadingState();
 
     try {
-        const searchQuery = getCompleteCharacters(query);
+        const searchQuery = removeSpaces(getCompleteCharacters(query));
         const response = await fetch(`/api/schools/search?q=${encodeURIComponent(searchQuery)}&region=${encodeURIComponent(region)}`);
 
         if (requestId !== searchRequestId) {
@@ -830,8 +837,8 @@ async function searchSchoolsAPI(query, region) {
         const currentRegion = document.getElementById("region")?.value;
 
         if (currentQuery && currentRegion === region && isValidSearchQuery(currentQuery)) {
-            const currentComplete = getCompleteCharacters(currentQuery).toLowerCase();
-            const searchComplete = getCompleteCharacters(query).toLowerCase();
+            const currentComplete = removeSpaces(getCompleteCharacters(currentQuery).toLowerCase());
+            const searchComplete = removeSpaces(getCompleteCharacters(query).toLowerCase());
 
             const isRelated = currentComplete.includes(searchComplete) || searchComplete.includes(currentComplete);
 
