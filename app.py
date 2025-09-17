@@ -356,7 +356,7 @@ class AppLogFormatter(logging.Formatter):
                 record.request_info = "No request context"
         except:
             record.request_info = "N/A"
-        
+
         return super().format(record)
 
 def setup_logging():
@@ -1053,7 +1053,7 @@ def search_schools_autocomplete():
                 schools.append(school)
                 if len(schools) >= 10:
                     break
-        
+
         # 메모리 검색으로 결과를 얻었으면 캐시하고 반환
         if schools:
             search_schools_autocomplete.cache[cache_key] = schools
@@ -1065,7 +1065,7 @@ def search_schools_autocomplete():
                 if cache_key in search_schools_autocomplete.cache:
                     del search_schools_autocomplete.cache[cache_key]
             threading.Thread(target=clear_cache, daemon=True).start()
-            
+
             return jsonify(schools[:10])
 
     # 메모리 검색에서 결과가 없으면 API 호출 (기존 로직)
@@ -1139,10 +1139,10 @@ def get_all_schools_in_region(region_code):
         # 지역 코드 유효성 검사
         if region_code not in regions.values():
             return jsonify({"error": "Invalid region code"}), 400
-        
+
         # 캐시된 데이터 사용
         schools = get_schools_by_region_and_level(region_code)
-        
+
         # 데이터 압축을 위해 필요한 필드만 반환
         simplified_schools = [
             {
@@ -1151,13 +1151,13 @@ def get_all_schools_in_region(region_code):
             }
             for school in schools
         ]
-        
+
         # 캐시 헤더 설정
         response = make_response(jsonify(simplified_schools))
         response.headers['Cache-Control'] = 'public, max-age=3600'  # 1시간 캐시
-        
+
         return response
-        
+
     except Exception as e:
         app.logger.error(f"Error in get_all_schools_in_region: {e}")
         return jsonify({"error": "Internal server error"}), 500
