@@ -63,7 +63,7 @@ SUSPICIOUS_PATTERNS = {
     ],
     'user_agents': [
         r'spider', r'scanner', r'nikto',
-        r'sqlmap', r'nmap', r'masscan', r'zap', r'burp'
+        r'sqlmap', r'nmap', r'masscan', r'zap', r'burp', r'amazonbot'
     ],
     'parameters': [
         r'union.*select', r'<script', r'javascript:', r'eval\(',
