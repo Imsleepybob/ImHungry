@@ -1544,9 +1544,6 @@
 94.76.40.0/23 # Datacamp Limited
 
 #Amazon
- 
-asn.json.gz.json(application/json) - 59722670 bytes, last modified: n/a - 100% done
- 스트리밍 출력 내용이 길어서 마지막 5000줄이 삭제되었습니다.
 2600:9000:2159::/48
 2600:9000:215a::/47
 2600:9000:215d::/48
