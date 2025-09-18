@@ -479,7 +479,6 @@ def log_namuboard_access_request():
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
 
-# --- NEIS API 및 기본 설정 ---
 API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
 KST = timezone(timedelta(hours=9))
 regions = {
