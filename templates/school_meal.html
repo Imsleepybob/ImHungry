@@ -394,6 +394,206 @@ body { word-break: keep-all; }
     border-left: 4px solid #faa41a;
 }
 
+.nearby-schools-section {
+    max-width: 850px;
+    margin: 30px auto;
+}
+
+.toggle-nearby-btn {
+    display: block;
+    margin: 0 auto 30px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #faa41a, #ff8c00);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(250, 164, 26, 0.3);
+}
+
+.toggle-nearby-btn:hover {
+    background: linear-gradient(135deg, #ff8c00, #e6750a);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(250, 164, 26, 0.4);
+}
+
+.toggle-nearby-btn.active {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.nearby-schools-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    padding: 25px;
+    margin-bottom: 30px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.nearby-schools-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.nearby-schools-title {
+    font-size: 1.4em;
+    color: #333;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.nearby-schools-subtitle {
+    color: #666;
+    font-size: 0.95em;
+    margin: 0;
+}
+
+.nearby-schools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.nearby-school-card {
+    background: #f8f9ff;
+    border: 2px solid #e3f2fd;
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.nearby-school-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00d4ff);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.nearby-school-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+    border-color: #007bff;
+}
+
+.nearby-school-card:hover::before {
+    transform: scaleX(1);
+}
+
+.nearby-school-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 12px;
+    font-size: 1.05em;
+    line-height: 1.3;
+}
+
+.nearby-school-distance {
+    color: #666;
+    font-size: 0.85em;
+    margin-bottom: 15px;
+    background: rgba(0, 123, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.view-nearby-meal-btn {
+    display: inline-block;
+    background: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.view-nearby-meal-btn:hover {
+    background: #0056b3;
+    text-decoration: none;
+    color: white;
+    transform: scale(1.05);
+}
+
+.nearby-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.spinner-small {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.nearby-error {
+    text-align: center;
+    padding: 30px 20px;
+    color: #e55;
+    background: #fee;
+    border-radius: 8px;
+    border-left: 4px solid #e55;
+}
+
+.current-school-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75em;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}
+
+@media (max-width: 768px) {
+    .nearby-schools-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .toggle-nearby-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+    }
+
+    .nearby-schools-container {
+        padding: 20px 15px;
+    }
+}
+
 @media (max-width: 768px) {
     .regions-grid {
         grid-template-columns: 1fr;
@@ -443,7 +643,7 @@ body { word-break: keep-all; }
     }
     #ad-mobile, #bodyad-mobile {
         display: none;
-    }/
+    }
     #bodyad-desktop:not(.show-ad) {
         display: none;
     }
@@ -598,9 +798,31 @@ safe }}</p></div>{% endif %}
           {% endfor %}
           </tbody>
         </table>
-
       </div>
     </div>
+{% if school_code %}
+<div class="nearby-schools-section">
+    <button class="toggle-nearby-btn" id="toggleNearbyBtn">🏫 주변 학교 급식과 비교하기</button>
+
+    <div class="nearby-schools-container" id="nearbySchoolsContainer" style="display: none;">
+        <div class="nearby-schools-header">
+            <h3 class="nearby-schools-title">주변 학교 급식 정보</h3>
+            <p class="nearby-schools-subtitle">우리 학교와 다른 학교들의 급식을 비교해보세요!</p>
+        </div>
+
+        <div id="nearbySchoolsLoading" class="nearby-loading">
+            <div class="spinner-small"></div>
+            <span>주변 학교를 검색 중...</span>
+        </div>
+
+        <div id="nearbySchoolsContent" class="nearby-schools-grid" style="display: none;"></div>
+
+        <div id="nearbySchoolsError" class="nearby-error" style="display: none;">
+            주변 학교 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.
+        </div>
+    </div>
+</div>
+{% endif %}
   </div>
 {% endif %}
   {% elif school_name and not week_meals %}
@@ -671,6 +893,10 @@ let currentSearchQuery = '';
 let currentSearchRegion = '';
 let isSearching = false;
 let searchRequestId = 0;
+
+// 주변 학교 관련 변수들
+let nearbyLoaded = false;
+let nearbyVisible = false;
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -992,6 +1218,65 @@ function performSearch(query, region, immediate = false) {
     }
 }
 
+// 주변 학교 관련 함수들 - 수정된 버전
+function loadNearbySchools() {
+    const schoolCode = getCookie('school_code');
+    if (!schoolCode) return;
+
+    const nearbyLoading = document.getElementById('nearbySchoolsLoading');
+    const nearbyContent = document.getElementById('nearbySchoolsContent');
+    const nearbyError = document.getElementById('nearbySchoolsError');
+
+    if (nearbyLoading) nearbyLoading.style.display = 'flex';
+    if (nearbyContent) nearbyContent.style.display = 'none';
+    if (nearbyError) nearbyError.style.display = 'none';
+
+    fetch(`/api/nearby-schools/${schoolCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            displayNearbySchools(data.nearby_schools, data.current_school);
+            nearbyLoaded = true;
+        })
+        .catch(error => {
+            console.error('Error loading nearby schools:', error);
+            showNearbyError();
+        })
+        .finally(() => {
+            if (nearbyLoading) nearbyLoading.style.display = 'none';
+        });
+}
+
+function displayNearbySchools(schools, currentSchool) {
+    const nearbyContent = document.getElementById('nearbySchoolsContent');
+    if (!nearbyContent) return;
+
+    if (schools.length === 0) {
+        nearbyContent.innerHTML = '<div class="nearby-error">같은 지역에서 비교할 수 있는 다른 학교가 없습니다.</div>';
+    } else {
+        const schoolsHtml = schools.map(school => `
+            <div class="nearby-school-card">
+                <div class="nearby-school-name">${school.name}</div>
+                <div class="nearby-school-distance">같은 지역</div>
+                <a href="/meal/${school.code}" class="view-nearby-meal-btn">급식 정보 보기</a>
+            </div>
+        `).join('');
+        nearbyContent.innerHTML = schoolsHtml;
+    }
+
+    nearbyContent.style.display = 'grid';
+}
+
+function showNearbyError() {
+    const nearbyError = document.getElementById('nearbySchoolsError');
+    const nearbyContent = document.getElementById('nearbySchoolsContent');
+
+    if (nearbyError) nearbyError.style.display = 'block';
+    if (nearbyContent) nearbyContent.style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
 
@@ -1009,6 +1294,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const dismissBtn = document.getElementById('dismiss-ios-btn');
     const shareBtn = document.getElementById('share-btn');
 
+    // 주변 학교 관련 요소들
+    const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
+    const nearbyContainer = document.getElementById('nearbySchoolsContainer');
+
     preloadAllSchools();
 
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
@@ -1022,6 +1311,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 manualFinderContent.classList.add('show');
                 manualFinderIcon.classList.add('expanded');
                 manualFinderIcon.textContent = '▲';
+            }
+        });
+    }
+
+    // 주변 학교 토글 기능 - 월간 급식표와 동일한 로직 적용
+    if (toggleNearbyBtn && nearbyContainer) {
+        console.log("Setting up nearby schools toggle functionality");
+        toggleNearbyBtn.addEventListener('click', function() {
+            console.log("Nearby toggle clicked!");
+            const isHidden = nearbyContainer.style.display === 'none';
+
+            if (isHidden) {
+                // 보이기
+                nearbyContainer.style.display = 'block';
+                toggleNearbyBtn.textContent = '▲ 주변 학교 급식 비교 접기';
+                toggleNearbyBtn.classList.add('active');
+                nearbyVisible = true;
+
+                // 데이터가 아직 로드되지 않았으면 로드
+                if (!nearbyLoaded) {
+                    loadNearbySchools();
+                }
+
+                // 스크롤 애니메이션 (월간 급식표와 동일)
+                nearbyContainer.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            } else {
+                // 숨기기
+                nearbyContainer.style.display = 'none';
+                toggleNearbyBtn.textContent = '🏫 주변 학교 급식과 비교하기';
+                toggleNearbyBtn.classList.remove('active');
+                nearbyVisible = false;
             }
         });
     }
@@ -1170,6 +1492,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 월간 급식표 토글 기능 (기존 기능 유지)
     if (toggleMonthBtn && monthTable) {
         console.log("Setting up month toggle functionality");
         toggleMonthBtn.addEventListener('click', function() {
