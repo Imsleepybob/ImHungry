@@ -271,26 +271,25 @@ input[type="text"]:focus, select:focus {
     border-bottom: 1px solid #e9ecef;
 }
 
-/* 월간 급식표 토글 버튼 */
 .toggle-month-btn {
     display: block;
     margin: 0 auto 30px;
-    padding: 12px 24px;
-    background-color: #f8f9fa;
-    color: #333;
-    border: 1px solid #ddd;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border: none;
     border-radius: 30px;
     font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
 }
 
 .toggle-month-btn:hover {
-    background-color: #e9ecef;
+    background: linear-gradient(135deg, #0056b3, #004085);
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
 }
 
 .toggle-month-btn.active {
@@ -456,20 +455,20 @@ input[type="text"]:focus, select:focus {
         padding: 12px 10px;
         font-size: 14px;
     }
-    
+
     .school-title {
         font-size: 1.5rem;
     }
-    
+
     .meal-title {
         font-size: 1.2rem;
     }
-    
+
     .meal-card {
         padding: 15px;
         border-radius: 12px;
     }
-    
+
     .menu-toggle {
         display: block;
         background: none;
@@ -477,7 +476,7 @@ input[type="text"]:focus, select:focus {
         font-size: 24px;
         cursor: pointer;
     }
-    
+
     .main-nav {
         display: none;
         position: absolute;
@@ -490,30 +489,30 @@ input[type="text"]:focus, select:focus {
         border-radius: 0 0 12px 12px;
         overflow: hidden;
     }
-    
+
     .main-nav.active {
         display: block;
         animation: slideDown 0.3s ease;
     }
-    
+
     @keyframes slideDown {
         from { transform: translateY(-20px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
-    
+
     .main-nav ul {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .main-nav ul li {
         border-bottom: 1px solid #eee;
     }
-    
+
     .main-nav ul li:last-child {
         border-bottom: none;
     }
-    
+
     .main-nav ul li a {
         display: block;
         padding: 15px;
@@ -521,16 +520,16 @@ input[type="text"]:focus, select:focus {
         color: #333;
         transition: all 0.2s ease;
     }
-    
+
     .main-nav ul li a:hover {
         background-color: #f5f9ff;
         padding-left: 20px;
     }
-    
+
     .form-group {
         margin-bottom: 15px;
     }
-    
+
     .allergy-list {
         columns: 1;
         -webkit-columns: 1;
