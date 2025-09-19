@@ -925,6 +925,54 @@ def get_schools_by_region_and_level_with_location(region_code, school_level=None
         get_schools_by_region_and_level_with_location.cache[cache_key] = []
         return []
 
+def extract_district_from_address(address):
+    """도로명주소에서 구/시/군 정보를 추출합니다."""
+    if not address:
+        return None
+
+    import re
+
+    # 주소 패턴: "서울특별시 강남구 ...", "경기도 구리시 ...", "부산광역시 해운대구 ..." 등
+    district_patterns = [
+        r'서울특별시\s+([가-힣]+구)',      # 서울특별시 강남구
+        r'부산광역시\s+([가-힣]+구)',      # 부산광역시 해운대구
+        r'대구광역시\s+([가-힣]+구)',      # 대구광역시 수성구
+        r'인천광역시\s+([가-힣]+구)',      # 인천광역시 연수구
+        r'광주광역시\s+([가-힣]+구)',      # 광주광역시 광산구
+        r'대전광역시\s+([가-힣]+구)',      # 대전광역시 유성구
+        r'울산광역시\s+([가-힣]+구)',      # 울산광역시 남구
+        r'경기도\s+([가-힣]+시)',         # 경기도 구리시
+        r'경기도\s+([가-힣]+군)',         # 경기도 양평군
+        r'강원[특별자치]*도\s+([가-힣]+시)',  # 강원도 춘천시
+        r'강원[특별자치]*도\s+([가-힣]+군)',  # 강원도 홍천군
+        r'충청북도\s+([가-힣]+시)',       # 충청북도 청주시
+        r'충청북도\s+([가-힣]+군)',       # 충청북도 보은군
+        r'충청남도\s+([가-힣]+시)',       # 충청남도 천안시
+        r'충청남도\s+([가-힣]+군)',       # 충청남도 금산군
+        r'전라북도\s+([가-힣]+시)',       # 전북 전주시
+        r'전라북도\s+([가-힣]+군)',       # 전북 완주군
+        r'전북특별자치도\s+([가-힣]+시)',  # 전북특별자치도 전주시
+        r'전북특별자치도\s+([가-힣]+군)',  # 전북특별자치도 완주군
+        r'전라남도\s+([가-힣]+시)',       # 전남 목포시
+        r'전라남도\s+([가-힣]+군)',       # 전남 담양군
+        r'경상북도\s+([가-힣]+시)',       # 경북 포항시
+        r'경상북도\s+([가-힣]+군)',       # 경북 의성군
+        r'경상남도\s+([가-힣]+시)',       # 경남 창원시
+        r'경상남도\s+([가-힣]+군)',       # 경남 의령군
+        r'제주특별자치도\s+([가-힣]+시)',  # 제주 제주시
+        r'세종특별자치시',               # 세종시 (전체가 하나의 시)
+    ]
+
+    for pattern in district_patterns:
+        match = re.search(pattern, address)
+        if match:
+            if pattern == r'세종특별자치시':
+                return '세종시'
+            else:
+                return match.group(1)
+
+    return None
+
 def find_school_by_code_with_location(school_code):
     """학교 코드로 학교 정보를 찾되, 주소에서 구/시/군 정보를 추출합니다."""
     if school_code in school_cache:
