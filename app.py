@@ -698,6 +698,17 @@ def get_schools_by_region_and_level(region_code, school_level=None):
         get_schools_by_region_and_level.cache[cache_key] = []
         return []
 
+
+# --- NEIS API 및 기본 설정 ---
+API_KEY = "4e2c538d90ef493c94c6e2d943e756d9" # 실제 운영 시에는 환경 변수 등으로 관리하는 것이 좋습니다.
+KST = timezone(timedelta(hours=9))
+regions = {
+    "서울": "B10", "부산": "C10", "대구": "D10", "인천": "E10", "광주": "F10",
+    "대전": "G10", "울산": "H10", "세종": "I10", "경기": "J10", "강원": "K10",
+    "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
+    "경남": "S10", "제주": "T10"
+}
+
 # --- 핵심 함수 ---
 def get_school_code(school_name, region_code):
     """학교 이름과 지역 코드로 NEIS API에서 학교 코드와 전체 이름을 조회합니다."""
@@ -790,6 +801,263 @@ def find_school_by_code(school_code):
             app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
     return None
 
+def get_schools_by_region_and_level_with_location(region_code, school_level=None):
+    """지역별, 학교급별 학교 목록을 NEIS API에서 가져오되, 주소에서 구/시/군 정보를 추출합니다."""
+    cache_key = f"schools_with_location_{region_code}_{school_level or 'all'}"
+
+    # 메모리 캐시 확인
+    if hasattr(get_schools_by_region_and_level_with_location, 'cache'):
+        if cache_key in get_schools_by_region_and_level_with_location.cache:
+            return get_schools_by_region_and_level_with_location.cache[cache_key]
+    else:
+        get_schools_by_region_and_level_with_location.cache = {}
+
+    # 파일 캐시에서 로드 시도
+    cached_data = load_cache_from_file(cache_key)
+    if cached_data:
+        get_schools_by_region_and_level_with_location.cache[cache_key] = cached_data
+        return cached_data
+
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    schools = []
+
+    try:
+        # 첫 번째 요청으로 전체 데이터 수 확인
+        params = {
+            "KEY": API_KEY,
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 300,
+            "ATPT_OFCDC_SC_CODE": region_code
+        }
+
+        response = requests.get(url, params=params, timeout=8)
+        response.raise_for_status()
+        data = response.json()
+
+        if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
+            app.logger.warning(f"No schools found for region {region_code}")
+            get_schools_by_region_and_level_with_location.cache[cache_key] = []
+            return []
+
+        # 첫 페이지 처리
+        rows = data["schoolInfo"][1].get("row", [])
+        for school_data in rows:
+            try:
+                school_name = school_data["SCHUL_NM"]
+                school_code = school_data["SD_SCHUL_CODE"]
+                # 도로명주소에서 구/시/군 정보 추출
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+
+                schools.append({
+                    'code': school_code,
+                    'name': school_name,
+                    'region_code': region_code,
+                    'address': address,
+                    'district': district  # 구/시/군 정보
+                })
+            except KeyError:
+                continue
+
+        # 추가 페이지가 있는지 확인 (300개 이상인 경우에만)
+        if len(rows) >= 300:
+            page = 2
+            while page <= 10:
+                params["pIndex"] = page
+                try:
+                    response = requests.get(url, params=params, timeout=5)
+                    response.raise_for_status()
+                    data = response.json()
+
+                    if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
+                        break
+
+                    rows = data["schoolInfo"][1].get("row", [])
+                    if not rows:
+                        break
+
+                    for school_data in rows:
+                        try:
+                            school_name = school_data["SCHUL_NM"]
+                            school_code = school_data["SD_SCHUL_CODE"]
+                            address = school_data.get("ORG_RDNMA", "")
+                            district = extract_district_from_address(address)
+
+                            schools.append({
+                                'code': school_code,
+                                'name': school_name,
+                                'region_code': region_code,
+                                'address': address,
+                                'district': district
+                            })
+                        except KeyError:
+                            continue
+
+                    if len(rows) < 300:
+                        break
+
+                    page += 1
+                except:
+                    break
+
+        # 학교명으로 정렬
+        schools.sort(key=lambda x: x['name'])
+
+        # 학교급 필터링
+        if school_level:
+            level_keywords = school_levels.get(school_level, [])
+            filtered_schools = []
+            for school in schools:
+                if any(keyword in school['name'] for keyword in level_keywords):
+                    filtered_schools.append(school)
+            schools = filtered_schools
+
+        # 결과 캐시 저장
+        get_schools_by_region_and_level_with_location.cache[cache_key] = schools
+        save_cache_to_file(cache_key, schools)
+
+        app.logger.info(f"Fetched {len(schools)} schools with district info for {region_code}, level: {school_level}")
+        return schools
+
+    except Exception as e:
+        app.logger.error(f"Error fetching schools with district for region {region_code}, level {school_level}: {e}")
+        get_schools_by_region_and_level_with_location.cache[cache_key] = []
+        return []
+
+def find_school_by_code_with_location(school_code):
+    """학교 코드로 학교 정보를 찾되, 주소에서 구/시/군 정보를 추출합니다."""
+    if school_code in school_cache:
+        # 기존 캐시에 district 정보가 있는지 확인
+        cached_info = school_cache[school_code]
+        if 'district' in cached_info:
+            return cached_info
+
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    for region_name, region_code in regions.items():
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=2)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"],
+                    'address': address,
+                    'district': district
+                }
+                school_cache[school_code] = school_info
+                return school_info
+        except requests.exceptions.RequestException:
+            continue
+        except Exception as e:
+            app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
+    return None
+
+def get_school_level_from_name(school_name):
+    """학교명에서 학교급을 추출합니다."""
+    if '초등학교' in school_name or school_name.endswith('초'):
+        return '초등학교'
+    elif '중학교' in school_name or school_name.endswith('중'):
+        return '중학교'
+    elif '고등학교' in school_name or '고교' in school_name or school_name.endswith('고'):
+        return '고등학교'
+    elif '특수학교' in school_name:
+        return '특수학교'
+    elif '각종학교' in school_name:
+        return '각종학교'
+    return None
+
+def get_nearby_schools(current_school_info):
+    """현재 학교와 같은 구/시/군, 같은 학교급의 다른 학교들을 찾습니다."""
+    try:
+        # 현재 학교의 상세 정보를 구/시/군 포함해서 다시 조회
+        current_school_detailed = find_school_by_code_with_location(current_school_info['code'])
+
+        if not current_school_detailed:
+            app.logger.warning(f"Cannot get detailed info for {current_school_info['name']}")
+            return []
+
+        current_school_name = current_school_detailed['name']
+        current_region_code = current_school_detailed['region_code']
+        current_district = current_school_detailed.get('district', '')
+        current_address = current_school_detailed.get('address', '')
+        current_level = get_school_level_from_name(current_school_name)
+
+        # 디버깅을 위한 상세 로그
+        app.logger.info(f"=== DEBUGGING NEARBY SCHOOLS ===")
+        app.logger.info(f"Current school: {current_school_name}")
+        app.logger.info(f"Current address: '{current_address}'")
+        app.logger.info(f"Current district: '{current_district}'")
+        app.logger.info(f"Current level: {current_level}")
+
+        if not current_level:
+            app.logger.warning(f"Cannot determine school level for {current_school_name}")
+            return []
+
+        if not current_district:
+            app.logger.warning(f"No district info extracted from address for {current_school_name}")
+            return []
+
+        # 같은 지역의 모든 학교 중 같은 학교급 가져오기 (구/시/군 정보 포함)
+        all_schools = get_schools_by_region_and_level_with_location(current_region_code, current_level)
+
+        app.logger.info(f"Total schools in region with same level: {len(all_schools)}")
+
+        nearby_schools = []
+        district_samples = []  # 디버깅용
+
+        for school in all_schools:
+            # 현재 학교는 제외
+            if school['code'] == current_school_info['code']:
+                continue
+
+            school_district = school.get('district', '')
+            school_address = school.get('address', '')
+
+            # 디버깅용 샘플 수집 (처음 10개만)
+            if len(district_samples) < 10:
+                district_samples.append(f"{school['name']} -> '{school_district}' (from: {school_address[:50]}...)")
+
+            # 구/시/군이 정확히 일치하는 학교들만 선택
+            if school_district and current_district == school_district:
+                nearby_schools.append({
+                    'code': school['code'],
+                    'name': school['name'],
+                    'distance_info': f"같은 {current_district}"
+                })
+
+        # 디버깅 로그
+        app.logger.info(f"District extraction samples:")
+        for sample in district_samples:
+            app.logger.info(f"  {sample}")
+
+        app.logger.info(f"Found {len(nearby_schools)} nearby schools with matching district '{current_district}'")
+
+        # 학교명으로 정렬
+        nearby_schools.sort(key=lambda x: x['name'])
+
+        if nearby_schools:
+            app.logger.info(f"Sample nearby schools: {[s['name'] for s in nearby_schools[:5]]}")
+
+        app.logger.info(f"=== END DEBUGGING ===")
+
+        return nearby_schools
+
+    except Exception as e:
+        app.logger.error(f"Error getting nearby schools: {e}")
+        import traceback
+        app.logger.error(f"Full traceback: {traceback.format_exc()}")
+        return []
 
 def get_month_dates():
     """현재 KST 기준 월의 모든 날짜를 YYYYMMDD 형식으로 반환합니다."""
@@ -993,6 +1261,28 @@ def school_meal_view(school_code):
         resp.set_cookie('region_name', region_name, max_age=60*60*24*30)
 
     return resp
+
+@app.route('/api/nearby-schools/<school_code>')
+def get_nearby_schools_api(school_code):
+    """주변 학교 정보를 반환하는 API"""
+    try:
+        # 현재 학교 정보 조회
+        current_school = find_school_by_code(school_code)
+        if not current_school:
+            return jsonify({"error": "School not found"}), 404
+
+        # 주변 학교 조회
+        nearby_schools = get_nearby_schools(current_school)
+
+        return jsonify({
+            "current_school": current_school,
+            "nearby_schools": nearby_schools,
+            "count": len(nearby_schools)
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error in nearby schools API: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
