@@ -1313,6 +1313,9 @@ def school_meal_view(school_code):
     month_dates_list = get_month_dates()
     full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
 
+    # 주변 학교 정보를 서버에서 미리 조회
+    nearby_schools = get_nearby_schools(school_info)
+
     # 해당 지역의 이름 찾기
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
 
@@ -1326,6 +1329,8 @@ def school_meal_view(school_code):
         today_date=today_str,   # 오늘 날짜 추가
         week_meals=week_meals_data,
         month_meals=full_month_meals_data,
+        nearby_schools=nearby_schools,  # 주변 학교 정보 추가
+        current_school=school_info,     # 현재 학교 정보 추가
         loading=False,
         region=region_name
     ))
@@ -1338,28 +1343,6 @@ def school_meal_view(school_code):
         resp.set_cookie('region_name', region_name, max_age=60*60*24*30)
 
     return resp
-
-@app.route('/api/nearby-schools/<school_code>')
-def get_nearby_schools_api(school_code):
-    """주변 학교 정보를 반환하는 API"""
-    try:
-        # 현재 학교 정보 조회
-        current_school = find_school_by_code(school_code)
-        if not current_school:
-            return jsonify({"error": "School not found"}), 404
-
-        # 주변 학교 조회
-        nearby_schools = get_nearby_schools(current_school)
-
-        return jsonify({
-            "current_school": current_school,
-            "nearby_schools": nearby_schools,
-            "count": len(nearby_schools)
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error in nearby schools API: {e}")
-        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
