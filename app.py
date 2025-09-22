@@ -1116,7 +1116,7 @@ def get_nearby_schools(current_school_info):
                 nearby_schools.append({
                     'code': school['code'],
                     'name': school['name'],
-                    'distance_info': f"같은 {current_district}"
+                    'distance_info': f"{current_district}"
                 })
 
         # 학교명으로 정렬
