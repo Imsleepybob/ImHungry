@@ -600,47 +600,72 @@ def get_school_code(school_name, region_code):
         return "API_ERROR"
     return None
 
-# 수정: region_code를 파라미터로 받아 단일 API 호출만 수행
+# 수정: region_code 추론 로직 추가 및 폴백 메커니즘 강화
 def find_school_by_code(school_code, region_code=None):
     """
-    수정: region_code가 제공되면 해당 지역에서만 조회하여 API 호출 최소화
-    region_code가 없으면 캐시 확인 후 실패 시 None 반환
+    수정: region_code가 제공되면 해당 지역에서만 조회
+    없으면 캐시 확인 후, 실패 시 모든 지역 순회 (폴백)
     """
     if school_code in school_cache:
         cached_info = school_cache[school_code]
         if 'address' in cached_info and 'district' in cached_info:
             return cached_info
     
-    # region_code가 없으면 캐시에서만 찾고 API 호출하지 않음
-    if not region_code:
-        return None
+    # region_code가 있으면 해당 지역에서만 조회 (최적화)
+    if region_code:
+        url = "https://open.neis.go.kr/hub/schoolInfo"
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=2)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"],
+                    'address': address,
+                    'district': district
+                }
+                school_cache[school_code] = school_info
+                return school_info
+        except Exception as e:
+            app.logger.warning(f"Error finding school by code {school_code} in region {region_code}: {e}")
     
+    # region_code가 없거나 위에서 실패한 경우 폴백: 모든 지역 순회
+    app.logger.info(f"Fallback: Searching school {school_code} across all regions")
     url = "https://open.neis.go.kr/hub/schoolInfo"
-    params = {
-        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
-        "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
-    }
-    try:
-        response = requests.get(url, params=params, timeout=2)
-        response.raise_for_status()
-        data = response.json()
-        if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
-            school_data = data["schoolInfo"][1]["row"][0]
-            address = school_data.get("ORG_RDNMA", "")
-            district = extract_district_from_address(address)
-            school_info = {
-                'code': school_data["SD_SCHUL_CODE"],
-                'name': school_data["SCHUL_NM"],
-                'region_code': school_data["ATPT_OFCDC_SC_CODE"],
-                'address': address,
-                'district': district
-            }
-            school_cache[school_code] = school_info
-            return school_info
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
-    except Exception as e:
-        app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
+    for region_name, region_code_iter in regions.items():
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code_iter, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=2)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"],
+                    'address': address,
+                    'district': district
+                }
+                school_cache[school_code] = school_info
+                return school_info
+        except:
+            continue
+    
     return None
 
 def get_schools_by_region_and_level_with_location(region_code, school_level=None):
@@ -1427,10 +1452,6 @@ def security_status():
         'security_config': SECURITY_CONFIG
     }
     return jsonify(status)
-
-@app.route("/health")
-def health():
-    return "ok", 200
 
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
