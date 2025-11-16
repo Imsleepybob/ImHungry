@@ -600,11 +600,10 @@ def get_school_code(school_name, region_code):
         return "API_ERROR"
     return None
 
-# 수정: region_code 추론 로직 추가 및 폴백 메커니즘 강화
+# 수정: timeout 처리 개선 및 폴백 메커니즘 강화
 def find_school_by_code(school_code, region_code=None):
     """
-    수정: region_code가 제공되면 해당 지역에서만 조회
-    없으면 캐시 확인 후, 실패 시 모든 지역 순회 (폴백)
+    수정: timeout 발생 시에도 폴백 작동하도록 개선
     """
     if school_code in school_cache:
         cached_info = school_cache[school_code]
@@ -619,7 +618,7 @@ def find_school_by_code(school_code, region_code=None):
             "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
         }
         try:
-            response = requests.get(url, params=params, timeout=2)
+            response = requests.get(url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
             if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
@@ -635,8 +634,10 @@ def find_school_by_code(school_code, region_code=None):
                 }
                 school_cache[school_code] = school_info
                 return school_info
+        except requests.exceptions.Timeout:
+            app.logger.warning(f"Timeout finding school {school_code} in region {region_code}, trying fallback")
         except Exception as e:
-            app.logger.warning(f"Error finding school by code {school_code} in region {region_code}: {e}")
+            app.logger.warning(f"Error finding school {school_code} in region {region_code}: {e}, trying fallback")
     
     # region_code가 없거나 위에서 실패한 경우 폴백: 모든 지역 순회
     app.logger.info(f"Fallback: Searching school {school_code} across all regions")
@@ -647,7 +648,7 @@ def find_school_by_code(school_code, region_code=None):
             "ATPT_OFCDC_SC_CODE": region_code_iter, "SD_SCHUL_CODE": school_code
         }
         try:
-            response = requests.get(url, params=params, timeout=2)
+            response = requests.get(url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
             if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
@@ -662,10 +663,15 @@ def find_school_by_code(school_code, region_code=None):
                     'district': district
                 }
                 school_cache[school_code] = school_info
+                app.logger.info(f"Found school {school_code} in region {region_name} via fallback")
                 return school_info
+        except requests.exceptions.Timeout:
+            app.logger.debug(f"Timeout in region {region_name}, continuing...")
+            continue
         except:
             continue
     
+    app.logger.error(f"Failed to find school {school_code} in all regions")
     return None
 
 def get_schools_by_region_and_level_with_location(region_code, school_level=None):
@@ -763,41 +769,66 @@ def get_schools_by_region_and_level_with_location(region_code, school_level=None
         return []
 
 def find_school_by_code_with_location(school_code, region_code=None):
-    """수정: region_code 파라미터 추가로 단일 API 호출"""
+    """수정: region_code 파라미터 추가 + 폴백 메커니즘"""
     if school_code in school_cache:
         cached_info = school_cache[school_code]
         if 'district' in cached_info:
             return cached_info
     
-    if not region_code:
-        return None
+    # region_code가 있으면 해당 지역에서만 조회
+    if region_code:
+        url = "https://open.neis.go.kr/hub/schoolInfo"
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=2)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"],
+                    'address': address,
+                    'district': district
+                }
+                school_cache[school_code] = school_info
+                return school_info
+        except Exception as e:
+            app.logger.warning(f"Error finding school by code {school_code} in region {region_code}: {e}")
     
+    # 폴백: 모든 지역 순회
     url = "https://open.neis.go.kr/hub/schoolInfo"
-    params = {
-        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
-        "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code
-    }
-    try:
-        response = requests.get(url, params=params, timeout=2)
-        response.raise_for_status()
-        data = response.json()
-        if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
-            school_data = data["schoolInfo"][1]["row"][0]
-            address = school_data.get("ORG_RDNMA", "")
-            district = extract_district_from_address(address)
-            school_info = {
-                'code': school_data["SD_SCHUL_CODE"],
-                'name': school_data["SCHUL_NM"],
-                'region_code': school_data["ATPT_OFCDC_SC_CODE"],
-                'address': address,
-                'district': district
-            }
-            school_cache[school_code] = school_info
-            return school_info
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
-    except Exception as e:
-        app.logger.error(f"Error finding school by code {school_code} in region {region_code}: {e}")
+    for region_name, region_code_iter in regions.items():
+        params = {
+            "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+            "ATPT_OFCDC_SC_CODE": region_code_iter, "SD_SCHUL_CODE": school_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=2)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" in data and data.get("schoolInfo")[1].get("row"):
+                school_data = data["schoolInfo"][1]["row"][0]
+                address = school_data.get("ORG_RDNMA", "")
+                district = extract_district_from_address(address)
+                school_info = {
+                    'code': school_data["SD_SCHUL_CODE"],
+                    'name': school_data["SCHUL_NM"],
+                    'region_code': school_data["ATPT_OFCDC_SC_CODE"],
+                    'address': address,
+                    'district': district
+                }
+                school_cache[school_code] = school_info
+                return school_info
+        except:
+            continue
+    
     return None
 
 def get_school_level_from_name(school_name):
@@ -1024,13 +1055,24 @@ def index():
 
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
-    # 수정: 쿠키에서 region_code 가져와서 사용
+    # 수정: 쿠키에서 region_code 가져와서 사용 + 디버깅 강화
     region_code_cookie = request.cookies.get('region_code')
     
+    app.logger.info(f"school_meal_view called - school_code: {school_code}, region_code_cookie: {region_code_cookie}")
+    
     school_info = find_school_by_code(school_code, region_code_cookie)
+    
+    app.logger.info(f"school_info result: {school_info}")
+    
     if not school_info:
-        app.logger.warning(f"Failed to find school info for code: {school_code}")
+        app.logger.warning(f"Failed to find school info for code: {school_code}, region_code: {region_code_cookie}")
         return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
+    
+    # school_info에 region_code가 있는지 확인
+    if 'region_code' not in school_info:
+        app.logger.error(f"school_info missing region_code: {school_info}")
+        return redirect(url_for('index', error_message="학교 정보에 오류가 있습니다. 다시 검색해주세요."))
+    
     month_meals_data = get_month_meals(school_code, school_info['region_code'])
     today_str = datetime.now(KST).strftime('%Y%m%d')
     today_meal = month_meals_data.get(today_str, {
@@ -1452,6 +1494,10 @@ def security_status():
         'security_config': SECURITY_CONFIG
     }
     return jsonify(status)
+
+@app.route("/health")
+def health():
+    return "ok", 200
 
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
