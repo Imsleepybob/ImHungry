@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
 import calendar
 import requests
-import loggingㄹ
+import logging
 from logging.handlers import RotatingFileHandler
 import ipaddress
 from urllib.parse import quote, unquote
@@ -15,7 +15,6 @@ from functools import wraps
 
 app = Flask(__name__)
 
-# --- 보안 설정 ---
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
 SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
 
@@ -381,7 +380,6 @@ regions = {
     "경남": "S10", "제주": "T10"
 }
 
-# School code 앞자리로 region code 역추출 매핑 (전체 region 탐색 제거)
 SCHOOL_CODE_PREFIX_MAP = {
     'B': 'B10', 'C': 'C10', 'D': 'D10', 'E': 'E10', 'F': 'F10',
     'G': 'G10', 'H': 'H10', 'I': 'I10', 'J': 'J10', 'K': 'K10',
@@ -621,7 +619,6 @@ def find_school_by_code(school_code, region_code=None):
         if 'address' in cached_info and 'district' in cached_info:
             return cached_info
     
-    # region_code가 없으면 school_code에서 추출
     if not region_code:
         region_code = extract_region_from_school_code(school_code)
         if not region_code:
@@ -657,101 +654,9 @@ def find_school_by_code(school_code, region_code=None):
     return None
 
 def get_schools_by_region_and_level_with_location(region_code, school_level=None):
-    cache_key = f"schools_with_location_{region_code}_{school_level or 'all'}"
-    if hasattr(get_schools_by_region_and_level_with_location, 'cache'):
-        if cache_key in get_schools_by_region_and_level_with_location.cache:
-            return get_schools_by_region_and_level_with_location.cache[cache_key]
-    else:
-        get_schools_by_region_and_level_with_location.cache = {}
-    cached_data = load_cache_from_file(cache_key)
-    if cached_data:
-        get_schools_by_region_and_level_with_location.cache[cache_key] = cached_data
-        return cached_data
-    url = "https://open.neis.go.kr/hub/schoolInfo"
-    schools = []
-    try:
-        params = {
-            "KEY": API_KEY,
-            "Type": "json",
-            "pIndex": 1,
-            "pSize": 300,
-            "ATPT_OFCDC_SC_CODE": region_code
-        }
-        response = requests.get(url, params=params, timeout=8)
-        response.raise_for_status()
-        data = response.json()
-        if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
-            app.logger.warning(f"No schools found for region {region_code}")
-            get_schools_by_region_and_level_with_location.cache[cache_key] = []
-            return []
-        rows = data["schoolInfo"][1].get("row", [])
-        for school_data in rows:
-            try:
-                school_name = school_data["SCHUL_NM"]
-                school_code = school_data["SD_SCHUL_CODE"]
-                address = school_data.get("ORG_RDNMA", "")
-                district = extract_district_from_address(address)
-                schools.append({
-                    'code': school_code,
-                    'name': school_name,
-                    'region_code': region_code,
-                    'address': address,
-                    'district': district
-                })
-            except KeyError:
-                continue
-        if len(rows) >= 300:
-            page = 2
-            while page <= 10:
-                params["pIndex"] = page
-                try:
-                    response = requests.get(url, params=params, timeout=5)
-                    response.raise_for_status()
-                    data = response.json()
-                    if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
-                        break
-                    rows = data["schoolInfo"][1].get("row", [])
-                    if not rows:
-                        break
-                    for school_data in rows:
-                        try:
-                            school_name = school_data["SCHUL_NM"]
-                            school_code = school_data["SD_SCHUL_CODE"]
-                            address = school_data.get("ORG_RDNMA", "")
-                            district = extract_district_from_address(address)
-                            schools.append({
-                                'code': school_code,
-                                'name': school_name,
-                                'region_code': region_code,
-                                'address': address,
-                                'district': district
-                            })
-                        except KeyError:
-                            continue
-                    if len(rows) < 300:
-                        break
-                    page += 1
-                except:
-                    break
-        schools.sort(key=lambda x: x['name'])
-        if school_level:
-            level_keywords = school_levels.get(school_level, [])
-            filtered_schools = []
-            for school in schools:
-                if any(keyword in school['name'] for keyword in level_keywords):
-                    filtered_schools.append(school)
-            schools = filtered_schools
-        get_schools_by_region_and_level_with_location.cache[cache_key] = schools
-        save_cache_to_file(cache_key, schools)
-        app.logger.info(f"Fetched {len(schools)} schools with district info for {region_code}, level: {school_level}")
-        return schools
-    except Exception as e:
-        app.logger.error(f"Error fetching schools with district for region {region_code}, level {school_level}: {e}")
-        get_schools_by_region_and_level_with_location.cache[cache_key] = []
-        return []
+    return get_schools_by_region_and_level(region_code, school_level)
 
 def find_school_by_code_with_location(school_code, region_code=None):
-    """find_school_by_code와 동일한 로직 사용"""
     return find_school_by_code(school_code, region_code)
 
 def get_school_level_from_name(school_name):
@@ -979,7 +884,6 @@ def index():
 def school_meal_view(school_code):
     region_code_cookie = request.cookies.get('region_code')
     
-    # School code에서 region 추출 시도
     if not region_code_cookie:
         region_code_cookie = extract_region_from_school_code(school_code)
         app.logger.info(f"Extracted region_code {region_code_cookie} from school_code {school_code}")
@@ -1163,6 +1067,9 @@ def get_all_schools_in_region(region_code):
 @app.route('/api/meals/today/<school_code>')
 def get_today_meal(school_code):
     region_code_cookie = request.cookies.get('region_code')
+    if not region_code_cookie:
+        region_code_cookie = extract_region_from_school_code(school_code)
+    
     school_info = find_school_by_code(school_code, region_code_cookie)
     if not school_info:
         return jsonify({"error": "School not found"}), 404
@@ -1237,23 +1144,6 @@ def schools_by_region_and_level(region_name, school_level):
                          school_level=school_level,
                          schools=schools,
                          regions=regions)
-
-def preload_school_cache():
-    import threading
-    def load_region(region_name, region_code):
-        try:
-            app.logger.info(f"Preloading schools for {region_name}")
-            get_schools_by_region_and_level(region_code)
-            app.logger.info(f"Completed preloading for {region_name}")
-        except Exception as e:
-            app.logger.error(f"Failed to preload {region_name}: {e}")
-    priority_regions = ["서울", "부산", "경기", "부산", "대구", "인천", "광주", "대전", "광주", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"]
-    for region_name in priority_regions:
-        if region_name in regions:
-            region_code = regions[region_name]
-            thread = threading.Thread(target=load_region, args=(region_name, region_code))
-            thread.daemon = True
-            thread.start()
 
 @app.route('/robots.txt')
 def robots_txt():
