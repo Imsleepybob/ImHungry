@@ -22,8 +22,9 @@ from database import (
 
 app = Flask(__name__)
 
-# DB 초기화 (서버 시작시 자동 실행)
-init_database()
+# 서버 시작시 자동 초기화 (백그라운드에서 실행)
+from startup import startup_check
+startup_check()
 
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
 SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
@@ -975,6 +976,72 @@ def security_status():
 @app.route("/health")
 def health():
     return "ok", 200
+
+@app.route('/admin/sync/schools', methods=['POST'])
+def admin_sync_schools():
+    """관리자 전용: 학교 정보 수동 동기화"""
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    
+    from sync_scheduler import sync_all_schools
+    import threading
+    
+    def run_sync():
+        try:
+            synced, errors = sync_all_schools()
+            app.logger.info(f"Manual school sync completed: {synced} synced, {errors} errors")
+        except Exception as e:
+            app.logger.error(f"Manual school sync failed: {e}")
+    
+    sync_thread = threading.Thread(target=run_sync, daemon=True)
+    sync_thread.start()
+    
+    return jsonify({'status': 'started', 'message': '학교 정보 동기화가 백그라운드에서 시작되었습니다.'})
+
+@app.route('/admin/sync/meals', methods=['POST'])
+def admin_sync_meals():
+    """관리자 전용: 급식 정보 수동 동기화"""
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    
+    from sync_scheduler import sync_meals_for_current_month
+    import threading
+    
+    def run_sync():
+        try:
+            synced, errors = sync_meals_for_current_month()
+            app.logger.info(f"Manual meal sync completed: {synced} synced, {errors} errors")
+        except Exception as e:
+            app.logger.error(f"Manual meal sync failed: {e}")
+    
+    sync_thread = threading.Thread(target=run_sync, daemon=True)
+    sync_thread.start()
+    
+    return jsonify({'status': 'started', 'message': '급식 정보 동기화가 백그라운드에서 시작되었습니다.'})
+
+@app.route('/admin/sync/next-month-meals', methods=['POST'])
+def admin_sync_next_month_meals():
+    """관리자 전용: 다음 달 급식 정보 동기화"""
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    
+    from sync_scheduler import sync_meals_for_next_month
+    import threading
+    
+    def run_sync():
+        try:
+            synced, errors = sync_meals_for_next_month()
+            app.logger.info(f"Next month meal sync completed: {synced} synced, {errors} errors")
+        except Exception as e:
+            app.logger.error(f"Next month meal sync failed: {e}")
+    
+    sync_thread = threading.Thread(target=run_sync, daemon=True)
+    sync_thread.start()
+    
+    return jsonify({'status': 'started', 'message': '다음 달 급식 정보 동기화가 백그라운드에서 시작되었습니다.'})
 
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
