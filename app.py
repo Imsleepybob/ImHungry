@@ -408,6 +408,49 @@ school_levels = {
     "각종학교": ["각종학교"]
 }
 
+def get_month_meals_from_api(school_code, region_code):
+    """NEIS API에서 이번 달 급식 정보 조회 (캐싱 포함)"""
+    today = datetime.now(KST)
+    month_str = today.strftime("%Y%m")
+    cache_key = f"{region_code}_{school_code}_{month_str}"
+    
+    if cache_key in meal_cache:
+        return meal_cache[cache_key]
+    
+    url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
+    params = {
+        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
+        "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code,
+        "MLSV_YMD": month_str
+    }
+    
+    meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
+    
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        
+        if "mealServiceDietInfo" in data and data.get("mealServiceDietInfo")[1].get("row"):
+            for row in data["mealServiceDietInfo"][1]["row"]:
+                date_str = row["MLSV_YMD"]
+                menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
+                meal_type = row["MMEAL_SC_CODE"]
+                
+                if meal_type == "1": meals[date_str]["breakfast"] = menu
+                elif meal_type == "2": meals[date_str]["lunch"] = menu
+                elif meal_type == "3": meals[date_str]["dinner"] = menu
+        
+        meal_cache[cache_key] = dict(meals)
+        return dict(meals)
+        
+    except requests.exceptions.Timeout:
+        app.logger.error(f"NEIS API timeout for school {school_code}")
+        return dict(meals)
+    except Exception as e:
+        app.logger.error(f"Error fetching meals from API for {school_code}: {e}")
+        return dict(meals)
+
 def extract_region_from_school_code(school_code):
     if not school_code or len(school_code) < 1:
         return None
@@ -471,7 +514,6 @@ def get_school_level_from_name(school_name):
 
 def get_nearby_schools(current_school_info):
     try:
-        # DB에서 학교 상세 정보 조회
         current_school_detailed = get_school_by_code(current_school_info['school_code'])
         
         if not current_school_detailed:
@@ -484,20 +526,23 @@ def get_nearby_schools(current_school_info):
         if not current_level or not current_district:
             return []
         
-        # 같은 지역, 같은 학교급의 학교 조회
-        all_schools = get_schools_by_region(current_school_detailed['region_code'], current_level)
+        # DB에서 같은 지역, 같은 구, 같은 학교급의 학교 조회
+        nearby_schools_data = get_schools_by_district(
+            current_school_detailed['region_code'], 
+            current_district, 
+            current_level
+        )
         
         nearby_schools = []
-        for school in all_schools:
+        for school in nearby_schools_data:
             if school['school_code'] == current_school_info['school_code']:
                 continue
             
-            if school.get('district') == current_district:
-                nearby_schools.append({
-                    'code': school['school_code'],
-                    'name': school['school_name'],
-                    'distance_info': f"{current_district}"
-                })
+            nearby_schools.append({
+                'code': school['school_code'],
+                'name': school['school_name'],
+                'distance_info': f"{current_district}"
+            })
         
         nearby_schools.sort(key=lambda x: x['name'])
         return nearby_schools
@@ -602,19 +647,15 @@ def index():
 def school_meal_view(school_code):
     app.logger.info(f"school_meal_view - school_code: {school_code}")
     
-    # DB에서 학교 정보 조회
     school_info = get_school_by_code(school_code)
     
     if not school_info:
         app.logger.warning(f"School not found in DB: {school_code}")
         return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
     
-    # DB에서 이번 달 급식 정보 조회
-    today = datetime.now(KST)
-    year_month = today.strftime("%Y%m")
-    month_meals_data = get_month_meals(school_code, year_month)
+    month_meals_data = get_month_meals_from_api(school_code, school_info['region_code'])
     
-    today_str = today.strftime('%Y%m%d')
+    today_str = datetime.now(KST).strftime('%Y%m%d')
     today_meal = month_meals_data.get(today_str, {
         "breakfast": "급식 정보 없음",
         "lunch": "급식 정보 없음",
@@ -627,7 +668,6 @@ def school_meal_view(school_code):
     month_dates_list = get_month_dates()
     full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
     
-    # 주변 학교 조회
     nearby_schools = get_nearby_schools(school_info)
     
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
@@ -657,13 +697,14 @@ def school_meal_view(school_code):
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
-    # DB에서 특정 날짜 급식 조회
+    # DB에서 학교 정보 조회, API에서 급식 조회
     school_info = get_school_by_code(school_code)
     if not school_info:
         return jsonify({"error": "School not found"}), 404
     
     try:
-        meal_data = get_meals_by_date(school_code, date)
+        month_meals = get_month_meals_from_api(school_code, school_info['region_code'])
+        meal_data = month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
         return jsonify(meal_data)
     except Exception as e:
         app.logger.error(f"Error in get_school_meal API: {e}")
@@ -729,7 +770,12 @@ def get_today_meal(school_code):
     
     try:
         today_str = datetime.now(KST).strftime('%Y%m%d')
-        today_meal = get_meals_by_date(school_code, today_str)
+        month_meals = get_month_meals_from_api(school_code, school_info['region_code'])
+        today_meal = month_meals.get(today_str, {
+            "breakfast": "급식 정보 없음",
+            "lunch": "급식 정보 없음",
+            "dinner": "급식 정보 없음"
+        })
         
         return jsonify({
             "date": today_str,
@@ -954,7 +1000,7 @@ def view_stats():
         <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in sorted(stats['popular_paths'].items(), key=lambda x: x[1], reverse=True)[:10]])}</ul>
         <h2>데이터베이스 통계</h2>
         <p>등록된 학교 수: {db_stats['school_count']}</p>
-        <p>저장된 급식 정보: {db_stats['meal_count']}</p>
+        <p>급식 캐시 항목 수: {len(meal_cache)}</p>
         <p>마지막 동기화: {db_stats['last_sync']['completed_at'] if db_stats['last_sync'] else 'N/A'}</p>
         '''
     except Exception as e:
@@ -1001,49 +1047,21 @@ def admin_sync_schools():
     
     return jsonify({'status': 'started', 'message': '학교 정보 동기화가 백그라운드에서 시작되었습니다.'})
 
-@app.route('/admin/sync/meals', methods=['POST'])
-def admin_sync_meals():
-    """관리자 전용: 급식 정보 수동 동기화"""
+@app.route('/admin/clear/meal-cache', methods=['POST'])
+def admin_clear_meal_cache():
+    """관리자 전용: 급식 캐시 초기화"""
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
     
-    from sync_scheduler import sync_meals_for_current_month
-    import threading
+    global meal_cache
+    cache_size = len(meal_cache)
+    meal_cache = {}
     
-    def run_sync():
-        try:
-            synced, errors = sync_meals_for_current_month()
-            app.logger.info(f"Manual meal sync completed: {synced} synced, {errors} errors")
-        except Exception as e:
-            app.logger.error(f"Manual meal sync failed: {e}")
-    
-    sync_thread = threading.Thread(target=run_sync, daemon=True)
-    sync_thread.start()
-    
-    return jsonify({'status': 'started', 'message': '급식 정보 동기화가 백그라운드에서 시작되었습니다.'})
-
-@app.route('/admin/sync/next-month-meals', methods=['POST'])
-def admin_sync_next_month_meals():
-    """관리자 전용: 다음 달 급식 정보 동기화"""
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
-    
-    from sync_scheduler import sync_meals_for_next_month
-    import threading
-    
-    def run_sync():
-        try:
-            synced, errors = sync_meals_for_next_month()
-            app.logger.info(f"Next month meal sync completed: {synced} synced, {errors} errors")
-        except Exception as e:
-            app.logger.error(f"Next month meal sync failed: {e}")
-    
-    sync_thread = threading.Thread(target=run_sync, daemon=True)
-    sync_thread.start()
-    
-    return jsonify({'status': 'started', 'message': '다음 달 급식 정보 동기화가 백그라운드에서 시작되었습니다.'})
+    return jsonify({
+        'status': 'success', 
+        'message': f'급식 캐시 초기화 완료. {cache_size}개 항목이 삭제되었습니다.'
+    })
 
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
