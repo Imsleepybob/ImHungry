@@ -13,11 +13,10 @@ import time
 import json
 from functools import wraps
 
-# DB 관련 import 추가
+# DB 관련 import
 from database import (
-    init_database, get_school_by_code, search_schools, 
-    get_meals_by_date, get_month_meals, get_schools_by_region,
-    get_db_stats
+    init_database, get_school_by_code, search_schools,
+    get_schools_by_region, get_schools_by_district, get_db_stats
 )
 
 app = Flask(__name__)
@@ -25,6 +24,9 @@ app = Flask(__name__)
 # 서버 시작시 자동 초기화 (백그라운드에서 실행)
 from startup import startup_check
 startup_check()
+
+# 급식 정보 캐시 (메모리 캐시 유지)
+meal_cache = {}
 
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
 SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
