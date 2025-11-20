@@ -13,7 +13,6 @@ import time
 import json
 from functools import wraps
 
-# DB 관련 import
 from database import (
     init_database, get_school_by_code, search_schools,
     get_schools_by_region, get_schools_by_district, get_db_stats
@@ -21,11 +20,9 @@ from database import (
 
 app = Flask(__name__)
 
-# 서버 시작시 자동 초기화 (백그라운드에서 실행)
 from startup import startup_check
 startup_check()
 
-# 급식 정보 캐시 (메모리 캐시 유지)
 meal_cache = {}
 
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
@@ -92,7 +89,6 @@ def load_ip_blacklist():
                 except ValueError:
                     app.logger.warning(f"Invalid CIDR format in blacklist: {line}")
     return blacklist
-
 
 def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
     try:
@@ -383,7 +379,6 @@ def log_namuboard_access_request():
     except Exception as e:
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
-
 API_KEY = "4e2c538d90ef493c94c6e2d943e756d9"
 KST = timezone(timedelta(hours=9))
 regions = {
@@ -391,13 +386,6 @@ regions = {
     "대전": "G10", "울산": "H10", "세종": "I10", "경기": "J10", "강원": "K10",
     "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
     "경남": "S10", "제주": "T10"
-}
-
-SCHOOL_CODE_PREFIX_MAP = {
-    'B': 'B10', 'C': 'C10', 'D': 'D10', 'E': 'E10', 'F': 'F10',
-    'G': 'G10', 'H': 'H10', 'I': 'I10', 'J': 'J10', 'K': 'K10',
-    'M': 'M10', 'N': 'N10', 'P': 'P10', 'Q': 'Q10', 'R': 'R10',
-    'S': 'S10', 'T': 'T10'
 }
 
 school_levels = {
@@ -451,67 +439,6 @@ def get_month_meals_from_api(school_code, region_code):
         app.logger.error(f"Error fetching meals from API for {school_code}: {e}")
         return dict(meals)
 
-def extract_region_from_school_code(school_code):
-    if not school_code or len(school_code) < 1:
-        return None
-    prefix = school_code[0].upper()
-    return SCHOOL_CODE_PREFIX_MAP.get(prefix)
-
-def extract_district_from_address(address):
-    if not address:
-        return None
-    import re
-    district_patterns = [
-        r'서울특별시\s+([가-힣]+구)',
-        r'부산광역시\s+([가-힣]+구)',
-        r'대구광역시\s+([가-힣]+구)',
-        r'인천광역시\s+([가-힣]+구)',
-        r'광주광역시\s+([가-힣]+구)',
-        r'대전광역시\s+([가-힣]+구)',
-        r'울산광역시\s+([가-힣]+구)',
-        r'경기도\s+([가-힣]+시)',
-        r'경기도\s+([가-힣]+군)',
-        r'강원[특별자치]*도\s+([가-힣]+시)',
-        r'강원[특별자치]*도\s+([가-힣]+군)',
-        r'충청북도\s+([가-힣]+시)',
-        r'충청북도\s+([가-힣]+군)',
-        r'충청남도\s+([가-힣]+시)',
-        r'충청남도\s+([가-힣]+군)',
-        r'전라북도\s+([가-힣]+시)',
-        r'전라북도\s+([가-힣]+군)',
-        r'전북특별자치도\s+([가-힣]+시)',
-        r'전북특별자치도\s+([가-힣]+군)',
-        r'전라남도\s+([가-힣]+시)',
-        r'전라남도\s+([가-힣]+군)',
-        r'경상북도\s+([가-힣]+시)',
-        r'경상북도\s+([가-힣]+군)',
-        r'경상남도\s+([가-힣]+시)',
-        r'경상남도\s+([가-힣]+군)',
-        r'제주특별자치도\s+([가-힣]+시)',
-        r'세종특별자치시',
-    ]
-    for pattern in district_patterns:
-        match = re.search(pattern, address)
-        if match:
-            if pattern == r'세종특별자치시':
-                return '세종시'
-            else:
-                return match.group(1)
-    return None
-
-def get_school_level_from_name(school_name):
-    if '초등학교' in school_name or school_name.endswith('초'):
-        return '초등학교'
-    elif '중학교' in school_name or school_name.endswith('중'):
-        return '중학교'
-    elif '고등학교' in school_name or '고교' in school_name or school_name.endswith('고'):
-        return '고등학교'
-    elif '특수학교' in school_name:
-        return '특수학교'
-    elif '각종학교' in school_name:
-        return '각종학교'
-    return None
-
 def get_nearby_schools(current_school_info):
     try:
         current_school_detailed = get_school_by_code(current_school_info['school_code'])
@@ -526,7 +453,6 @@ def get_nearby_schools(current_school_info):
         if not current_level or not current_district:
             return []
         
-        # DB에서 같은 지역, 같은 구, 같은 학교급의 학교 조회
         nearby_schools_data = get_schools_by_district(
             current_school_detailed['region_code'], 
             current_district, 
@@ -616,7 +542,6 @@ def index():
         if not region_code:
             return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
         
-        # DB에서 학교 검색
         schools = search_schools(school_name_input, region_code, limit=1)
         
         if schools:
@@ -697,7 +622,6 @@ def school_meal_view(school_code):
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
-    # DB에서 학교 정보 조회, API에서 급식 조회
     school_info = get_school_by_code(school_code)
     if not school_info:
         return jsonify({"error": "School not found"}), 404
@@ -723,7 +647,6 @@ def search_schools_autocomplete():
     
     region_code = regions[region_name]
     
-    # DB에서 학교 검색
     try:
         schools = search_schools(query, region_code, limit=10)
         results = [
@@ -745,7 +668,6 @@ def get_all_schools_in_region(region_code):
         if region_code not in regions.values():
             return jsonify({"error": "Invalid region code"}), 400
         
-        # DB에서 지역별 학교 조회
         schools = get_schools_by_region(region_code)
         simplified_schools = [
             {
@@ -1000,7 +922,6 @@ def view_stats():
         
         stats['unique_ips'] = len(stats['unique_ips'])
         
-        # DB 통계 추가
         db_stats = get_db_stats()
         
         return f'''
@@ -1040,7 +961,6 @@ def health():
 
 @app.route('/admin/sync/schools', methods=['POST'])
 def admin_sync_schools():
-    """관리자 전용: 학교 정보 수동 동기화"""
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
@@ -1062,7 +982,6 @@ def admin_sync_schools():
 
 @app.route('/admin/clear/meal-cache', methods=['POST'])
 def admin_clear_meal_cache():
-    """관리자 전용: 급식 캐시 초기화"""
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
@@ -1134,10 +1053,9 @@ if __name__ == "__main__":
     app.logger.info(f"Silent block patterns: {len(SILENT_BLOCK_PATTERNS)} patterns loaded")
     app.logger.info(f"No-log paths: {len(NO_LOG_PATHS)} paths configured")
     
-    # DB 통계 출력
     try:
         db_stats = get_db_stats()
-        app.logger.info(f"Database stats - Schools: {db_stats['school_count']}, Meals: {db_stats['meal_count']}")
+        app.logger.info(f"Database stats - Schools: {db_stats['school_count']}")
         if db_stats['last_sync']:
             app.logger.info(f"Last sync: {db_stats['last_sync']['completed_at']}")
     except Exception as e:
