@@ -803,12 +803,18 @@ def schools_by_region(region_name):
     
     region_code = regions[region_name]
     
-    # DB에서 학교 조회
     schools_by_level = {}
     all_schools = get_schools_by_region(region_code)
     
     for level in school_levels.keys():
-        level_schools = [s for s in all_schools if s.get('school_level') == level]
+        level_schools = [
+            {
+                'code': s['school_code'],
+                'name': s['school_name'],
+                'address': s.get('address', '')
+            }
+            for s in all_schools if s.get('school_level') == level
+        ]
         if level_schools:
             schools_by_level[level] = level_schools
     
@@ -835,8 +841,15 @@ def schools_by_region_and_level(region_name, school_level):
     
     region_code = regions[region_name]
     
-    # DB에서 학교급별 학교 조회
-    schools = get_schools_by_region(region_code, school_level)
+    schools_data = get_schools_by_region(region_code, school_level)
+    schools = [
+        {
+            'code': s['school_code'],
+            'name': s['school_name'],
+            'address': s.get('address', '')
+        }
+        for s in schools_data
+    ]
     
     log_access_request(200)
     return render_template('schools_by_level.html',
