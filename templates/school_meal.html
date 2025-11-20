@@ -881,15 +881,13 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
   </div>
 </footer>
 <script>
+// school_meal.html의 <script> 태그 내부 전체 교체
 const regions_data = {{ regions | tojson | safe }};
 
-let allSchoolsData = {};
 let autocompleteVisible = false;
 let selectedIndex = -1;
 let isComposing = false;
 let searchTimeout = null;
-let currentSearchQuery = '';
-let currentSearchRegion = '';
 let isSearching = false;
 let searchRequestId = 0;
 
@@ -947,72 +945,6 @@ function isValidSearchQuery(query) {
     const spaceRemovedText = removeSpaces(query);
     const completeText = getCompleteCharacters(spaceRemovedText);
     return completeText.length >= 2;
-}
-
-async function preloadAllSchools() {
-    const loadingPromises = Object.entries(regions_data).map(async ([regionName, regionCode]) => {
-        try {
-            console.log(`Loading schools for ${regionName}...`);
-            const response = await fetch(`/api/schools/region/${regionCode}`);
-            if (response.ok) {
-                const schools = await response.json();
-                allSchoolsData[regionCode] = schools;
-                console.log(`✓ Loaded ${schools.length} schools for ${regionName}`);
-            } else {
-                throw new Error(`HTTP ${response.status}`);
-            }
-        } catch (error) {
-            console.error(`✗ Failed to load schools for ${regionName}:`, error);
-            allSchoolsData[regionCode] = [];
-        }
-    });
-
-    await Promise.all(loadingPromises);
-    console.log('All school data preloaded');
-}
-
-function searchSchoolsInstant(query, region) {
-    if (!isValidSearchQuery(query) || !region) {
-        hideAutocomplete();
-        return;
-    }
-
-    const regionSchools = allSchoolsData[region] || [];
-    if (regionSchools.length === 0) {
-        console.log('No local data available, using API search');
-        searchSchoolsAPI(query, region);
-        return;
-    }
-
-    const searchQuery = removeSpaces(getCompleteCharacters(query).toLowerCase());
-    console.log(`Searching in ${regionSchools.length} schools for: "${searchQuery}"`);
-
-    const filteredSchools = regionSchools.filter(school => {
-        const schoolName = removeSpaces(school.name.toLowerCase());
-        const isMatch = schoolName.includes(searchQuery);
-        if (isMatch) {
-            console.log(`Match found: ${school.name}`);
-        }
-        return isMatch;
-    })
-    .sort((a, b) => {
-        const aNameNoSpace = removeSpaces(a.name.toLowerCase());
-        const bNameNoSpace = removeSpaces(b.name.toLowerCase());
-        const aStarts = aNameNoSpace.startsWith(searchQuery);
-        const bStarts = bNameNoSpace.startsWith(searchQuery);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        return a.name.localeCompare(b.name);
-    })
-    .slice(0, 10);
-
-    console.log(`Local search: "${query}" (complete: "${searchQuery}") → ${filteredSchools.length} results`);
-
-    if (filteredSchools.length > 0) {
-        console.log('Found schools:', filteredSchools.map(s => s.name));
-    }
-
-    showAutocomplete(filteredSchools);
 }
 
 async function searchSchoolsAPI(query, region) {
@@ -1136,8 +1068,6 @@ function hideAutocomplete() {
     }
     autocompleteVisible = false;
     selectedIndex = -1;
-    currentSearchQuery = '';
-    currentSearchRegion = '';
     searchRequestId++;
     isSearching = false;
 }
@@ -1169,9 +1099,6 @@ function performSearch(query, region, immediate = false) {
         return;
     }
 
-    currentSearchQuery = query;
-    currentSearchRegion = region;
-
     if (searchTimeout) {
         clearTimeout(searchTimeout);
         searchTimeout = null;
@@ -1193,22 +1120,14 @@ function performSearch(query, region, immediate = false) {
             return;
         }
 
-        const hasLocalData = allSchoolsData[region] && allSchoolsData[region].length > 0;
-
-        if (hasLocalData) {
-            console.log('Using local data search for:', query);
-            searchSchoolsInstant(query, region);
-        } else {
-            console.log('Using API search for:', query);
-            searchSchoolsAPI(query, region);
-        }
+        console.log('Using API search for:', query);
+        searchSchoolsAPI(query, region);
     };
 
     if (immediate) {
         executeSearch();
     } else {
-        const hasLocalData = allSchoolsData[region] && allSchoolsData[region].length > 0;
-        const delay = hasLocalData ? 100 : 250;
+        const delay = 250;
         searchTimeout = setTimeout(executeSearch, delay);
     }
 }
@@ -1231,8 +1150,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('share-btn');
     const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
-
-    preloadAllSchools();
 
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
         manualFinderToggle.addEventListener('click', function() {
