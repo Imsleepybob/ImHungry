@@ -2,12 +2,10 @@ import requests
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from collections import defaultdict
 import re
 
 from database import (
-    insert_school, insert_meal, log_sync_start, log_sync_complete,
-    get_school_by_code
+    insert_school, log_sync_start, log_sync_complete
 )
 
 logger = logging.getLogger(__name__)
@@ -20,14 +18,6 @@ regions = {
     "대전": "G10", "울산": "H10", "세종": "I10", "경기": "J10", "강원": "K10",
     "충북": "M10", "충남": "N10", "전북": "P10", "전남": "Q10", "경북": "R10",
     "경남": "S10", "제주": "T10"
-}
-
-school_levels = {
-    "초등학교": ["초등학교"],
-    "중학교": ["중학교", "중등학교"],
-    "고등학교": ["고등학교", "고등", "고교"],
-    "특수학교": ["특수학교"],
-    "각종학교": ["각종학교"]
 }
 
 def extract_district_from_address(address):
@@ -180,148 +170,18 @@ def sync_all_schools():
     logger.info(f"Full school sync completed: {message}")
     return total_synced, total_errors
 
-def sync_meals_for_school(school_code, region_code, year_month):
-    """특정 학교의 급식 정보 동기화"""
-    url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
-    params = {
-        "KEY": API_KEY,
-        "Type": "json",
-        "pIndex": 1,
-        "pSize": 100,
-        "ATPT_OFCDC_SC_CODE": region_code,
-        "SD_SCHUL_CODE": school_code,
-        "MLSV_YMD": year_month
-    }
-    
-    synced_count = 0
-    
-    try:
-        response = requests.get(url, params=params, timeout=8)
-        response.raise_for_status()
-        data = response.json()
-        
-        if "mealServiceDietInfo" in data and data.get("mealServiceDietInfo")[1].get("row"):
-            for row in data["mealServiceDietInfo"][1]["row"]:
-                meal_info = {
-                    'school_code': school_code,
-                    'meal_date': row["MLSV_YMD"],
-                    'meal_type': row["MMEAL_SC_CODE"],
-                    'menu': row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
-                }
-                
-                if insert_meal(meal_info):
-                    synced_count += 1
-        
-        return synced_count, 0
-        
-    except requests.exceptions.Timeout:
-        logger.error(f"Timeout while fetching meals for school {school_code}")
-        return 0, 1
-    except Exception as e:
-        logger.error(f"Error syncing meals for school {school_code}: {e}")
-        return 0, 1
-
-def sync_meals_for_current_month():
-    """이번 달 모든 학교의 급식 정보 동기화"""
-    from database import get_db_connection
-    
-    today = datetime.now(KST)
-    year_month = today.strftime("%Y%m")
-    
-    sync_id = log_sync_start('meals', year_month)
-    total_synced = 0
-    total_errors = 0
-    
-    logger.info(f"Starting meal sync for {year_month}")
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT school_code, region_code FROM schools')
-    schools = cursor.fetchall()
-    conn.close()
-    
-    total_schools = len(schools)
-    logger.info(f"Found {total_schools} schools to sync")
-    
-    for idx, school in enumerate(schools, 1):
-        school_code = school['school_code']
-        region_code = school['region_code']
-        
-        synced, errors = sync_meals_for_school(school_code, region_code, year_month)
-        total_synced += synced
-        total_errors += errors
-        
-        if idx % 100 == 0:
-            logger.info(f"Progress: {idx}/{total_schools} schools processed")
-            time.sleep(2)
-        else:
-            time.sleep(0.3)
-    
-    status = 'completed' if total_errors == 0 else 'completed_with_errors'
-    message = f"Synced {total_synced} meals from {total_schools} schools with {total_errors} errors"
-    log_sync_complete(sync_id, status, message, total_synced, total_errors)
-    
-    logger.info(f"Meal sync completed: {message}")
-    return total_synced, total_errors
-
-def sync_meals_for_next_month():
-    """다음 달 급식 정보 동기화 (월말에 실행)"""
-    from database import get_db_connection
-    
-    next_month = datetime.now(KST) + timedelta(days=32)
-    year_month = next_month.strftime("%Y%m")
-    
-    sync_id = log_sync_start('meals', year_month)
-    total_synced = 0
-    total_errors = 0
-    
-    logger.info(f"Starting meal sync for next month: {year_month}")
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT school_code, region_code FROM schools')
-    schools = cursor.fetchall()
-    conn.close()
-    
-    for idx, school in enumerate(schools, 1):
-        school_code = school['school_code']
-        region_code = school['region_code']
-        
-        synced, errors = sync_meals_for_school(school_code, region_code, year_month)
-        total_synced += synced
-        total_errors += errors
-        
-        if idx % 100 == 0:
-            logger.info(f"Progress: {idx}/{len(schools)} schools processed")
-            time.sleep(2)
-        else:
-            time.sleep(0.3)
-    
-    status = 'completed' if total_errors == 0 else 'completed_with_errors'
-    message = f"Synced {total_synced} meals for next month with {total_errors} errors"
-    log_sync_complete(sync_id, status, message, total_synced, total_errors)
-    
-    logger.info(f"Next month meal sync completed: {message}")
-    return total_synced, total_errors
-
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format='[%(asctime)s] %(levelname)s: %(message)s'
     )
     
-    print("=== School Meal Data Sync ===")
+    print("=== School Data Sync ===")
     print("1. Sync all schools")
-    print("2. Sync current month meals")
-    print("3. Sync next month meals")
     
-    choice = input("Select option (1-3): ")
+    choice = input("Select option (1): ")
     
     if choice == "1":
         sync_all_schools()
-    elif choice == "2":
-        sync_meals_for_current_month()
-    elif choice == "3":
-        sync_meals_for_next_month()
     else:
         print("Invalid choice")
