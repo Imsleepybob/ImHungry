@@ -42,11 +42,12 @@ SECURITY_CONFIG = {
 }
 
 NO_LOG_PATHS = [
-    '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
-    'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
-    '/logs/', '/stats', '/security/',
-    '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml'
-]
+      '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
+      'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
+      '/logs/', '/stats', '/security/',
+      '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
+      '/health'
+  ]
 
 SILENT_BLOCK_PATTERNS = [
     '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
