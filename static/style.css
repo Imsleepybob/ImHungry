@@ -286,6 +286,7 @@ input[type="text"]:focus, select:focus {
     margin: 0 auto;
 }
 
+/* [수정] 타이틀 애니메이션 복구 및 밑줄 정렬 수정 */
 .school-title {
     text-align: center;
     font-size: 1.8rem;
@@ -294,6 +295,8 @@ input[type="text"]:focus, select:focus {
     font-weight: 600;
     position: relative;
     padding-bottom: 12px;
+    /* 부모 요소에 애니메이션 적용 */
+    animation: pulse 2s infinite;
 }
 
 .school-title::after {
@@ -301,12 +304,12 @@ input[type="text"]:focus, select:focus {
     position: absolute;
     bottom: 0;
     left: 50%;
+    /* transform이 애니메이션에 의해 덮어씌워지지 않도록 after에는 애니메이션 제거 */
     transform: translateX(-50%);
     width: 80px;
     height: 3px;
     background-color: var(--primary-color);
     border-radius: 3px;
-    animation: pulse 2s infinite;
 }
 
 .meal-card {
@@ -774,50 +777,40 @@ input[type="text"]:focus, select:focus {
 }
 .menu-cell span[data-allergy]:hover { color: var(--primary-color); text-decoration: underline; }
 
-/* 테마 설정 모달 */
-.theme-modal-overlay {
+/* [수정] 팝오버(Popover) 스타일 */
+.theme-popover {
     display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
-}
-.theme-modal-overlay.show { display: flex; }
-
-.theme-modal {
+    position: fixed; /* 헤더 위치에 구애받지 않고 고정 */
+    top: 65px; /* 헤더 높이 바로 아래 */
+    right: 20px; /* 오른쪽 여백 */
+    width: 150px;
     background-color: var(--bg-container);
     border-radius: 12px;
-    padding: 20px;
-    width: 90%;
-    max-width: 320px;
     box-shadow: var(--shadow-hover);
-    animation: scaleIn 0.2s ease;
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    z-index: 2000;
+    flex-direction: column;
+    gap: 4px;
+    animation: fadeIn 0.2s ease;
 }
-@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.theme-popover.show { display: flex; }
 
-.theme-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.theme-modal-title { font-size: 1.1rem; font-weight: bold; color: var(--text-primary); }
-.theme-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); padding: 0; line-height: 1; }
-
-.theme-options { display: flex; flex-direction: column; gap: 10px; }
 .theme-option {
-    padding: 12px 15px;
+    padding: 10px 12px;
     border-radius: 8px;
-    background-color: var(--bg-secondary);
-    border: 1px solid transparent;
+    background-color: transparent;
+    border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
     color: var(--text-primary);
     transition: all 0.2s ease;
+    font-size: 0.95rem;
 }
 .theme-option:hover { background-color: var(--bg-hover); }
 .theme-option.active {
-    border-color: var(--primary-color);
     background-color: rgba(0, 123, 255, 0.1);
     color: var(--primary-color);
     font-weight: 500;
