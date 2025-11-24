@@ -30,57 +30,90 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
      crossorigin="anonymous"></script>
 <style>
-.meal-time-setting { display: flex;
-align-items: center; margin-bottom: 15px; }
-.meal-time-setting label { margin: 0 10px; width: 40px; }
-.meal-time-setting input[type="checkbox"] { transform: scale(1.2);
-margin-right: 5px; cursor: pointer; }
-.meal-time-setting input[type="time"] { flex: 1; padding: 8px; margin-bottom: 0; border: 1px solid #ddd; border-radius: 6px;
+/* [리팩토링] 변수 기반 스타일로 변경하여 style.css와 일관성 유지 */
+.meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
+.meal-time-setting label { margin: 0 10px; width: 40px; color: var(--text-primary); }
+.meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
+.meal-time-setting input[type="time"] { 
+    flex: 1; 
+    padding: 8px; 
+    margin-bottom: 0; 
+    border: 1px solid var(--border-light); 
+    border-radius: 6px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
-.day-setting { margin-top: 20px; margin-bottom: 25px; background-color: #f8f9fa; padding: 15px; border-radius: 8px; }
-.day-setting strong { display: block; margin-bottom: 10px;
+.day-setting { 
+    margin-top: 20px; 
+    margin-bottom: 25px; 
+    background-color: var(--bg-secondary); 
+    padding: 15px; 
+    border-radius: 8px; 
 }
-.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; }
-.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer;
-}
+.day-setting strong { display: block; margin-bottom: 10px; color: var(--text-primary); }
+.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; color: var(--text-primary); }
+.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
 .day-setting label { margin-right: 10px; cursor: pointer; }
-.modal-content p { font-size: 0.9em; color: #555; margin-bottom: 15px;
-}
+.modal-content p { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 15px; }
 .modal { transition: opacity 0.3s ease-in-out; }
-#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(150%);
-background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 20px 25px; width: 90%; max-width: 400px; color: white; z-index: 3000; opacity: 0;
-transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); display: none;
+#ios-webapp-guide { 
+    position: fixed; 
+    bottom: 20px; 
+    left: 50%; 
+    transform: translateX(-50%) translateY(150%); 
+    background-color: rgba(0, 0, 0, 0.85); 
+    border-radius: 16px; 
+    padding: 20px 25px; 
+    width: 90%; 
+    max-width: 400px; 
+    color: white; 
+    z-index: 3000; 
+    opacity: 0; 
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); 
+    display: none; 
 }
 #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
 .ios-webapp-guide-content { text-align: center; }
-.ios-webapp-guide-content p { color: white; margin-bottom: 12px;
-font-size: 15px; line-height: 1.5; }
-.share-icon-guide { display: inline-flex; align-items: center; justify-content: center; color: #6bf; margin: 0 4px; vertical-align: middle;
-border: 1px solid #6bf; border-radius: 4px; padding: 2px; }
-.share-icon-guide svg { width: 18px; height: 18px;
+.ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
+.share-icon-guide { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: #6bf; 
+    margin: 0 4px; 
+    vertical-align: middle; 
+    border: 1px solid #6bf; 
+    border-radius: 4px; 
+    padding: 2px; 
 }
-.dismiss-btn { background-color: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 20px; padding: 8px 16px; margin-top: 10px; font-size: 14px;
-cursor: pointer; transition: all 0.3s ease; }
+.share-icon-guide svg { width: 18px; height: 18px; }
+.dismiss-btn { 
+    background-color: rgba(255, 255, 255, 0.2); 
+    color: white; 
+    border: none; 
+    border-radius: 20px; 
+    padding: 8px 16px; 
+    margin-top: 10px; 
+    font-size: 14px; 
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+}
 .dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-.meal-type { margin-bottom: 15px;
-}
+.meal-type { margin-bottom: 15px; }
 .meal-type:last-child { margin-bottom: 0; }
-.meal-type strong {
-    font-weight: bold;
-    margin-right: 8px;
-}
-.meal-type p { display: inline;
-white-space: pre-line; }
-.no-meal { color: #888; font-style: italic; }
+.meal-type strong { font-weight: bold; margin-right: 8px; color: white; /* 뱃지 텍스트는 항상 흰색 */ }
+.meal-type p { display: inline; white-space: pre-line; color: var(--text-primary); }
+.no-meal { color: var(--text-muted); font-style: italic; }
 body { word-break: keep-all; }
 
 .autocomplete-loading {
     padding: 14px 16px;
     text-align: center;
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
-    background-color: #f9f9f9;
-    border-bottom: 1px solid #f0f0f0;
+    background-color: var(--bg-body);
+    border-bottom: 1px solid var(--border-light);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -92,7 +125,7 @@ body { word-break: keep-all; }
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--border-light);
     border-top: 2px solid #667eea;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -109,89 +142,79 @@ body { word-break: keep-all; }
     color: #d32f2f;
     background-color: #ffebee;
     font-size: 0.9em;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--border-light);
     border-left: 4px solid #d32f2f;
+}
+[data-theme="dark"] .autocomplete-error {
+    background-color: #442222;
+    color: #ff8888;
+    border-bottom-color: #553333;
 }
 
 .autocomplete-no-results {
     padding: 14px 16px;
     text-align: center;
-    color: #999;
+    color: var(--text-muted);
     font-style: italic;
-    background-color: #fafafa;
+    background-color: var(--bg-secondary);
     cursor: default;
 }
 
 .autocomplete-no-results:hover {
-    background-color: #fafafa !important;
+    background-color: var(--bg-secondary) !important;
     transform: none !important;
 }
 
-.autocomplete-container {
-    position: relative;
-}
+.autocomplete-container { position: relative; }
 
 .autocomplete-results {
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    background: white;
-    border: 1px solid #ddd;
+    background: var(--bg-container);
+    border: 1px solid var(--border-light);
     border-top: none;
     border-radius: 0 0 8px 8px;
     max-height: 250px;
     overflow-y: auto;
     display: none;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1050; /* z-index 상향 조정 */
 }
 
 .autocomplete-item {
     padding: 14px 16px;
     cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--border-light);
     transition: all 0.2s ease;
     font-size: 0.95em;
-    background-color: white;
+    background-color: var(--bg-container);
+    color: var(--text-primary);
 }
 
-.autocomplete-item:last-child {
-    border-bottom: none;
-}
+.autocomplete-item:last-child { border-bottom: none; }
 
-.autocomplete-item:hover {
-    background-color: #f8f9ff;
-}
+.autocomplete-item:hover { background-color: var(--bg-hover); }
 
 .autocomplete-item.selected {
     background-color: #667eea;
     color: white;
 }
 
-.autocomplete-results::-webkit-scrollbar {
-    width: 6px;
-}
-
-.autocomplete-results::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.autocomplete-results::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 3px;
-}
-
-.autocomplete-results::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
+.autocomplete-results::-webkit-scrollbar { width: 6px; }
+.autocomplete-results::-webkit-scrollbar-track { background: var(--bg-secondary); }
+.autocomplete-results::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+.autocomplete-results::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+[data-theme="dark"] .autocomplete-results::-webkit-scrollbar-thumb { background: #555; }
 
 .today-meal-card {
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-container);
+    border: 1px solid var(--border-color);
     border-radius: 15px;
     padding: 20px;
     margin-bottom: 25px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
 }
 
 .today-meal-title {
@@ -199,7 +222,7 @@ body { word-break: keep-all; }
     font-size: 1.4em;
     font-weight: bold;
     margin-bottom: 15px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .today-meal-grid {
@@ -213,35 +236,48 @@ body { word-break: keep-all; }
     border-radius: 10px;
     padding: 15px;
     text-align: center;
-    border: 2px solid #f0f0f0;
+    border: 2px solid var(--bg-secondary);
     transition: all 0.3s ease;
 }
 
+/* 오늘 급식 카드 색상 테마 대응 */
 .today-meal-item:nth-child(1) {
     background: #fff8e1;
     border-color: #ffb74d;
+}
+[data-theme="dark"] .today-meal-item:nth-child(1) {
+    background: #4a3b22;
+    border-color: #cc9933;
 }
 
 .today-meal-item:nth-child(2) {
     background: #e8f5e8;
     border-color: #66bb6a;
 }
+[data-theme="dark"] .today-meal-item:nth-child(2) {
+    background: #224422;
+    border-color: #449944;
+}
 
 .today-meal-item:nth-child(3) {
     background: #e3f2fd;
     border-color: #42a5f5;
 }
+[data-theme="dark"] .today-meal-item:nth-child(3) {
+    background: #223344;
+    border-color: #3388cc;
+}
 
 .today-meal-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-md);
 }
 
 .today-meal-type {
     font-weight: bold;
     font-size: 1.1em;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--text-primary);
 }
 
 .today-meal-menu {
@@ -249,40 +285,29 @@ body { word-break: keep-all; }
     line-height: 1.4;
     white-space: pre-line;
     word-break: keep-all;
-    color: #555;
+    color: var(--text-secondary);
 }
+[data-theme="dark"] .today-meal-menu { color: #ccc; }
 
-.no-meal-today {
-    color: #999;
-    font-style: italic;
-}
+.no-meal-today { color: var(--text-muted); font-style: italic; }
 
 @media (max-width: 768px) {
-    .today-meal-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .today-meal-item {
-        padding: 12px;
-    }
-
-    .today-meal-type {
-        font-size: 1em;
-    }
+    .today-meal-grid { grid-template-columns: 1fr; gap: 10px; }
+    .today-meal-item { padding: 12px; }
+    .today-meal-type { font-size: 1em; }
 }
 
 .manual-school-finder {
     margin-top: 30px;
     margin-bottom: 100px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
-    background: white;
+    background: var(--bg-container);
 }
 
 .manual-finder-header {
-    background: #faa41a;
+    background: var(--accent-color);
     color: white;
     padding: 15px 20px;
     cursor: pointer;
@@ -292,44 +317,23 @@ body { word-break: keep-all; }
     transition: all 0.3s ease;
 }
 
-.manual-finder-header:hover {
-    background: #e8930f;
-}
+.manual-finder-header:hover { background: #e8930f; }
 
-.manual-finder-title {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.manual-finder-icon {
-    font-size: 1.2em;
-    transition: transform 0.3s ease;
-}
-
-.manual-finder-icon.expanded {
-    transform: rotate(180deg);
-}
+.manual-finder-title { font-weight: bold; font-size: 1.1em; }
+.manual-finder-icon { font-size: 1.2em; transition: transform 0.3s ease; }
+.manual-finder-icon.expanded { transform: rotate(180deg); }
 
 .manual-finder-content {
     display: none;
     padding: 20px;
-    background: #fafafa;
+    background: var(--bg-secondary);
 }
 
-.manual-finder-content.show {
-    display: block;
-    animation: slideDown 0.3s ease-out;
-}
+.manual-finder-content.show { display: block; animation: slideDown 0.3s ease-out; }
 
 @keyframes slideDown {
-    from {
-        opacity: 0;
-        max-height: 0;
-    }
-    to {
-        opacity: 1;
-        max-height: 1000px;
-    }
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 1000px; }
 }
 
 .regions-grid {
@@ -340,8 +344,8 @@ body { word-break: keep-all; }
 }
 
 .region-card {
-    background: white;
-    border: 1px solid #e0e0e0;
+    background: var(--bg-container);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 15px;
     transition: all 0.3s ease;
@@ -349,25 +353,21 @@ body { word-break: keep-all; }
 
 .region-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: var(--shadow-md);
 }
 
 .region-name {
     font-weight: bold;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 10px;
     font-size: 1.1em;
 }
 
-.school-levels {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
+.school-levels { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .level-link {
-    background: #f0f0f0;
-    color: #555;
+    background: var(--bg-body);
+    color: var(--text-secondary);
     padding: 6px 12px;
     border-radius: 20px;
     text-decoration: none;
@@ -377,33 +377,30 @@ body { word-break: keep-all; }
 }
 
 .level-link:hover {
-    background: #007bff;
+    background: var(--primary-color);
     color: white;
     text-decoration: none;
     transform: translateY(-1px);
 }
 
 .finder-description {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.95em;
     line-height: 1.6;
     margin-bottom: 15px;
     padding: 12px;
-    background: white;
+    background: var(--bg-container);
     border-radius: 6px;
-    border-left: 4px solid #faa41a;
+    border-left: 4px solid var(--accent-color);
 }
 
-.nearby-schools-section {
-    max-width: 850px;
-    margin: 30px auto;
-}
+.nearby-schools-section { max-width: 850px; margin: 30px auto; }
 
 .toggle-nearby-btn {
     display: block;
     margin: 0 auto 30px;
     padding: 14px 28px;
-    background: linear-gradient(135deg, #faa41a, #ff8c00);
+    background: linear-gradient(135deg, var(--accent-color), #ff8c00);
     color: white;
     border: none;
     border-radius: 30px;
@@ -421,57 +418,40 @@ body { word-break: keep-all; }
 }
 
 .toggle-nearby-btn.active {
-    background: linear-gradient(135deg, #007bff, #0056b3);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
     box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
 }
 
 .nearby-schools-container {
-    background: white;
+    background: var(--bg-container);
     border-radius: 16px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-lg);
     padding: 25px;
     margin-bottom: 30px;
     animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.nearby-schools-header {
-    text-align: center;
-    margin-bottom: 25px;
-}
+.nearby-schools-header { text-align: center; margin-bottom: 25px; }
 
 .nearby-schools-title {
     font-size: 1.4em;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 8px;
     font-weight: 700;
 }
 
-.nearby-schools-subtitle {
-    color: #666;
-    font-size: 0.95em;
-    margin: 0;
-}
+.nearby-schools-subtitle { color: var(--text-secondary); font-size: 0.95em; margin: 0; }
 
-.nearby-schools-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-}
+.nearby-schools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
 .nearby-school-card {
-    background: #f8f9ff;
-    border: 2px solid #e3f2fd;
+    background: var(--bg-hover);
+    border: 2px solid var(--border-color);
     border-radius: 12px;
     padding: 18px;
     text-align: center;
@@ -487,7 +467,7 @@ body { word-break: keep-all; }
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #007bff, #00d4ff);
+    background: linear-gradient(90deg, var(--primary-color), #00d4ff);
     transform: scaleX(0);
     transition: transform 0.3s ease;
 }
@@ -495,23 +475,21 @@ body { word-break: keep-all; }
 .nearby-school-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
-    border-color: #007bff;
+    border-color: var(--primary-color);
 }
 
-.nearby-school-card:hover::before {
-    transform: scaleX(1);
-}
+.nearby-school-card:hover::before { transform: scaleX(1); }
 
 .nearby-school-name {
     font-weight: 600;
-    color: #333;
+    color: var(--text-primary);
     margin-bottom: 12px;
     font-size: 1.05em;
     line-height: 1.3;
 }
 
 .nearby-school-distance {
-    color: #666;
+    color: var(--text-secondary);
     font-size: 0.85em;
     margin-bottom: 15px;
     background: rgba(0, 123, 255, 0.1);
@@ -522,7 +500,7 @@ body { word-break: keep-all; }
 
 .view-nearby-meal-btn {
     display: inline-block;
-    background: #007bff;
+    background: var(--primary-color);
     color: white;
     padding: 10px 20px;
     border-radius: 8px;
@@ -533,7 +511,7 @@ body { word-break: keep-all; }
 }
 
 .view-nearby-meal-btn:hover {
-    background: #0056b3;
+    background: var(--primary-hover);
     text-decoration: none;
     color: white;
     transform: scale(1.05);
@@ -542,7 +520,7 @@ body { word-break: keep-all; }
 .nearby-loading {
     text-align: center;
     padding: 40px 20px;
-    color: #666;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -553,7 +531,7 @@ body { word-break: keep-all; }
     width: 24px;
     height: 24px;
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #007bff;
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -579,74 +557,25 @@ body { word-break: keep-all; }
 }
 
 @media (max-width: 768px) {
-    .nearby-schools-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .toggle-nearby-btn {
-        padding: 12px 20px;
-        font-size: 15px;
-    }
-
-    .nearby-schools-container {
-        padding: 20px 15px;
-    }
+    .nearby-schools-grid { grid-template-columns: 1fr; gap: 12px; }
+    .toggle-nearby-btn { padding: 12px 20px; font-size: 15px; }
+    .nearby-schools-container { padding: 20px 15px; }
+    .regions-grid { grid-template-columns: 1fr; gap: 10px; }
+    .school-levels { gap: 6px; }
+    .level-link { padding: 5px 10px; font-size: 0.85em; }
+    .manual-finder-content { padding: 15px; }
+    .manual-school-finder { margin-bottom: 80px; }
 }
 
-@media (max-width: 768px) {
-    .regions-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-
-    .school-levels {
-        gap: 6px;
-    }
-
-    .level-link {
-        padding: 5px 10px;
-        font-size: 0.85em;
-    }
-
-    .manual-finder-content {
-        padding: 15px;
-    }
-
-    .manual-school-finder {
-        margin-bottom: 80px;
-    }
-}
-
-#ad-desktop, #bodyad-desktop {
-    display: none;
-}
-
-#bodyad-desktop, #bodyad-mobile {
-    display: none;
-    text-align: center;
-    margin: 10px auto;
-}
-
-#bodyad-desktop.show-ad, #bodyad-mobile.show-ad {
-    display: block;
-}
-
-#ad-mobile, #ad-desktop {
-    text-align: center;
-    margin: 0 auto;
-}
+#ad-desktop, #bodyad-desktop { display: none; }
+#bodyad-desktop, #bodyad-mobile { display: none; text-align: center; margin: 10px auto; }
+#bodyad-desktop.show-ad, #bodyad-mobile.show-ad { display: block; }
+#ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
 
 @media (min-width: 768px) {
-    #ad-desktop, #bodyad-desktop {
-        display: block;
-    }
-    #ad-mobile, #bodyad-mobile {
-        display: none;
-    }
-    #bodyad-desktop:not(.show-ad) {
-        display: none;
-    }
+    #ad-desktop, #bodyad-desktop { display: block; }
+    #ad-mobile, #bodyad-mobile { display: none; }
+    #bodyad-desktop:not(.show-ad) { display: none; }
 }
 </style>
 </head>
@@ -657,14 +586,32 @@ body { word-break: keep-all; }
   gtag('js', new Date());
   gtag('config', 'G-ERQ4FS2YTY');
 </script>
+<script>
+    (function() {
+        const savedTheme = localStorage.getItem('theme') || 'system';
+        if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    })();
+</script>
 <body>
 <header class="main-header">
-  <div class="logo">
-    <a href="/">
-      <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
-    </a>
-  </div>
-</header>
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+            </a>
+        </div>
+        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
+             <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
+            </svg>
+            <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" fill="currentColor"/>
+            </svg>
+        </button>
+    </header>
 <div id="ad-mobile">
 <ins class="kakao_ad_area"
          data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
@@ -860,6 +807,28 @@ safe }}</p></div>{% endif %}
 </div>
 {% endif %}
 <button id="share-btn" class="share-btn">🔗 공유하기</button>
+<div id="themeModal" class="theme-modal-overlay">
+    <div class="theme-modal">
+        <div class="theme-modal-header">
+            <div class="theme-modal-title">테마 설정</div>
+            <button class="theme-modal-close" id="closeThemeModal">×</button>
+        </div>
+        <div class="theme-options">
+            <div class="theme-option" data-value="light">
+                <span>라이트 모드</span>
+                <span>☀</span>
+            </div>
+            <div class="theme-option" data-value="dark">
+                <span>다크 모드</span>
+                <span>🌙</span>
+            </div>
+            <div class="theme-option" data-value="system">
+                <span>시스템 설정</span>
+                <span>⚙</span>
+            </div>
+        </div>
+    </div>
+</div>
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
@@ -881,7 +850,6 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
   </div>
 </footer>
 <script>
-// school_meal.html의 <script> 태그 내부 전체 교체
 const regions_data = {{ regions | tojson | safe }};
 
 let autocompleteVisible = false;
@@ -958,11 +926,9 @@ async function searchSchoolsAPI(query, region) {
 
     isSearching = true;
     showLoadingState();
-
     try {
         const searchQuery = removeSpaces(getCompleteCharacters(query));
         const response = await fetch(`/api/schools/search?q=${encodeURIComponent(searchQuery)}&region=${encodeURIComponent(region)}`);
-
         if (requestId !== searchRequestId) {
             console.log(`API response #${requestId} ignored: newer search #${searchRequestId} in progress`);
             return;
@@ -980,7 +946,6 @@ async function searchSchoolsAPI(query, region) {
         }
 
         const schools = await response.json();
-
         if (requestId !== searchRequestId) {
             console.log(`API response #${requestId} ignored: newer search #${searchRequestId} completed`);
             return;
@@ -988,13 +953,11 @@ async function searchSchoolsAPI(query, region) {
 
         const currentQuery = document.getElementById("school_name")?.value.trim();
         const currentRegion = document.getElementById("region")?.value;
-
         if (currentQuery && currentRegion === region && isValidSearchQuery(currentQuery)) {
             const currentComplete = removeSpaces(getCompleteCharacters(currentQuery).toLowerCase());
             const searchComplete = removeSpaces(getCompleteCharacters(query).toLowerCase());
 
             const isRelated = currentComplete.includes(searchComplete) || searchComplete.includes(currentComplete);
-
             if (isRelated || currentComplete === searchComplete) {
                 console.log(`API search #${requestId}: "${query}" → ${schools.length} results (related to current: "${currentQuery}")`);
                 showAutocomplete(schools);
@@ -1037,7 +1000,6 @@ function showErrorMessage(message) {
 function showAutocomplete(schools) {
     const autocompleteResults = document.getElementById("autocomplete-results");
     if (!autocompleteResults) return;
-
     if (schools.length === 0) {
         autocompleteResults.innerHTML = '<div class="autocomplete-no-results">검색 결과가 없습니다.</div>';
         autocompleteResults.style.display = 'block';
@@ -1055,7 +1017,6 @@ function showAutocomplete(schools) {
         item.addEventListener('click', () => selectSchool(item));
         autocompleteResults.appendChild(item);
     });
-
     autocompleteResults.style.display = 'block';
     autocompleteVisible = true;
     selectedIndex = -1;
@@ -1084,7 +1045,6 @@ function selectSchool(item) {
         schoolNameInput.value = item.dataset.name;
     }
     hideAutocomplete();
-
     const loadingDiv = document.getElementById('loading');
     if (loadingDiv) {
         loadingDiv.style.display = 'flex';
@@ -1106,7 +1066,6 @@ function performSearch(query, region, immediate = false) {
 
     const executeSearch = () => {
         if (isComposing) return;
-
         const schoolNameInput = document.getElementById("school_name");
         const regionSelect = document.getElementById("region");
 
@@ -1123,7 +1082,6 @@ function performSearch(query, region, immediate = false) {
         console.log('Using API search for:', query);
         searchSchoolsAPI(query, region);
     };
-
     if (immediate) {
         executeSearch();
     } else {
@@ -1134,6 +1092,81 @@ function performSearch(query, region, immediate = false) {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
+
+    // [추가] 테마 관련 초기화
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    const modal = document.getElementById('themeModal');
+    const closeBtn = document.getElementById('closeThemeModal');
+    const options = document.querySelectorAll('.theme-option');
+    const iconLight = document.querySelector('.theme-icon-light');
+    const iconDark = document.querySelector('.theme-icon-dark');
+
+    // [추가] 테마 아이콘 업데이트 함수
+    function updateIcon() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            iconLight.style.display = 'none';
+            iconDark.style.display = 'block';
+            iconDark.style.fill = 'currentColor';
+        } else {
+            iconLight.style.display = 'block';
+            iconDark.style.display = 'none';
+            iconLight.style.fill = 'currentColor';
+        }
+    }
+
+    // [추가] 테마 이벤트 리스너
+    if (toggleBtn && modal) {
+        toggleBtn.addEventListener('click', () => {
+            modal.classList.add('show');
+            const currentTheme = localStorage.getItem('theme') || 'system';
+            options.forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.value === currentTheme);
+            });
+        });
+
+        if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('show');
+        });
+
+        options.forEach(option => {
+            option.addEventListener('click', () => {
+                const theme = option.dataset.value;
+                localStorage.setItem('theme', theme);
+                
+                if (theme === 'system') {
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.setAttribute('data-theme', 'dark');
+                    } else {
+                        document.documentElement.removeAttribute('data-theme');
+                    }
+                } else if (theme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                
+                updateIcon();
+                modal.classList.remove('show');
+            });
+        });
+
+        // 시스템 테마 변경 감지
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
+                if (e.matches) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                updateIcon();
+            }
+        });
+
+        // 초기 아이콘 설정
+        updateIcon();
+    }
 
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
@@ -1197,7 +1230,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchTimeout = null;
             }
         });
-
         schoolNameInput.addEventListener('compositionend', (e) => {
             console.log('IME composition ended');
             isComposing = false;
@@ -1209,7 +1241,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideAutocomplete();
             }
         });
-
         schoolNameInput.addEventListener('input', function(e) {
             const query = this.value.trim();
             const region = regionSelect.value;
@@ -1236,7 +1267,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             performSearch(query, region);
         });
-
         schoolNameInput.addEventListener('keydown', function(e) {
             if (!autocompleteVisible) return;
 
@@ -1257,7 +1287,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideAutocomplete();
             }
         });
-
         regionSelect.addEventListener('change', function() {
             console.log(`Region changed to: ${this.value}`);
             hideAutocomplete();
@@ -1267,7 +1296,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 performSearch(query, this.value, true);
             }
         });
-
         schoolNameInput.addEventListener('focus', function() {
             const query = this.value.trim();
             const region = regionSelect.value;
@@ -1364,7 +1392,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const savedSchool = getCookie('school_name');
     const savedRegionName = getCookie('region_name');
-
     if (savedSchool && schoolNameInput) {
         try {
             schoolNameInput.value = decodeURIComponent(savedSchool);
@@ -1378,7 +1405,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     console.log("DOM Loaded and JS initialized successfully");
-
     setTimeout(() => {
         const bodyAdDesktop = document.getElementById('bodyad-desktop');
         const bodyAdMobile = document.getElementById('bodyad-mobile');
