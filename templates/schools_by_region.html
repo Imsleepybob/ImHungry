@@ -9,7 +9,7 @@
     <meta name="description" content="{{ region_name }} 지역의 초중고교 급식 정보를 확인하세요. 학교급별로 쉽게 찾아보실 수 있습니다.">
     <title>{{ region_name }} 지역 학교 목록 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    </head>
+</head>
 <body>
     <header class="main-header">
         <div class="logo">
@@ -76,17 +76,17 @@
         </div>
     </footer>
 
-<div id="themePopover" class="theme-popover">
+    <div id="themePopover" class="theme-popover">
         <div class="theme-option" data-value="light">
-            <span>라이트</span>
+            <span>라이트 모드</span>
             <span>☀</span>
         </div>
         <div class="theme-option" data-value="dark">
-            <span>다크</span>
+            <span>다크 모드</span>
             <span>🌙</span>
         </div>
         <div class="theme-option" data-value="system">
-            <span>시스템</span>
+            <span>시스템 설정</span>
             <span>⚙</span>
         </div>
     </div>
@@ -94,7 +94,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const toggleBtn = document.getElementById('themeToggleBtn');
-            const popover = document.getElementById('themePopover'); // ID 변경됨
+            const popover = document.getElementById('themePopover');
             const options = document.querySelectorAll('.theme-option');
             const iconLight = document.querySelector('.theme-icon-light');
             const iconDark = document.querySelector('.theme-icon-dark');
@@ -102,13 +102,17 @@
             function updateIcon() {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 if (isDark) {
-                    iconLight.style.display = 'none';
-                    iconDark.style.display = 'block';
-                    iconDark.style.fill = 'currentColor';
+                    if(iconLight) iconLight.style.display = 'none';
+                    if(iconDark) {
+                        iconDark.style.display = 'block';
+                        iconDark.style.fill = 'currentColor';
+                    }
                 } else {
-                    iconLight.style.display = 'block';
-                    iconDark.style.display = 'none';
-                    iconLight.style.fill = 'currentColor';
+                    if(iconLight) {
+                        iconLight.style.display = 'block';
+                        iconLight.style.fill = 'currentColor';
+                    }
+                    if(iconDark) iconDark.style.display = 'none';
                 }
             }
 
@@ -164,6 +168,5 @@
             }
         });
     </script>
-    </body>
+</body>
 </html>
-
