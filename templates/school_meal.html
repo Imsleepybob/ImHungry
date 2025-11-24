@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.1">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -27,558 +27,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}">
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528"
-     crossorigin="anonymous"></script>
-<style>
-/* [리팩토링] 변수 기반 스타일로 변경하여 style.css와 일관성 유지 */
-.meal-time-setting { display: flex; align-items: center; margin-bottom: 15px; }
-.meal-time-setting label { margin: 0 10px; width: 40px; color: var(--text-primary); }
-.meal-time-setting input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; cursor: pointer; }
-.meal-time-setting input[type="time"] { 
-    flex: 1; 
-    padding: 8px; 
-    margin-bottom: 0; 
-    border: 1px solid var(--border-light); 
-    border-radius: 6px;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-}
-.day-setting { 
-    margin-top: 20px; 
-    margin-bottom: 25px; 
-    background-color: var(--bg-secondary); 
-    padding: 15px; 
-    border-radius: 8px; 
-}
-.day-setting strong { display: block; margin-bottom: 10px; color: var(--text-primary); }
-.day-setting div { display: flex; justify-content: space-around; flex-wrap: wrap; color: var(--text-primary); }
-.day-setting input[type="checkbox"] { margin-right: 5px; cursor: pointer; }
-.day-setting label { margin-right: 10px; cursor: pointer; }
-.modal-content p { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 15px; }
-.modal { transition: opacity 0.3s ease-in-out; }
-#ios-webapp-guide { 
-    position: fixed; 
-    bottom: 20px; 
-    left: 50%; 
-    transform: translateX(-50%) translateY(150%); 
-    background-color: rgba(0, 0, 0, 0.85); 
-    border-radius: 16px; 
-    padding: 20px 25px; 
-    width: 90%; 
-    max-width: 400px; 
-    color: white; 
-    z-index: 3000; 
-    opacity: 0; 
-    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); 
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); 
-    display: none; 
-}
-#ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
-.ios-webapp-guide-content { text-align: center; }
-.ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
-.share-icon-guide { 
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center; 
-    color: #6bf; 
-    margin: 0 4px; 
-    vertical-align: middle; 
-    border: 1px solid #6bf; 
-    border-radius: 4px; 
-    padding: 2px; 
-}
-.share-icon-guide svg { width: 18px; height: 18px; }
-.dismiss-btn { 
-    background-color: rgba(255, 255, 255, 0.2); 
-    color: white; 
-    border: none; 
-    border-radius: 20px; 
-    padding: 8px 16px; 
-    margin-top: 10px; 
-    font-size: 14px; 
-    cursor: pointer; 
-    transition: all 0.3s ease; 
-}
-.dismiss-btn:hover { background-color: rgba(255, 255, 255, 0.4); }
-.meal-type { margin-bottom: 15px; }
-.meal-type:last-child { margin-bottom: 0; }
-.meal-type strong { font-weight: bold; margin-right: 8px; color: white; /* 뱃지 텍스트는 항상 흰색 */ }
-.meal-type p { display: inline; white-space: pre-line; color: var(--text-primary); }
-.no-meal { color: var(--text-muted); font-style: italic; }
-body { word-break: keep-all; }
-
-.autocomplete-loading {
-    padding: 14px 16px;
-    text-align: center;
-    color: var(--text-secondary);
-    font-style: italic;
-    background-color: var(--bg-body);
-    border-bottom: 1px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.autocomplete-loading::before {
-    content: '';
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border-light);
-    border-top: 2px solid #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.autocomplete-error {
-    padding: 14px 16px;
-    text-align: center;
-    color: #d32f2f;
-    background-color: #ffebee;
-    font-size: 0.9em;
-    border-bottom: 1px solid var(--border-light);
-    border-left: 4px solid #d32f2f;
-}
-[data-theme="dark"] .autocomplete-error {
-    background-color: #442222;
-    color: #ff8888;
-    border-bottom-color: #553333;
-}
-
-.autocomplete-no-results {
-    padding: 14px 16px;
-    text-align: center;
-    color: var(--text-muted);
-    font-style: italic;
-    background-color: var(--bg-secondary);
-    cursor: default;
-}
-
-.autocomplete-no-results:hover {
-    background-color: var(--bg-secondary) !important;
-    transform: none !important;
-}
-
-.autocomplete-container { position: relative; }
-
-.autocomplete-results {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--bg-container);
-    border: 1px solid var(--border-light);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    max-height: 250px;
-    overflow-y: auto;
-    display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1050; /* z-index 상향 조정 */
-}
-
-.autocomplete-item {
-    padding: 14px 16px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-light);
-    transition: all 0.2s ease;
-    font-size: 0.95em;
-    background-color: var(--bg-container);
-    color: var(--text-primary);
-}
-
-.autocomplete-item:last-child { border-bottom: none; }
-
-.autocomplete-item:hover { background-color: var(--bg-hover); }
-
-.autocomplete-item.selected {
-    background-color: #667eea;
-    color: white;
-}
-
-.autocomplete-results::-webkit-scrollbar { width: 6px; }
-.autocomplete-results::-webkit-scrollbar-track { background: var(--bg-secondary); }
-.autocomplete-results::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-.autocomplete-results::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-[data-theme="dark"] .autocomplete-results::-webkit-scrollbar-thumb { background: #555; }
-
-.today-meal-card {
-    background: var(--bg-container);
-    border: 1px solid var(--border-color);
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 25px;
-    box-shadow: var(--shadow-md);
-}
-
-.today-meal-title {
-    text-align: center;
-    font-size: 1.4em;
-    font-weight: bold;
-    margin-bottom: 15px;
-    color: var(--text-primary);
-}
-
-.today-meal-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.today-meal-item {
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-    border: 2px solid var(--bg-secondary);
-    transition: all 0.3s ease;
-}
-
-/* 오늘 급식 카드 색상 테마 대응 */
-.today-meal-item:nth-child(1) {
-    background: #fff8e1;
-    border-color: #ffb74d;
-}
-[data-theme="dark"] .today-meal-item:nth-child(1) {
-    background: #4a3b22;
-    border-color: #cc9933;
-}
-
-.today-meal-item:nth-child(2) {
-    background: #e8f5e8;
-    border-color: #66bb6a;
-}
-[data-theme="dark"] .today-meal-item:nth-child(2) {
-    background: #224422;
-    border-color: #449944;
-}
-
-.today-meal-item:nth-child(3) {
-    background: #e3f2fd;
-    border-color: #42a5f5;
-}
-[data-theme="dark"] .today-meal-item:nth-child(3) {
-    background: #223344;
-    border-color: #3388cc;
-}
-
-.today-meal-item:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.today-meal-type {
-    font-weight: bold;
-    font-size: 1.1em;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
-
-.today-meal-menu {
-    font-size: 0.9em;
-    line-height: 1.4;
-    white-space: pre-line;
-    word-break: keep-all;
-    color: var(--text-secondary);
-}
-[data-theme="dark"] .today-meal-menu { color: #ccc; }
-
-.no-meal-today { color: var(--text-muted); font-style: italic; }
-
-@media (max-width: 768px) {
-    .today-meal-grid { grid-template-columns: 1fr; gap: 10px; }
-    .today-meal-item { padding: 12px; }
-    .today-meal-type { font-size: 1em; }
-}
-
-.manual-school-finder {
-    margin-top: 30px;
-    margin-bottom: 100px;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    overflow: hidden;
-    background: var(--bg-container);
-}
-
-.manual-finder-header {
-    background: var(--accent-color);
-    color: white;
-    padding: 15px 20px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.manual-finder-header:hover { background: #e8930f; }
-
-.manual-finder-title { font-weight: bold; font-size: 1.1em; }
-.manual-finder-icon { font-size: 1.2em; transition: transform 0.3s ease; }
-.manual-finder-icon.expanded { transform: rotate(180deg); }
-
-.manual-finder-content {
-    display: none;
-    padding: 20px;
-    background: var(--bg-secondary);
-}
-
-.manual-finder-content.show { display: block; animation: slideDown 0.3s ease-out; }
-
-@keyframes slideDown {
-    from { opacity: 0; max-height: 0; }
-    to { opacity: 1; max-height: 1000px; }
-}
-
-.regions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.region-card {
-    background: var(--bg-container);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 15px;
-    transition: all 0.3s ease;
-}
-
-.region-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.region-name {
-    font-weight: bold;
-    color: var(--text-primary);
-    margin-bottom: 10px;
-    font-size: 1.1em;
-}
-
-.school-levels { display: flex; flex-wrap: wrap; gap: 8px; }
-
-.level-link {
-    background: var(--bg-body);
-    color: var(--text-secondary);
-    padding: 6px 12px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-size: 0.9em;
-    transition: all 0.3s ease;
-    border: 1px solid transparent;
-}
-
-.level-link:hover {
-    background: var(--primary-color);
-    color: white;
-    text-decoration: none;
-    transform: translateY(-1px);
-}
-
-.finder-description {
-    color: var(--text-secondary);
-    font-size: 0.95em;
-    line-height: 1.6;
-    margin-bottom: 15px;
-    padding: 12px;
-    background: var(--bg-container);
-    border-radius: 6px;
-    border-left: 4px solid var(--accent-color);
-}
-
-.nearby-schools-section { max-width: 850px; margin: 30px auto; }
-
-.toggle-nearby-btn {
-    display: block;
-    margin: 0 auto 30px;
-    padding: 14px 28px;
-    background: linear-gradient(135deg, var(--accent-color), #ff8c00);
-    color: white;
-    border: none;
-    border-radius: 30px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(250, 164, 26, 0.3);
-}
-
-.toggle-nearby-btn:hover {
-    background: linear-gradient(135deg, #ff8c00, #e6750a);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(250, 164, 26, 0.4);
-}
-
-.toggle-nearby-btn.active {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
-    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
-}
-
-.nearby-schools-container {
-    background: var(--bg-container);
-    border-radius: 16px;
-    box-shadow: var(--shadow-lg);
-    padding: 25px;
-    margin-bottom: 30px;
-    animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.nearby-schools-header { text-align: center; margin-bottom: 25px; }
-
-.nearby-schools-title {
-    font-size: 1.4em;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-    font-weight: 700;
-}
-
-.nearby-schools-subtitle { color: var(--text-secondary); font-size: 0.95em; margin: 0; }
-
-.nearby-schools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-
-.nearby-school-card {
-    background: var(--bg-hover);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    padding: 18px;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.nearby-school-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), #00d4ff);
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-}
-
-.nearby-school-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
-    border-color: var(--primary-color);
-}
-
-.nearby-school-card:hover::before { transform: scaleX(1); }
-
-.nearby-school-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 12px;
-    font-size: 1.05em;
-    line-height: 1.3;
-}
-
-.nearby-school-distance {
-    color: var(--text-secondary);
-    font-size: 0.85em;
-    margin-bottom: 15px;
-    background: rgba(0, 123, 255, 0.1);
-    padding: 4px 10px;
-    border-radius: 12px;
-    display: inline-block;
-}
-
-.view-nearby-meal-btn {
-    display: inline-block;
-    background: var(--primary-color);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: 0.9em;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.view-nearby-meal-btn:hover {
-    background: var(--primary-hover);
-    text-decoration: none;
-    color: white;
-    transform: scale(1.05);
-}
-
-.nearby-loading {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-}
-
-.spinner-small {
-    width: 24px;
-    height: 24px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.nearby-error {
-    text-align: center;
-    padding: 30px 20px;
-    color: #e55;
-    background: #fee;
-    border-radius: 8px;
-    border-left: 4px solid #e55;
-}
-
-.current-school-indicator {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.75em;
-    position: absolute;
-    top: 8px;
-    right: 8px;
-}
-
-@media (max-width: 768px) {
-    .nearby-schools-grid { grid-template-columns: 1fr; gap: 12px; }
-    .toggle-nearby-btn { padding: 12px 20px; font-size: 15px; }
-    .nearby-schools-container { padding: 20px 15px; }
-    .regions-grid { grid-template-columns: 1fr; gap: 10px; }
-    .school-levels { gap: 6px; }
-    .level-link { padding: 5px 10px; font-size: 0.85em; }
-    .manual-finder-content { padding: 15px; }
-    .manual-school-finder { margin-bottom: 80px; }
-}
-
-#ad-desktop, #bodyad-desktop { display: none; }
-#bodyad-desktop, #bodyad-mobile { display: none; text-align: center; margin: 10px auto; }
-#bodyad-desktop.show-ad, #bodyad-mobile.show-ad { display: block; }
-#ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
-
-@media (min-width: 768px) {
-    #ad-desktop, #bodyad-desktop { display: block; }
-    #ad-mobile, #bodyad-mobile { display: none; }
-    #bodyad-desktop:not(.show-ad) { display: none; }
-}
-</style>
-</head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -596,39 +45,33 @@ body { word-break: keep-all; }
         }
     })();
 </script>
+</head>
 <body>
 <header class="main-header">
-        <div class="logo">
-            <a href="/">
-                <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
-            </a>
-        </div>
-        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
-             <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
-            </svg>
-            <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" fill="currentColor"/>
-            </svg>
-        </button>
-    </header>
+  <div class="logo">
+    <a href="/">
+      <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+    </a>
+  </div>
+  <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
+    <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
+    </svg>
+    <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" />
+    </svg>
+  </button>
+</header>
 <div id="ad-mobile">
-<ins class="kakao_ad_area"
-         data-ad-unit = "DAN-dlRqzKV7HUKex1ui"
-         data-ad-width = "320"
-         data-ad-height = "100"></ins>
+<ins class="kakao_ad_area" data-ad-unit = "DAN-dlRqzKV7HUKex1ui" data-ad-width = "320" data-ad-height = "100"></ins>
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id="ad-desktop">
-    <ins class="kakao_ad_area"
-         data-ad-unit = "DAN-I2BhGwRuogHXusUi"
-         data-ad-width = "728"
-         data-ad-height = "90"></ins>
+    <ins class="kakao_ad_area" data-ad-unit = "DAN-I2BhGwRuogHXusUi" data-ad-width = "728" data-ad-height = "90"></ins>
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div class="container">
-  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round"
-stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
+  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
 <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
     <div class="form-group">
         <label for="region">지역 선택</label>
@@ -647,17 +90,11 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
     <button type="submit" class="submit-btn">검색</button>
 </form>
 <div id=bodyad-desktop>
-     <ins class="kakao_ad_area"
-          data-ad-unit = "DAN-ODZjnUToMyS7iXmi"
-          data-ad-width = "728"
-          data-ad-height = "90"></ins>
+     <ins class="kakao_ad_area" data-ad-unit = "DAN-ODZjnUToMyS7iXmi" data-ad-width = "728" data-ad-height = "90"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id=bodyad-mobile>
-     <ins class="kakao_ad_area"
-          data-ad-unit = "DAN-StDbNq6y1v7xZsfO"
-          data-ad-width = "320"
-          data-ad-height = "50"></ins>
+     <ins class="kakao_ad_area" data-ad-unit = "DAN-StDbNq6y1v7xZsfO" data-ad-width = "320" data-ad-height = "50"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
   <div id="loading" class="loading-container"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
@@ -666,7 +103,6 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
 {% if school_name and today_meal %}
-
     <div class="today-meal-card">
         <h3 class="today-meal-title">
             오늘 급식 정보 🍽️<br>
@@ -701,25 +137,19 @@ stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c
           <tbody>
           {% for date, meal in week_meals.items() %}
             <tr class="meal-row">
-              <td class="date-cell">{{ date |
-format_date }}</td>
+              <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast |
-safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch |
-safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner |
-safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
           {% endfor %}
           </tbody>
         </table>
-
       </div>
     </div>
-
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
     <div class="meal-card month-meal" id="monthTable" style="display: none;">
       <h3 class="meal-title">이번 달 급식 정보🍱</h3>
@@ -728,17 +158,12 @@ safe }}</p></div>{% endif %}
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
           <tbody>
           {% for date, meal in month_meals.items() %}
-
-   <tr class="meal-row">
-              <td class="date-cell">{{ date |
-format_date }}</td>
+           <tr class="meal-row">
+              <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast |
-safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch |
-safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner |
-safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
@@ -750,13 +175,11 @@ safe }}</p></div>{% endif %}
 {% if nearby_schools %}
 <div class="nearby-schools-section">
     <button class="toggle-nearby-btn" id="toggleNearbyBtn">🏫 주변 학교 급식과 비교하기</button>
-
     <div class="nearby-schools-container" id="nearbySchoolsContainer" style="display: none;">
         <div class="nearby-schools-header">
             <h3 class="nearby-schools-title">주변 학교 급식 정보</h3>
             <p class="nearby-schools-subtitle">우리 학교와 다른 학교들의 급식을 비교해보세요!</p>
         </div>
-
         <div class="nearby-schools-grid">
             {% for school in nearby_schools %}
             <div class="nearby-school-card">
@@ -788,7 +211,6 @@ safe }}</p></div>{% endif %}
             <strong>💡 팁:</strong> 학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
             아래에서 원하는 지역을 선택한 후, 해당하는 학교급을 클릭하세요.
         </div>
-
         <div class="regions-grid">
             {% for region_name, region_code in regions.items() %}
             <div class="region-card">
@@ -807,6 +229,26 @@ safe }}</p></div>{% endif %}
 </div>
 {% endif %}
 <button id="share-btn" class="share-btn">🔗 공유하기</button>
+<div id="ios-webapp-guide">
+  <div class="ios-webapp-guide-content">
+    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
+    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12"
+y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
+    </p>
+    <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
+  </div>
+</div>
+<footer class="main-footer">
+  <div class="footer-content">
+    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
+    <div class="footer-links">
+      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
+      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+    </div>
+    <p>&copy; 2025 ImHungry. All rights reserved.</p>
+  </div>
+</footer>
 <div id="themeModal" class="theme-modal-overlay">
     <div class="theme-modal">
         <div class="theme-modal-header">
@@ -829,26 +271,6 @@ safe }}</p></div>{% endif %}
         </div>
     </div>
 </div>
-<div id="ios-webapp-guide">
-  <div class="ios-webapp-guide-content">
-    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12"
-y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
-</p>
-    <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
-  </div>
-</div>
-<footer class="main-footer">
-  <div class="footer-content">
-    <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
-    <div class="footer-links">
-      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
-      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
-      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
-    </div>
-    <p>&copy; 2025 ImHungry. All rights reserved.</p>
-  </div>
-</footer>
 <script>
 const regions_data = {{ regions | tojson | safe }};
 
