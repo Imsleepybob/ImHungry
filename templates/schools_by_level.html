@@ -78,27 +78,94 @@
         </div>
     </footer>
 
-    <div id="themeModal" class="theme-modal-overlay">
-        <div class="theme-modal">
-            <div class="theme-modal-header">
-                <div class="theme-modal-title">테마 설정</div>
-                <button class="theme-modal-close" id="closeThemeModal">×</button>
-            </div>
-            <div class="theme-options">
-                <div class="theme-option" data-value="light">
-                    <span>라이트 모드</span>
-                    <span>☀</span>
-                </div>
-                <div class="theme-option" data-value="dark">
-                    <span>다크 모드</span>
-                    <span>🌙</span>
-                </div>
-                <div class="theme-option" data-value="system">
-                    <span>시스템 설정</span>
-                    <span>⚙</span>
-                </div>
-            </div>
+<div id="themePopover" class="theme-popover">
+        <div class="theme-option" data-value="light">
+            <span>라이트 모드</span>
+            <span>☀</span>
+        </div>
+        <div class="theme-option" data-value="dark">
+            <span>다크 모드</span>
+            <span>🌙</span>
+        </div>
+        <div class="theme-option" data-value="system">
+            <span>시스템 설정</span>
+            <span>⚙</span>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('themeToggleBtn');
+            const popover = document.getElementById('themePopover');
+            const options = document.querySelectorAll('.theme-option');
+            const iconLight = document.querySelector('.theme-icon-light');
+            const iconDark = document.querySelector('.theme-icon-dark');
+
+            function updateIcon() {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                if (isDark) {
+                    iconLight.style.display = 'none';
+                    iconDark.style.display = 'block';
+                    iconDark.style.fill = 'currentColor';
+                } else {
+                    iconLight.style.display = 'block';
+                    iconDark.style.display = 'none';
+                    iconLight.style.fill = 'currentColor';
+                }
+            }
+
+            if (toggleBtn && popover) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    popover.classList.toggle('show');
+                    const currentTheme = localStorage.getItem('theme') || 'system';
+                    options.forEach(opt => {
+                        opt.classList.toggle('active', opt.dataset.value === currentTheme);
+                    });
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) {
+                        popover.classList.remove('show');
+                    }
+                });
+
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        const theme = option.dataset.value;
+                        localStorage.setItem('theme', theme);
+                        
+                        if (theme === 'system') {
+                            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                                document.documentElement.setAttribute('data-theme', 'dark');
+                            } else {
+                                document.documentElement.removeAttribute('data-theme');
+                            }
+                        } else if (theme === 'dark') {
+                            document.documentElement.setAttribute('data-theme', 'dark');
+                        } else {
+                            document.documentElement.removeAttribute('data-theme');
+                        }
+                        
+                        updateIcon();
+                        popover.classList.remove('show');
+                    });
+                });
+
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                    if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
+                        if (e.matches) {
+                            document.documentElement.setAttribute('data-theme', 'dark');
+                        } else {
+                            document.documentElement.removeAttribute('data-theme');
+                        }
+                        updateIcon();
+                    }
+                });
+                updateIcon();
+            }
+        });
+    </script>
     </body>
 </html>
+
