@@ -9,7 +9,7 @@
     <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록입니다. 원하는 학교를 선택하여 급식 정보를 확인하세요.">
     <title>{{ region_name }} {{ school_level }} 목록 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.1">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -20,106 +20,7 @@
             }
         })();
     </script>
-    <style>
-        .breadcrumb {
-            margin: 20px 0;
-            padding: 10px 15px;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            font-size: 0.9em;
-            color: var(--text-primary);
-        }
-        .breadcrumb a {
-            color: var(--link-color);
-            text-decoration: none;
-        }
-        .breadcrumb a:hover {
-            text-decoration: underline;
-            color: var(--primary-hover);
-        }
-        .level-header {
-            text-align: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: var(--accent-color);
-            color: white;
-            border-radius: 15px;
-        }
-        .schools-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
-            margin: 30px 0;
-        }
-        .school-card {
-            background: var(--bg-container);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 15px;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        .school-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-        .school-name {
-            font-weight: bold;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-            font-size: 1.05em;
-        }
-        .view-meal-btn {
-            display: inline-block;
-            background: var(--primary-color);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 0.9em;
-            transition: background 0.3s ease;
-        }
-        .view-meal-btn:hover {
-            background: var(--primary-hover);
-            text-decoration: none;
-            color: white;
-        }
-        .back-btn {
-            display: inline-block;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-        }
-        .back-btn:hover {
-            background: var(--border-color);
-            text-decoration: none;
-        }
-        .no-schools {
-            text-align: center;
-            padding: 50px 20px;
-            color: var(--text-muted);
-            font-size: 1.1em;
-        }
-        .school-count-info {
-            background: var(--bg-secondary);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-            color: var(--text-secondary);
-        }
-        @media (max-width: 768px) {
-            .schools-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-        }
-    </style>
-</head>
+    </head>
 <body>
     <header class="main-header">
         <div class="logo">
@@ -128,32 +29,28 @@
             </a>
         </div>
         <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
-             <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+            <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
                 <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
             </svg>
-            <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" fill="currentColor"/>
+            <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" />
             </svg>
         </button>
     </header>
 
     <div class="container">
         <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
-
         <div class="breadcrumb">
             <a href="/">홈</a> > <a href="{{ url_for('schools_by_region', region_name=region_name) }}">{{ region_name }}</a> > {{ school_level }}
         </div>
-
         <div class="level-header">
             <h1>{{ region_name }} {{ school_level }} 목록</h1>
             <p style="color: white;">원하는 학교를 선택하여 급식 정보를 확인하세요</p>
         </div>
-
         {% if schools %}
         <div class="school-count-info">
             총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}가 있습니다.
         </div>
-
         <div class="schools-grid">
             {% for school in schools %}
             <div class="school-card">
@@ -203,77 +100,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const toggleBtn = document.getElementById('themeToggleBtn');
-            const modal = document.getElementById('themeModal');
-            const closeBtn = document.getElementById('closeThemeModal');
-            const options = document.querySelectorAll('.theme-option');
-            const iconLight = document.querySelector('.theme-icon-light');
-            const iconDark = document.querySelector('.theme-icon-dark');
-
-            function updateIcon() {
-                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                if (isDark) {
-                    iconLight.style.display = 'none';
-                    iconDark.style.display = 'block';
-                    iconDark.style.fill = 'currentColor';
-                } else {
-                    iconLight.style.display = 'block';
-                    iconDark.style.display = 'none';
-                    iconLight.style.fill = 'currentColor';
-                }
-            }
-
-            toggleBtn.addEventListener('click', () => {
-                modal.classList.add('show');
-                const currentTheme = localStorage.getItem('theme') || 'system';
-                options.forEach(opt => {
-                    opt.classList.toggle('active', opt.dataset.value === currentTheme);
-                });
-            });
-
-            closeBtn.addEventListener('click', () => modal.classList.remove('show'));
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.classList.remove('show');
-            });
-
-            options.forEach(option => {
-                option.addEventListener('click', () => {
-                    const theme = option.dataset.value;
-                    localStorage.setItem('theme', theme);
-                    
-                    if (theme === 'system') {
-                        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                            document.documentElement.setAttribute('data-theme', 'dark');
-                        } else {
-                            document.documentElement.removeAttribute('data-theme');
-                        }
-                    } else if (theme === 'dark') {
-                        document.documentElement.setAttribute('data-theme', 'dark');
-                    } else {
-                        document.documentElement.removeAttribute('data-theme');
-                    }
-                    
-                    updateIcon();
-                    modal.classList.remove('show');
-                });
-            });
-
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
-                    if (e.matches) {
-                        document.documentElement.setAttribute('data-theme', 'dark');
-                    } else {
-                        document.documentElement.removeAttribute('data-theme');
-                    }
-                    updateIcon();
-                }
-            });
-
-            updateIcon();
-        });
-    </script>
-</body>
+    </body>
 </html>
