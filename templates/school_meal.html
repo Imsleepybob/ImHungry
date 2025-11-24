@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.1">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -249,20 +249,22 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
     <p>&copy; 2025 ImHungry. All rights reserved.</p>
   </div>
 </footer>
+
 <div id="themePopover" class="theme-popover">
     <div class="theme-option" data-value="light">
-        <span>라이트</span>
+        <span>라이트 모드</span>
         <span>☀</span>
     </div>
     <div class="theme-option" data-value="dark">
-        <span>다크</span>
+        <span>다크 모드</span>
         <span>🌙</span>
     </div>
     <div class="theme-option" data-value="system">
-        <span>시스템</span>
+        <span>시스템 설정</span>
         <span>⚙</span>
     </div>
 </div>
+
 <script>
 const regions_data = {{ regions | tojson | safe }};
 
@@ -507,14 +509,12 @@ function performSearch(query, region, immediate = false) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
 
-    // [테마 관련 로직 시작] -------------------------------------------------------
     const toggleBtn = document.getElementById('themeToggleBtn');
-    const popover = document.getElementById('themePopover'); // ID가 themePopover인지 확인
+    const popover = document.getElementById('themePopover');
     const options = document.querySelectorAll('.theme-option');
     const iconLight = document.querySelector('.theme-icon-light');
     const iconDark = document.querySelector('.theme-icon-dark');
 
-    // 아이콘 업데이트 함수
     function updateIcon() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (isDark) {
@@ -533,26 +533,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (toggleBtn && popover) {
-        // 토글 버튼 클릭 시 팝오버 표시/숨김
         toggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // 이벤트 버블링 중단 (외부 클릭 감지용)
+            e.stopPropagation();
             popover.classList.toggle('show');
-            
-            // 현재 활성화된 테마 표시
             const currentTheme = localStorage.getItem('theme') || 'system';
             options.forEach(opt => {
                 opt.classList.toggle('active', opt.dataset.value === currentTheme);
             });
         });
 
-        // 팝오버 외부 클릭 시 닫기
         document.addEventListener('click', (e) => {
             if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) {
                 popover.classList.remove('show');
             }
         });
 
-        // 테마 옵션 클릭 이벤트
         options.forEach(option => {
             option.addEventListener('click', () => {
                 const theme = option.dataset.value;
@@ -575,7 +570,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // 시스템 테마 변경 감지 리스너
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
                 if (e.matches) {
@@ -586,11 +580,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateIcon();
             }
         });
-
-        // 초기 아이콘 설정
         updateIcon();
     }
-    // [테마 관련 로직 끝] -------------------------------------------------------
 
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
