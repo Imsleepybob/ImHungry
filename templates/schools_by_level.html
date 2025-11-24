@@ -109,68 +109,15 @@
         }
     </style>
 </head>
-<script>
-(function() {
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', theme);
-})();
-
-document.addEventListener('DOMContentLoaded', function() {
-    const themeToggle = document.getElementById('themeToggle');
-    const sunIcon = themeToggle?.querySelector('.sun-icon');
-    const moonIcon = themeToggle?.querySelector('.moon-icon');
-
-    function updateThemeIcon(theme) {
-        if (theme === 'dark') {
-            sunIcon.style.display = 'none';
-            moonIcon.style.display = 'block';
-        } else {
-            sunIcon.style.display = 'block';
-            moonIcon.style.display = 'none';
-        }
-    }
-
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    updateThemeIcon(currentTheme);
-
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            const current = document.documentElement.getAttribute('data-theme');
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-        });
-    }
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!localStorage.getItem('theme')) {
-            const newTheme = e.matches ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            updateThemeIcon(newTheme);
-        }
-    });
-});
-</script>
 <body>
-<header class="main-header">
-  <div class="logo">
-    <a href="/">
-      <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
-    </a>
-  </div>
-  <button class="theme-toggle" id="themeToggle" aria-label="테마 전환">
-    <svg class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z"/>
-    </svg>
-    <svg class="moon-icon" style="display: none;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
-    </svg>
-  </button>
-</header>
+    <!-- 기존 main-header 추가 -->
+    <header class="main-header">
+        <div class="logo">
+            <a href="/">
+                <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+            </a>
+        </div>
+    </header>
 
     <div class="container">
         <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
