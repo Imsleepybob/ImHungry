@@ -9,7 +9,7 @@
     <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록입니다. 원하는 학교를 선택하여 급식 정보를 확인하세요.">
     <title>{{ region_name }} {{ school_level }} 목록 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -20,7 +20,7 @@
             }
         })();
     </script>
-    </head>
+</head>
 <body>
     <header class="main-header">
         <div class="logo">
@@ -78,7 +78,7 @@
         </div>
     </footer>
 
-<div id="themePopover" class="theme-popover">
+    <div id="themePopover" class="theme-popover">
         <div class="theme-option" data-value="light">
             <span>라이트 모드</span>
             <span>☀</span>
@@ -104,13 +104,17 @@
             function updateIcon() {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 if (isDark) {
-                    iconLight.style.display = 'none';
-                    iconDark.style.display = 'block';
-                    iconDark.style.fill = 'currentColor';
+                    if(iconLight) iconLight.style.display = 'none';
+                    if(iconDark) {
+                        iconDark.style.display = 'block';
+                        iconDark.style.fill = 'currentColor';
+                    }
                 } else {
-                    iconLight.style.display = 'block';
-                    iconDark.style.display = 'none';
-                    iconLight.style.fill = 'currentColor';
+                    if(iconLight) {
+                        iconLight.style.display = 'block';
+                        iconLight.style.fill = 'currentColor';
+                    }
+                    if(iconDark) iconDark.style.display = 'none';
                 }
             }
 
@@ -166,6 +170,5 @@
             }
         });
     </script>
-    </body>
+</body>
 </html>
-
