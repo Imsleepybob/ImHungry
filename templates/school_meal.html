@@ -507,43 +507,52 @@ function performSearch(query, region, immediate = false) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM Content Loaded - Starting initialization");
 
-    // [추가] 테마 관련 초기화
+    // [테마 관련 로직 시작] -------------------------------------------------------
     const toggleBtn = document.getElementById('themeToggleBtn');
-    const modal = document.getElementById('themeModal');
-    const closeBtn = document.getElementById('closeThemeModal');
+    const popover = document.getElementById('themePopover'); // ID가 themePopover인지 확인
     const options = document.querySelectorAll('.theme-option');
     const iconLight = document.querySelector('.theme-icon-light');
     const iconDark = document.querySelector('.theme-icon-dark');
 
-    // [추가] 테마 아이콘 업데이트 함수
+    // 아이콘 업데이트 함수
     function updateIcon() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (isDark) {
-            iconLight.style.display = 'none';
-            iconDark.style.display = 'block';
-            iconDark.style.fill = 'currentColor';
+            if(iconLight) iconLight.style.display = 'none';
+            if(iconDark) {
+                iconDark.style.display = 'block';
+                iconDark.style.fill = 'currentColor';
+            }
         } else {
-            iconLight.style.display = 'block';
-            iconDark.style.display = 'none';
-            iconLight.style.fill = 'currentColor';
+            if(iconLight) {
+                iconLight.style.display = 'block';
+                iconLight.style.fill = 'currentColor';
+            }
+            if(iconDark) iconDark.style.display = 'none';
         }
     }
 
-    // [추가] 테마 이벤트 리스너
-    if (toggleBtn && modal) {
-        toggleBtn.addEventListener('click', () => {
-            modal.classList.add('show');
+    if (toggleBtn && popover) {
+        // 토글 버튼 클릭 시 팝오버 표시/숨김
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // 이벤트 버블링 중단 (외부 클릭 감지용)
+            popover.classList.toggle('show');
+            
+            // 현재 활성화된 테마 표시
             const currentTheme = localStorage.getItem('theme') || 'system';
             options.forEach(opt => {
                 opt.classList.toggle('active', opt.dataset.value === currentTheme);
             });
         });
 
-        if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('show'));
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.classList.remove('show');
+        // 팝오버 외부 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) {
+                popover.classList.remove('show');
+            }
         });
 
+        // 테마 옵션 클릭 이벤트
         options.forEach(option => {
             option.addEventListener('click', () => {
                 const theme = option.dataset.value;
@@ -562,11 +571,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 updateIcon();
-                modal.classList.remove('show');
+                popover.classList.remove('show');
             });
         });
 
-        // 시스템 테마 변경 감지
+        // 시스템 테마 변경 감지 리스너
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
                 if (e.matches) {
@@ -581,6 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 초기 아이콘 설정
         updateIcon();
     }
+    // [테마 관련 로직 끝] -------------------------------------------------------
 
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
