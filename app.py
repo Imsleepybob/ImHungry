@@ -380,7 +380,7 @@ def log_namuboard_access_request():
     except Exception as e:
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
-API_KEY = "4e2c538d90ef493c94c6e2d943e756d9"
+API_KEY = "e309120a7d884eb7b725deaac507a5af"
 KST = timezone(timedelta(hours=9))
 regions = {
     "서울": "B10", "부산": "C10", "대구": "D10", "인천": "E10", "광주": "F10",
