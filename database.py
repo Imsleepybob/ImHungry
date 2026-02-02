@@ -12,9 +12,12 @@ if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
-    """DB 연결 생성"""
     try:
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            cursor_factory=RealDictCursor,
+            sslmode="require"
+        )
         return conn
     except Exception as e:
         logger.error(f"Database connection error: {e}")
