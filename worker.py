@@ -49,7 +49,10 @@ def monthly_school_sync():
 
 def main():
     logger.info("Background Worker 시작")
-    
+        from database import get_db_connection
+    conn = get_db_connection()
+    conn.close()
+
     initial_sync()
     
     scheduler = BlockingScheduler(timezone="Asia/Seoul")
