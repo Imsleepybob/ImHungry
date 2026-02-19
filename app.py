@@ -11,22 +11,22 @@ import os
 import re
 import time
 import json
-from functools import wraps
-
-from database import (
-    init_database, get_school_by_code, search_schools,
-    get_schools_by_region, get_schools_by_district, get_db_stats
-)
+import threading
 
 app = Flask(__name__)
 
-from startup import startup_check
-startup_check()
-
 meal_cache = {}
 
+# --- 인메모리 학교 캐시 ---
+school_code_cache = {}       # school_code -> (timestamp, school_info)
+search_result_cache = {}     # (query, region_code) -> (timestamp, results)
+region_schools_cache = {}    # region_code -> (timestamp, schools_list)
+
+SCHOOL_CODE_CACHE_TTL = 86400    # 24시간
+SEARCH_CACHE_TTL = 3600          # 1시간
+REGION_SCHOOLS_CACHE_TTL = 86400 # 24시간
+
 BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
-SUSPICIOUS_PATTERNS_FILE = os.path.join(os.getcwd(), 'suspicious_patterns.json')
 
 request_counts = defaultdict(deque)
 failed_attempts = defaultdict(int)
@@ -42,12 +42,12 @@ SECURITY_CONFIG = {
 }
 
 NO_LOG_PATHS = [
-      '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
-      'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
-      '/logs/', '/stats', '/security/',
-      '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
-      '/health'
-  ]
+    '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
+    'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
+    '/logs/', '/stats', '/security/',
+    '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
+    '/health'
+]
 
 SILENT_BLOCK_PATTERNS = [
     '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
@@ -397,42 +397,229 @@ school_levels = {
     "각종학교": ["각종학교"]
 }
 
+# --- NEIS API 유틸 함수 ---
+
+def extract_district_from_address(address):
+    if not address:
+        return None
+    district_patterns = [
+        r'서울특별시\s+([가-힣]+구)',
+        r'부산광역시\s+([가-힣]+구)',
+        r'대구광역시\s+([가-힣]+구)',
+        r'인천광역시\s+([가-힣]+구)',
+        r'광주광역시\s+([가-힣]+구)',
+        r'대전광역시\s+([가-힣]+구)',
+        r'울산광역시\s+([가-힣]+구)',
+        r'경기도\s+([가-힣]+시)',
+        r'경기도\s+([가-힣]+군)',
+        r'강원[특별자치]*도\s+([가-힣]+시)',
+        r'강원[특별자치]*도\s+([가-힣]+군)',
+        r'충청북도\s+([가-힣]+시)',
+        r'충청북도\s+([가-힣]+군)',
+        r'충청남도\s+([가-힣]+시)',
+        r'충청남도\s+([가-힣]+군)',
+        r'전라북도\s+([가-힣]+시)',
+        r'전라북도\s+([가-힣]+군)',
+        r'전북특별자치도\s+([가-힣]+시)',
+        r'전북특별자치도\s+([가-힣]+군)',
+        r'전라남도\s+([가-힣]+시)',
+        r'전라남도\s+([가-힣]+군)',
+        r'경상북도\s+([가-힣]+시)',
+        r'경상북도\s+([가-힣]+군)',
+        r'경상남도\s+([가-힣]+시)',
+        r'경상남도\s+([가-힣]+군)',
+        r'제주특별자치도\s+([가-힣]+시)',
+        r'세종특별자치시',
+    ]
+    for pattern in district_patterns:
+        match = re.search(pattern, address)
+        if match:
+            if pattern == r'세종특별자치시':
+                return '세종시'
+            return match.group(1)
+    return None
+
+def get_school_level_from_name(school_name):
+    if '초등학교' in school_name or school_name.endswith('초'):
+        return '초등학교'
+    elif '중학교' in school_name or school_name.endswith('중'):
+        return '중학교'
+    elif '고등학교' in school_name or '고교' in school_name or school_name.endswith('고'):
+        return '고등학교'
+    elif '특수학교' in school_name:
+        return '특수학교'
+    elif '각종학교' in school_name:
+        return '각종학교'
+    return None
+
+def _parse_school_row(row):
+    address = row.get("ORG_RDNMA", "")
+    return {
+        "school_code": row["SD_SCHUL_CODE"],
+        "school_name": row["SCHUL_NM"],
+        "region_code": row["ATPT_OFCDC_SC_CODE"],
+        "address": address,
+        "district": extract_district_from_address(address),
+        "school_level": get_school_level_from_name(row["SCHUL_NM"])
+    }
+
+def get_school_from_neis(school_code):
+    """학교 코드로 NEIS API 조회 (캐싱 포함)"""
+    cached = school_code_cache.get(school_code)
+    if cached and time.time() - cached[0] < SCHOOL_CODE_CACHE_TTL:
+        return cached[1]
+
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    params = {
+        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
+        "SD_SCHUL_CODE": school_code
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        if "schoolInfo" in data and len(data["schoolInfo"]) >= 2:
+            rows = data["schoolInfo"][1].get("row", [])
+            if rows:
+                school_info = _parse_school_row(rows[0])
+                school_code_cache[school_code] = (time.time(), school_info)
+                return school_info
+    except Exception as e:
+        app.logger.error(f"Error fetching school from NEIS API (code={school_code}): {e}")
+    return None
+
+def search_schools_neis(query, region_code, limit=10):
+    """학교명으로 NEIS API 검색 (캐싱 포함)"""
+    cache_key = (query.lower(), region_code)
+    cached = search_result_cache.get(cache_key)
+    if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
+        return cached[1]
+
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    params = {
+        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": limit,
+        "ATPT_OFCDC_SC_CODE": region_code, "SCHUL_NM": query
+    }
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        results = []
+        if "schoolInfo" in data and len(data["schoolInfo"]) >= 2:
+            for row in data["schoolInfo"][1].get("row", []):
+                results.append({
+                    "school_code": row["SD_SCHUL_CODE"],
+                    "school_name": row["SCHUL_NM"],
+                    "region_code": row["ATPT_OFCDC_SC_CODE"],
+                    "address": row.get("ORG_RDNMA", "")
+                })
+        search_result_cache[cache_key] = (time.time(), results)
+        return results
+    except Exception as e:
+        app.logger.error(f"Error searching schools from NEIS API (query={query}): {e}")
+        return []
+
+def _fetch_all_schools_for_region(region_code):
+    """지역 전체 학교 목록을 NEIS API에서 페이지네이션으로 조회"""
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    all_schools = []
+    page = 1
+    while page <= 10:
+        params = {
+            "KEY": API_KEY, "Type": "json",
+            "pIndex": page, "pSize": 300,
+            "ATPT_OFCDC_SC_CODE": region_code
+        }
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
+                break
+            rows = data["schoolInfo"][1].get("row", [])
+            if not rows:
+                break
+            for row in rows:
+                all_schools.append(_parse_school_row(row))
+            if len(rows) < 300:
+                break
+            page += 1
+            time.sleep(0.3)
+        except Exception as e:
+            app.logger.error(f"Error fetching region schools (region={region_code}, page={page}): {e}")
+            break
+    return all_schools
+
+def get_schools_by_region_cached(region_code, school_level=None):
+    """지역별 학교 목록 조회 - 첫 접근 시 lazy-load 후 캐싱"""
+    cached = region_schools_cache.get(region_code)
+    if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
+        app.logger.info(f"Fetching all schools for region {region_code} from NEIS API")
+        schools = _fetch_all_schools_for_region(region_code)
+        region_schools_cache[region_code] = (time.time(), schools)
+    else:
+        schools = cached[1]
+
+    if school_level:
+        return [s for s in schools if s.get("school_level") == school_level]
+    return schools
+
+def prefetch_region_schools_async(region_code):
+    """급식 페이지 로드 시 해당 지역 캐시를 백그라운드에서 미리 로드"""
+    cached = region_schools_cache.get(region_code)
+    if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
+        thread = threading.Thread(
+            target=_fetch_and_store_region,
+            args=(region_code,),
+            daemon=True
+        )
+        thread.start()
+
+def _fetch_and_store_region(region_code):
+    try:
+        schools = _fetch_all_schools_for_region(region_code)
+        region_schools_cache[region_code] = (time.time(), schools)
+        app.logger.info(f"Background prefetch complete for region {region_code}: {len(schools)} schools")
+    except Exception as e:
+        app.logger.error(f"Background prefetch failed for region {region_code}: {e}")
+
+# --- 급식 API ---
+
 def get_month_meals_from_api(school_code, region_code):
-    """NEIS API에서 이번 달 급식 정보 조회 (캐싱 포함)"""
     today = datetime.now(KST)
     month_str = today.strftime("%Y%m")
     cache_key = f"{region_code}_{school_code}_{month_str}"
-    
+
     if cache_key in meal_cache:
         return meal_cache[cache_key]
-    
+
     url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
     params = {
         "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
         "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code,
         "MLSV_YMD": month_str
     }
-    
+
     meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
-    
+
     try:
         response = requests.get(url, params=params, timeout=5)
         response.raise_for_status()
         data = response.json()
-        
+
         if "mealServiceDietInfo" in data and data.get("mealServiceDietInfo")[1].get("row"):
             for row in data["mealServiceDietInfo"][1]["row"]:
                 date_str = row["MLSV_YMD"]
                 menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
                 meal_type = row["MMEAL_SC_CODE"]
-                
+
                 if meal_type == "1": meals[date_str]["breakfast"] = menu
                 elif meal_type == "2": meals[date_str]["lunch"] = menu
                 elif meal_type == "3": meals[date_str]["dinner"] = menu
-        
+
         meal_cache[cache_key] = dict(meals)
         return dict(meals)
-        
+
     except requests.exceptions.Timeout:
         app.logger.error(f"NEIS API timeout for school {school_code}")
         return dict(meals)
@@ -441,39 +628,29 @@ def get_month_meals_from_api(school_code, region_code):
         return dict(meals)
 
 def get_nearby_schools(current_school_info):
+    """주변 학교 조회 - region_schools_cache가 있을 때만 동작"""
     try:
-        current_school_detailed = get_school_by_code(current_school_info['school_code'])
-        
-        if not current_school_detailed:
-            app.logger.warning(f"Cannot get detailed info for {current_school_info.get('school_name', 'Unknown')}")
+        region_code = current_school_info.get('region_code')
+        current_district = current_school_info.get('district')
+        current_level = current_school_info.get('school_level')
+
+        if not region_code or not current_district or not current_level:
             return []
-        
-        current_district = current_school_detailed.get('district', '')
-        current_level = current_school_detailed.get('school_level')
-        
-        if not current_level or not current_district:
+
+        cached = region_schools_cache.get(region_code)
+        if not cached:
             return []
-        
-        nearby_schools_data = get_schools_by_district(
-            current_school_detailed['region_code'], 
-            current_district, 
-            current_level
-        )
-        
-        nearby_schools = []
-        for school in nearby_schools_data:
-            if school['school_code'] == current_school_info['school_code']:
-                continue
-            
-            nearby_schools.append({
-                'code': school['school_code'],
-                'name': school['school_name'],
-                'distance_info': f"{current_district}"
-            })
-        
-        nearby_schools.sort(key=lambda x: x['name'])
-        return nearby_schools
-        
+
+        _, all_schools = cached
+        nearby = [
+            {'code': s['school_code'], 'name': s['school_name'], 'distance_info': current_district}
+            for s in all_schools
+            if s.get('district') == current_district
+            and s.get('school_level') == current_level
+            and s['school_code'] != current_school_info['school_code']
+        ]
+        nearby.sort(key=lambda x: x['name'])
+        return nearby
     except Exception as e:
         app.logger.error(f"Error getting nearby schools: {e}")
         return []
@@ -530,21 +707,22 @@ def index():
     school_name_encoded = request.cookies.get('school_name')
     school_code_cookie = request.cookies.get('school_code')
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
-    
+
     if request.method == 'POST':
         region_name = request.form['region']
         school_name_input = request.form['school_name']
         app.logger.info(f"Search request - Region: {region_name}, School: {school_name_input}")
-        
+
         if not region_name or not school_name_input:
             return render_template('school_meal.html', error_message="지역과 학교명을 모두 입력해주세요.", regions=regions)
-        
+
         region_code = regions.get(region_name)
         if not region_code:
             return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
-        
-        schools = search_schools(school_name_input, region_code, limit=1)
-        
+
+        # NEIS API로 학교 검색
+        schools = search_schools_neis(school_name_input, region_code, limit=1)
+
         if schools:
             school = schools[0]
             response = make_response(redirect(url_for('school_meal_view', school_code=school['school_code'])))
@@ -555,49 +733,51 @@ def index():
             return response
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
-    
+
     if school_code_cookie and not error_message:
         app.logger.info(f"Redirecting to school meal page for school_code: {school_code_cookie}")
         return redirect(url_for('school_meal_view', school_code=school_code_cookie))
-    
+
     if error_message:
         return render_template('school_meal.html',
                              regions=regions,
                              error_message=error_message,
                              region=region_cookie,
                              school_name=school_name_cookie)
-    else:
-        return render_template('school_meal.html', regions=regions)
+    return render_template('school_meal.html', regions=regions)
 
 @app.route("/meal/<school_code>")
 def school_meal_view(school_code):
     app.logger.info(f"school_meal_view - school_code: {school_code}")
-    
-    school_info = get_school_by_code(school_code)
-    
+
+    school_info = get_school_from_neis(school_code)
+
     if not school_info:
-        app.logger.warning(f"School not found in DB: {school_code}")
+        app.logger.warning(f"School not found via NEIS API: {school_code}")
         return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
-    
+
+    # 이 지역 캐시가 없으면 백그라운드에서 미리 로드 (주변 학교 기능용)
+    prefetch_region_schools_async(school_info['region_code'])
+
     month_meals_data = get_month_meals_from_api(school_code, school_info['region_code'])
-    
+
     today_str = datetime.now(KST).strftime('%Y%m%d')
     today_meal = month_meals_data.get(today_str, {
         "breakfast": "급식 정보 없음",
         "lunch": "급식 정보 없음",
         "dinner": "급식 정보 없음"
     })
-    
+
     week_dates_list = get_week_dates()
-    week_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in week_dates_list}
-    
+    week_meals_data = {d: month_meals_data.get(d, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for d in week_dates_list}
+
     month_dates_list = get_month_dates()
-    full_month_meals_data = {date_str: month_meals_data.get(date_str, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for date_str in month_dates_list}
-    
+    full_month_meals_data = {d: month_meals_data.get(d, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"}) for d in month_dates_list}
+
     nearby_schools = get_nearby_schools(school_info)
-    
+
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
-    
+
     resp = make_response(render_template(
         'school_meal.html',
         regions=regions,
@@ -612,21 +792,21 @@ def school_meal_view(school_code):
         loading=False,
         region=region_name
     ))
-    
+
     resp.set_cookie('school_code', school_info['school_code'], max_age=60*60*24*30)
     resp.set_cookie('school_name', quote(school_info['school_name']), max_age=60*60*24*30)
     resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
     if region_name:
         resp.set_cookie('region_name', region_name, max_age=60*60*24*30)
-    
+
     return resp
 
 @app.route('/api/meals/<school_code>/<date>')
 def get_school_meal(school_code, date):
-    school_info = get_school_by_code(school_code)
+    school_info = get_school_from_neis(school_code)
     if not school_info:
         return jsonify({"error": "School not found"}), 404
-    
+
     try:
         month_meals = get_month_meals_from_api(school_code, school_info['region_code'])
         meal_data = month_meals.get(date, {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
@@ -639,58 +819,32 @@ def get_school_meal(school_code, date):
 def search_schools_autocomplete():
     query = request.args.get('q', '').strip()
     region_name = request.args.get('region', '').strip()
-    
+
     if not query or len(query) < 2:
         return jsonify([])
-    
+
     if not region_name or region_name not in regions:
         return jsonify([])
-    
+
     region_code = regions[region_name]
-    
+
     try:
-        schools = search_schools(query, region_code, limit=10)
+        schools = search_schools_neis(query, region_code, limit=10)
         results = [
-            {
-                'code': school['school_code'],
-                'name': school['school_name'],
-                'region_code': school['region_code']
-            }
-            for school in schools
+            {'code': s['school_code'], 'name': s['school_name'], 'region_code': s['region_code']}
+            for s in schools
         ]
         return jsonify(results)
     except Exception as e:
         app.logger.error(f"Error in autocomplete search: {e}")
         return jsonify({"error": "검색 중 오류가 발생했습니다."}), 500
 
-@app.route('/api/schools/region/<region_code>')
-def get_all_schools_in_region(region_code):
-    try:
-        if region_code not in regions.values():
-            return jsonify({"error": "Invalid region code"}), 400
-        
-        schools = get_schools_by_region(region_code)
-        simplified_schools = [
-            {
-                'code': school['school_code'],
-                'name': school['school_name']
-            }
-            for school in schools
-        ]
-        
-        response = make_response(jsonify(simplified_schools))
-        response.headers['Cache-Control'] = 'public, max-age=3600'
-        return response
-    except Exception as e:
-        app.logger.error(f"Error in get_all_schools_in_region: {e}")
-        return jsonify({"error": "Internal server error"}), 500
-
 @app.route('/api/meals/today/<school_code>')
 def get_today_meal(school_code):
-    school_info = get_school_by_code(school_code)
+    school_info = get_school_from_neis(school_code)
     if not school_info:
         return jsonify({"error": "School not found"}), 404
-    
+
     try:
         today_str = datetime.now(KST).strftime('%Y%m%d')
         month_meals = get_month_meals_from_api(school_code, school_info['region_code'])
@@ -699,7 +853,6 @@ def get_today_meal(school_code):
             "lunch": "급식 정보 없음",
             "dinner": "급식 정보 없음"
         })
-        
         return jsonify({
             "date": today_str,
             "formatted_date": datetime.now(KST).strftime('%Y년 %m월 %d일'),
@@ -716,31 +869,25 @@ def current_time():
 @app.route('/schools/<region_name>')
 def schools_by_region(region_name):
     try:
-        from urllib.parse import unquote
         region_name = unquote(region_name)
     except:
         pass
-    
+
     if region_name not in regions:
         return redirect(url_for('index', error_message="유효하지 않은 지역입니다."))
-    
+
     region_code = regions[region_name]
-    
+    all_schools = get_schools_by_region_cached(region_code)
+
     schools_by_level = {}
-    all_schools = get_schools_by_region(region_code)
-    
     for level in school_levels.keys():
         level_schools = [
-            {
-                'code': s['school_code'],
-                'name': s['school_name'],
-                'address': s.get('address', '')
-            }
+            {'code': s['school_code'], 'name': s['school_name'], 'address': s.get('address', '')}
             for s in all_schools if s.get('school_level') == level
         ]
         if level_schools:
             schools_by_level[level] = level_schools
-    
+
     log_access_request(200)
     return render_template('schools_by_region.html',
                          region_name=region_name,
@@ -750,30 +897,24 @@ def schools_by_region(region_name):
 @app.route('/schools/<region_name>/<school_level>')
 def schools_by_region_and_level(region_name, school_level):
     try:
-        from urllib.parse import unquote
         region_name = unquote(region_name)
         school_level = unquote(school_level)
     except:
         pass
-    
+
     if region_name not in regions:
         return redirect(url_for('index', error_message="유효하지 않은 지역입니다."))
-    
+
     if school_level not in school_levels:
         return redirect(url_for('schools_by_region', region_name=region_name))
-    
+
     region_code = regions[region_name]
-    
-    schools_data = get_schools_by_region(region_code, school_level)
+    schools_data = get_schools_by_region_cached(region_code, school_level)
     schools = [
-        {
-            'code': s['school_code'],
-            'name': s['school_name'],
-            'address': s.get('address', '')
-        }
+        {'code': s['school_code'], 'name': s['school_name'], 'address': s.get('address', '')}
         for s in schools_data
     ]
-    
+
     log_access_request(200)
     return render_template('schools_by_level.html',
                          region_name=region_name,
@@ -836,8 +977,7 @@ def view_access_logs():
             with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             return f'<h2>접속 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return '접속 로그 파일이 아직 생성되지 않았습니다.'
+        return '접속 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'접속 로그 파일 읽기 오류: {e}'
 
@@ -852,8 +992,7 @@ def view_app_logs():
             with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             return f'<h2>앱 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return '앱 로그 파일이 아직 생성되지 않았습니다.'
+        return '앱 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'앱 로그 파일 읽기 오류: {e}'
 
@@ -868,8 +1007,7 @@ def view_namuboard_logs():
             with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             return f'<h2>NamuBoard Extension 로그</h2><pre>{"".join(lines)}</pre>'
-        else:
-            return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
+        return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
 
@@ -882,15 +1020,14 @@ def view_stats():
     try:
         if not os.path.exists(ACCESS_LOG_PATH):
             return '접속 로그 파일이 없습니다.'
-        
+
         stats = {
             'total_requests': 0,
             'unique_ips': set(),
             'status_codes': {},
             'popular_paths': {},
-            'user_agents': {}
         }
-        
+
         with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
             for line in f:
                 if 'IP:' in line:
@@ -899,8 +1036,7 @@ def view_stats():
                         ip_start = line.find('IP: ') + 4
                         ip_end = line.find(' -', ip_start)
                         if ip_end > ip_start:
-                            ip = line[ip_start:ip_end]
-                            stats['unique_ips'].add(ip)
+                            stats['unique_ips'].add(line[ip_start:ip_end])
                     except:
                         pass
                     try:
@@ -920,23 +1056,22 @@ def view_stats():
                             stats['popular_paths'][path] = stats['popular_paths'].get(path, 0) + 1
                     except:
                         pass
-        
-        stats['unique_ips'] = len(stats['unique_ips'])
-        
-        db_stats = get_db_stats()
-        
+
+        unique_ip_count = len(stats['unique_ips'])
+
         return f'''
         <h2>접속 통계</h2>
         <p>총 요청 수: {stats['total_requests']}</p>
-        <p>고유 IP 수: {stats['unique_ips']}</p>
+        <p>고유 IP 수: {unique_ip_count}</p>
         <h3>상태 코드별 통계:</h3>
         <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in stats['status_codes'].items()])}</ul>
         <h3>인기 경로 (Top 10):</h3>
         <ul>{"".join([f"<li>{k}: {v}회</li>" for k, v in sorted(stats['popular_paths'].items(), key=lambda x: x[1], reverse=True)[:10]])}</ul>
-        <h2>데이터베이스 통계</h2>
-        <p>등록된 학교 수: {db_stats['school_count']}</p>
-        <p>급식 캐시 항목 수: {len(meal_cache)}</p>
-        <p>마지막 동기화: {db_stats['last_sync']['completed_at'] if db_stats['last_sync'] else 'N/A'}</p>
+        <h2>캐시 현황</h2>
+        <p>급식 캐시: {len(meal_cache)}건</p>
+        <p>학교 코드 캐시: {len(school_code_cache)}건</p>
+        <p>검색 결과 캐시: {len(search_result_cache)}건</p>
+        <p>지역별 학교 캐시: {len(region_schools_cache)}개 지역</p>
         '''
     except Exception as e:
         return f'통계 생성 오류: {e}'
@@ -946,7 +1081,6 @@ def security_status():
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
-    
     status = {
         'blocked_networks_count': len(BLOCKED_NETWORKS),
         'temporarily_blocked_ips': len(blocked_ips),
@@ -960,40 +1094,36 @@ def security_status():
 def health():
     return "ok", 200
 
-@app.route('/admin/sync/schools', methods=['POST'])
-def admin_sync_schools():
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
-    
-    from sync_scheduler import sync_all_schools
-    import threading
-    
-    def run_sync():
-        try:
-            synced, errors = sync_all_schools()
-            app.logger.info(f"Manual school sync completed: {synced} synced, {errors} errors")
-        except Exception as e:
-            app.logger.error(f"Manual school sync failed: {e}")
-    
-    sync_thread = threading.Thread(target=run_sync, daemon=True)
-    sync_thread.start()
-    
-    return jsonify({'status': 'started', 'message': '학교 정보 동기화가 백그라운드에서 시작되었습니다.'})
-
 @app.route('/admin/clear/meal-cache', methods=['POST'])
 def admin_clear_meal_cache():
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
-    
+
     global meal_cache
     cache_size = len(meal_cache)
     meal_cache = {}
-    
+
     return jsonify({
-        'status': 'success', 
+        'status': 'success',
         'message': f'급식 캐시 초기화 완료. {cache_size}개 항목이 삭제되었습니다.'
+    })
+
+@app.route('/admin/clear/school-cache', methods=['POST'])
+def admin_clear_school_cache():
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+
+    global school_code_cache, search_result_cache, region_schools_cache
+    counts = (len(school_code_cache), len(search_result_cache), len(region_schools_cache))
+    school_code_cache = {}
+    search_result_cache = {}
+    region_schools_cache = {}
+
+    return jsonify({
+        'status': 'success',
+        'message': f'학교 캐시 초기화 완료. 코드:{counts[0]}, 검색:{counts[1]}, 지역:{counts[2]}건 삭제.'
     })
 
 @app.route('/security/blacklist/add', methods=['POST'])
@@ -1001,14 +1131,14 @@ def add_to_blacklist():
     client_ip = get_client_ip()
     if not is_admin_ip(client_ip):
         abort(403)
-    
+
     data = request.get_json()
     ip_or_cidr = data.get('ip_or_cidr')
     reason = data.get('reason', 'Manual addition')
-    
+
     if not ip_or_cidr:
         return jsonify({'error': 'IP or CIDR required'}), 400
-    
+
     try:
         ipaddress.ip_network(ip_or_cidr, strict=False)
         save_to_blacklist(ip_or_cidr, reason)
@@ -1022,18 +1152,17 @@ def add_to_blacklist():
 def after_request_func(response):
     if response.headers.get('X-Silent-Block'):
         return response
-    
-    client_ip = get_client_ip()
+
     request_path = request.path
     request_method = request.method
     status_code = response.status_code
-    
+
     if should_log_request(request_path, request_method):
         if status_code in [200, 206]:
             log_access_request(status_code)
         elif status_code >= 400:
             app.logger.warning(f"Error - Method: {request_method}, Path: {request_path}, Status: {status_code}")
-    
+
     return response
 
 if __name__ == "__main__":
@@ -1042,24 +1171,13 @@ if __name__ == "__main__":
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
     app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
     app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
-    
+
     if not os.path.exists(BLACKLIST_FILE):
         with open(BLACKLIST_FILE, 'w', encoding='utf-8') as f:
             f.write("# IP Blacklist - CIDR format\n")
             f.write("# Example: 192.168.1.0/24\n")
-            f.write("# 52.178.178.217/32  # Example blocked IP\n")
-    
+
     app.logger.info(f"Security blacklist loaded: {len(BLOCKED_NETWORKS)} networks")
     app.logger.info(f"Security config: {SECURITY_CONFIG}")
-    app.logger.info(f"Silent block patterns: {len(SILENT_BLOCK_PATTERNS)} patterns loaded")
-    app.logger.info(f"No-log paths: {len(NO_LOG_PATHS)} paths configured")
-    
-    try:
-        db_stats = get_db_stats()
-        app.logger.info(f"Database stats - Schools: {db_stats['school_count']}")
-        if db_stats['last_sync']:
-            app.logger.info(f"Last sync: {db_stats['last_sync']['completed_at']}")
-    except Exception as e:
-        app.logger.warning(f"Could not load DB stats: {e}")
-    
+
     app.run(debug=False)
