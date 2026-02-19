@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.3">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.4">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -62,80 +62,88 @@
     </svg>
   </button>
 </header>
+
 <div id="ad-mobile">
-<ins class="kakao_ad_area" data-ad-unit = "DAN-dlRqzKV7HUKex1ui" data-ad-width = "320" data-ad-height = "100"></ins>
-    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
+  <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id="ad-desktop">
-    <ins class="kakao_ad_area" data-ad-unit = "DAN-I2BhGwRuogHXusUi" data-ad-width = "728" data-ad-height = "90"></ins>
-    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  <ins class="kakao_ad_area" data-ad-unit="DAN-I2BhGwRuogHXusUi" data-ad-width="728" data-ad-height="90"></ins>
+  <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
+
 <div class="container">
-  <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
+  <div class="header-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><g stroke-linecap="round" stroke-linejoin="round"><path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path><path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path><path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path><path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path></g></svg>
+  </div>
 
-  <!-- [수정] 2단계 분리 검색 폼 -->
-  <form method="POST" action="{{ url_for('index') }}" id="regionForm">
-    <!-- Step 1: 지역 선택 -->
-    <div class="search-step search-step-region" id="stepRegion">
-      <p class="step-prompt">지역을 선택해주세요.</p>
-      <select id="region" name="region" class="form-control step-select">
-        <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
-        {% for region_name_iter, region_code_iter in regions.items() %}
-        <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
-        {% endfor %}
-      </select>
+  {% if school_name and week_meals %}
+  {# [수정] 학교 조회 중: 컴팩트 폼 #}
+  <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form-compact">
+    <select id="region" name="region" class="step-select">
+      <option value="" disabled {% if not region %}selected{% endif %}>지역</option>
+      {% for region_name_iter, region_code_iter in regions.items() %}
+      <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
+      {% endfor %}
+    </select>
+    <div class="autocomplete-container">
+      <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교 검색">
+      <div id="autocomplete-results" class="autocomplete-results"></div>
     </div>
-
-    <!-- Step 2: 학교 검색 (지역 선택 후 표시) -->
-    <div class="search-step search-step-school" id="stepSchool">
-      <p class="step-prompt">학교 이름을 검색하세요.</p>
-      <div class="autocomplete-container">
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off" placeholder="예) 한국중학교">
+    <button type="submit" class="submit-btn">검색</button>
+  </form>
+  {% else %}
+  {# [수정] 기본 상태: 지역-학교 통합 풀 폼 #}
+  <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
+    <p class="step-prompt" id="stepPrompt">지역을 선택해주세요.</p>
+    <select id="region" name="region" class="step-select">
+      <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
+      {% for region_name_iter, region_code_iter in regions.items() %}
+      <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
+      {% endfor %}
+    </select>
+    <div class="search-row-school" id="schoolRow">
+      <div class="autocomplete-container" style="margin-top: 14px;">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="예) 한국중학교">
         <div id="autocomplete-results" class="autocomplete-results"></div>
       </div>
       <button type="submit" class="submit-btn">검색</button>
     </div>
   </form>
+  {% endif %}
 
-<div id=bodyad-desktop>
-     <ins class="kakao_ad_area" data-ad-unit = "DAN-ODZjnUToMyS7iXmi" data-ad-width = "728" data-ad-height = "90"></ins>
-     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-</div>
-<div id=bodyad-mobile>
-     <ins class="kakao_ad_area" data-ad-unit = "DAN-StDbNq6y1v7xZsfO" data-ad-width = "320" data-ad-height = "50"></ins>
-     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
-</div>
-  <div id="loading" class="loading-container"> <div class="spinner"></div> <p>급식 정보를 가져오는 중...</p> </div>
-{% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
+  <div id=bodyad-desktop>
+    <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  </div>
+  <div id=bodyad-mobile>
+    <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  </div>
+
+  <div id="loading" class="loading-container"><div class="spinner"></div><p>급식 정보를 가져오는 중...</p></div>
+
+  {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
+
   {% if school_name and week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
-{% if school_name and today_meal %}
     <div class="today-meal-card">
-        <h3 class="today-meal-title">
-            오늘 급식 정보 🍽️<br>
-            <small style="font-size: 0.8em; opacity: 0.9;">{{ today_date | format_date }}</small>
-        </h3>
-        <div class="today-meal-grid">
-            <div class="today-meal-item">
-                <div class="today-meal-type">🍎 아침</div>
-                <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">
-                    {{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}
-                </div>
-            </div>
-            <div class="today-meal-item">
-                <div class="today-meal-type">🍔 점심</div>
-                <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">
-                    {{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}
-                </div>
-            </div>
-            <div class="today-meal-item">
-                <div class="today-meal-type">🍝 저녁</div>
-                <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">
-                    {{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}
-                </div>
-            </div>
+      <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
+      <div class="today-meal-grid">
+        <div class="today-meal-item">
+          <div class="today-meal-type">🍎 아침</div>
+          <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}</div>
         </div>
+        <div class="today-meal-item">
+          <div class="today-meal-type">🍔 점심</div>
+          <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}</div>
+        </div>
+        <div class="today-meal-item">
+          <div class="today-meal-type">🍝 저녁</div>
+          <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}</div>
+        </div>
+      </div>
     </div>
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
@@ -166,7 +174,7 @@
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
           <tbody>
           {% for date, meal in month_meals.items() %}
-           <tr class="meal-row">
+            <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
                 {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
@@ -180,72 +188,73 @@
         </table>
       </div>
     </div>
-{% if nearby_schools %}
-<div class="nearby-schools-section">
-    <button class="toggle-nearby-btn" id="toggleNearbyBtn">🏫 주변 학교 급식과 비교하기</button>
-    <div class="nearby-schools-container" id="nearbySchoolsContainer" style="display: none;">
+    {% if nearby_schools %}
+    <div class="nearby-schools-section">
+      <button class="toggle-nearby-btn" id="toggleNearbyBtn">🏫 주변 학교 급식과 비교하기</button>
+      <div class="nearby-schools-container" id="nearbySchoolsContainer" style="display: none;">
         <div class="nearby-schools-header">
-            <h3 class="nearby-schools-title">주변 학교 급식 정보</h3>
-            <p class="nearby-schools-subtitle">우리 학교와 다른 학교들의 급식을 비교해보세요!</p>
+          <h3 class="nearby-schools-title">주변 학교 급식 정보</h3>
+          <p class="nearby-schools-subtitle">우리 학교와 다른 학교들의 급식을 비교해보세요!</p>
         </div>
         <div class="nearby-schools-grid">
-            {% for school in nearby_schools %}
-            <div class="nearby-school-card">
-                <div class="nearby-school-name">{{ school.name }}</div>
-                <div class="nearby-school-distance">{{ school.distance_info }}</div>
-                <a href="{{ url_for('school_meal_view', school_code=school.code) }}" class="view-nearby-meal-btn">급식 정보 보기</a>
-            </div>
-            {% endfor %}
+          {% for school in nearby_schools %}
+          <div class="nearby-school-card">
+            <div class="nearby-school-name">{{ school.name }}</div>
+            <div class="nearby-school-distance">{{ school.distance_info }}</div>
+            <a href="{{ url_for('school_meal_view', school_code=school.code) }}" class="view-nearby-meal-btn">급식 정보 보기</a>
+          </div>
+          {% endfor %}
         </div>
+      </div>
     </div>
-</div>
-{% endif %}
+    {% endif %}
   </div>
-{% endif %}
   {% elif school_name and not week_meals %}
   <div class="meal-container">
     <h2 class="school-title">{{ school_name }} 급식 정보</h2>
     <div class="no-info">급식 정보가 없습니다.</div>
   </div>
   {% endif %}
-{% if not school_name or not week_meals %}
-<div class="manual-school-finder">
+
+  {% if not school_name or not week_meals %}
+  <div class="manual-school-finder">
     <div class="manual-finder-header" id="manualFinderToggle">
-        <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
-        <div class="manual-finder-icon" id="manualFinderIcon">▼</div>
+      <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
+      <div class="manual-finder-icon" id="manualFinderIcon">▼</div>
     </div>
     <div class="manual-finder-content" id="manualFinderContent">
-        <div class="finder-description">
-            <strong>💡 팁:</strong> 학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
-            아래에서 원하는 지역을 선택한 후, 해당하는 학교급을 클릭하세요.
+      <div class="finder-description">
+        <strong>💡 팁:</strong> 학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
+      </div>
+      <div class="regions-grid">
+        {% for region_name, region_code in regions.items() %}
+        <div class="region-card">
+          <div class="region-name">{{ region_name }}</div>
+          <div class="school-levels">
+            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='초등학교') }}" class="level-link">초등학교</a>
+            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='중학교') }}" class="level-link">중학교</a>
+            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='고등학교') }}" class="level-link">고등학교</a>
+            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='특수학교') }}" class="level-link">특수학교</a>
+            <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="level-link">전체보기</a>
+          </div>
         </div>
-        <div class="regions-grid">
-            {% for region_name, region_code in regions.items() %}
-            <div class="region-card">
-                <div class="region-name">{{ region_name }}</div>
-                <div class="school-levels">
-                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='초등학교') }}" class="level-link">초등학교</a>
-                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='중학교') }}" class="level-link">중학교</a>
-                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='고등학교') }}" class="level-link">고등학교</a>
-                    <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='특수학교') }}" class="level-link">특수학교</a>
-                    <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="level-link">전체보기</a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+        {% endfor %}
+      </div>
     </div>
+  </div>
+  {% endif %}
+
+  <button id="share-btn" class="share-btn">🔗 공유하기</button>
 </div>
-{% endif %}
-<button id="share-btn" class="share-btn">🔗 공유하기</button>
+
 <div id="ios-webapp-guide">
   <div class="ios-webapp-guide-content">
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 <span class="share-icon-guide"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path> <polyline points="16 6 12 2 8 6"></polyline> <line x1="12"
-y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!
-    </p>
+    <p>하단의 공유 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
   </div>
 </div>
+
 <footer class="main-footer">
   <div class="footer-content">
     <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
@@ -259,9 +268,9 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
 </footer>
 
 <div id="themePopover" class="theme-popover">
-    <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
-    <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
-    <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
+  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
+  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
+  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
 </div>
 
 <script>
@@ -271,7 +280,6 @@ let autocompleteVisible = false;
 let selectedIndex = -1;
 let isComposing = false;
 let searchTimeout = null;
-let isSearching = false;
 let searchRequestId = 0;
 
 function getCookie(name) {
@@ -285,78 +293,44 @@ function getCookie(name) {
 }
 
 function isIOS() {
-    return ['iPad Simulator', 'iPhone Simulator', 'iPod Simulator', 'iPad', 'iPhone', 'iPod'].includes(navigator.platform) ||
+    return ['iPad Simulator','iPhone Simulator','iPod Simulator','iPad','iPhone','iPod'].includes(navigator.platform) ||
         (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 }
-
-function isSafari() {
-    return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-}
-
-function shouldShowGuide() {
-    return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone;
-}
-
+function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent); }
+function shouldShowGuide() { return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone; }
 function dismissIOSGuide() {
-    const guideElement = document.getElementById('ios-webapp-guide');
-    if (guideElement) {
-        guideElement.classList.remove('show');
-        setTimeout(() => { guideElement.style.display = 'none'; }, 500);
-        localStorage.setItem('ios-webapp-guide-shown', 'true');
-    }
+    const el = document.getElementById('ios-webapp-guide');
+    if (el) { el.classList.remove('show'); setTimeout(() => { el.style.display = 'none'; }, 500); localStorage.setItem('ios-webapp-guide-shown', 'true'); }
 }
 
-function removeSpaces(text) { return text.replace(/\s/g, ''); }
-
-function getCompleteCharacters(text) {
-    return text.split('').filter(char => {
-        const code = char.charCodeAt(0);
-        return (code >= 0xAC00 && code <= 0xD7AF) ||
-               (code < 0x1100 || code > 0x11FF) && (code < 0x3130 || code > 0x318F);
-    }).join('');
-}
-
+// [수정] 자동완성 유효성 검사 - 길이만 확인 (한국어 완성 문자 필터링 제거)
 function isValidSearchQuery(query) {
-    if (!query || query.length < 2) return false;
-    return getCompleteCharacters(removeSpaces(query)).length >= 2;
+    return query && query.trim().length >= 2;
 }
 
 async function searchSchoolsAPI(query, region) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
 
     const requestId = ++searchRequestId;
-    isSearching = true;
     showLoadingState();
     try {
-        const searchQuery = removeSpaces(getCompleteCharacters(query));
-        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(searchQuery)}&region=${encodeURIComponent(region)}`);
+        const response = await fetch(`/api/schools/search?q=${encodeURIComponent(query.trim())}&region=${encodeURIComponent(region)}`);
         if (requestId !== searchRequestId) return;
 
         if (!response.ok) {
             if (response.status === 500) {
                 const errorData = await response.json().catch(() => ({}));
-                if (errorData.error && requestId === searchRequestId) showErrorMessage(errorData.error);
+                if (requestId === searchRequestId && errorData.error) showErrorMessage(errorData.error);
                 return;
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const schools = await response.json();
         if (requestId !== searchRequestId) return;
-
-        const currentQuery = document.getElementById("school_name")?.value.trim();
-        const currentRegion = document.getElementById("region")?.value;
-        if (currentQuery && currentRegion === region && isValidSearchQuery(currentQuery)) {
-            const currentComplete = removeSpaces(getCompleteCharacters(currentQuery).toLowerCase());
-            const searchComplete = removeSpaces(getCompleteCharacters(query).toLowerCase());
-            if (currentComplete.includes(searchComplete) || searchComplete.includes(currentComplete)) {
-                showAutocomplete(schools);
-            }
-        }
+        showAutocomplete(schools);
     } catch (error) {
         if (requestId === searchRequestId) showErrorMessage('검색 중 오류가 발생했습니다.');
-    } finally {
-        if (requestId === searchRequestId) isSearching = false;
     }
 }
 
@@ -364,12 +338,10 @@ function showLoadingState() {
     const el = document.getElementById("autocomplete-results");
     if (el) { el.innerHTML = '<div class="autocomplete-loading">검색 중...</div>'; el.style.display = 'block'; autocompleteVisible = true; }
 }
-
-function showErrorMessage(message) {
+function showErrorMessage(msg) {
     const el = document.getElementById("autocomplete-results");
-    if (el) { el.innerHTML = `<div class="autocomplete-error">${message}</div>`; el.style.display = 'block'; autocompleteVisible = true; }
+    if (el) { el.innerHTML = `<div class="autocomplete-error">${msg}</div>`; el.style.display = 'block'; autocompleteVisible = true; }
 }
-
 function showAutocomplete(schools) {
     const el = document.getElementById("autocomplete-results");
     if (!el) return;
@@ -389,44 +361,41 @@ function showAutocomplete(schools) {
     });
     el.style.display = 'block'; autocompleteVisible = true; selectedIndex = -1;
 }
-
 function hideAutocomplete() {
     const el = document.getElementById("autocomplete-results");
     if (el) el.style.display = 'none';
-    autocompleteVisible = false; selectedIndex = -1; searchRequestId++; isSearching = false;
+    autocompleteVisible = false; selectedIndex = -1; searchRequestId++;
 }
-
 function updateSelection(items) {
-    items.forEach((item, index) => item.classList.toggle('selected', index === selectedIndex));
+    items.forEach((item, i) => item.classList.toggle('selected', i === selectedIndex));
 }
-
 function selectSchool(item) {
     const input = document.getElementById("school_name");
     if (input) input.value = item.dataset.name;
     hideAutocomplete();
-    const loadingDiv = document.getElementById('loading');
-    if (loadingDiv) loadingDiv.style.display = 'flex';
+    const ld = document.getElementById('loading');
+    if (ld) ld.style.display = 'flex';
     window.location.href = `/meal/${item.dataset.code}`;
 }
 
+// [수정] performSearch - 딜레이 300ms, isComposing 중에는 호출하지 않음
 function performSearch(query, region, immediate = false) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
     if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
-
     const execute = () => {
         if (isComposing) return;
         const input = document.getElementById("school_name");
-        const select = document.getElementById("region");
-        if (!input || !select) return;
-        if (input.value.trim() !== query || select.value !== region) return;
+        const sel = document.getElementById("region");
+        if (!input || !sel) return;
+        if (input.value.trim() !== query || sel.value !== region) return;
         searchSchoolsAPI(query, region);
     };
-
-    if (immediate) { execute(); }
-    else { searchTimeout = setTimeout(execute, 300); }
+    if (immediate) execute();
+    else searchTimeout = setTimeout(execute, 300);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 테마 토글
     const toggleBtn = document.getElementById('themeToggleBtn');
     const popover = document.getElementById('themePopover');
     const options = document.querySelectorAll('.theme-option');
@@ -435,144 +404,124 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateIcon() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        if (isDark) {
-            if(iconLight) iconLight.style.display = 'none';
-            if(iconDark) { iconDark.style.display = 'block'; iconDark.style.fill = 'currentColor'; }
-        } else {
-            if(iconLight) { iconLight.style.display = 'block'; iconLight.style.fill = 'currentColor'; }
-            if(iconDark) iconDark.style.display = 'none';
-        }
+        if (isDark) { if(iconLight) iconLight.style.display='none'; if(iconDark){iconDark.style.display='block';iconDark.style.fill='currentColor';} }
+        else { if(iconLight){iconLight.style.display='block';iconLight.style.fill='currentColor';} if(iconDark) iconDark.style.display='none'; }
     }
-
     if (toggleBtn && popover) {
         toggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             popover.classList.toggle('show');
-            const currentTheme = localStorage.getItem('theme') || 'system';
-            options.forEach(opt => opt.classList.toggle('active', opt.dataset.value === currentTheme));
+            const ct = localStorage.getItem('theme') || 'system';
+            options.forEach(o => o.classList.toggle('active', o.dataset.value === ct));
         });
-        document.addEventListener('click', (e) => {
-            if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) popover.classList.remove('show');
-        });
-        options.forEach(option => {
-            option.addEventListener('click', () => {
-                const theme = option.dataset.value;
-                localStorage.setItem('theme', theme);
-                if (theme === 'system') {
-                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme', 'dark');
-                    else document.documentElement.removeAttribute('data-theme');
-                } else if (theme === 'dark') {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                    document.documentElement.removeAttribute('data-theme');
-                }
-                updateIcon(); popover.classList.remove('show');
-            });
-        });
+        document.addEventListener('click', (e) => { if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) popover.classList.remove('show'); });
+        options.forEach(o => o.addEventListener('click', () => {
+            const theme = o.dataset.value;
+            localStorage.setItem('theme', theme);
+            if (theme === 'system') { if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
+            else if (theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
+            else document.documentElement.removeAttribute('data-theme');
+            updateIcon(); popover.classList.remove('show');
+        }));
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
-                if (e.matches) document.documentElement.setAttribute('data-theme', 'dark');
-                else document.documentElement.removeAttribute('data-theme');
+                if (e.matches) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
                 updateIcon();
             }
         });
         updateIcon();
     }
 
-    const stepSchool = document.getElementById('stepSchool');
     const regionSelect = document.getElementById("region");
     const schoolNameInput = document.getElementById("school_name");
     const autocompleteResults = document.getElementById("autocomplete-results");
     const regionForm = document.getElementById('regionForm');
     const loadingDiv = document.getElementById('loading');
+    const schoolRow = document.getElementById('schoolRow');
+    const stepPrompt = document.getElementById('stepPrompt');
 
-    // [수정] 지역 선택 시 학교 검색 step 표시
-    function showSchoolStep() {
-        if (regionSelect && regionSelect.value && stepSchool) {
-            stepSchool.classList.add('show');
-            if (schoolNameInput) schoolNameInput.focus();
+    // [수정] 풀 폼에서 지역 선택 시 학교 입력 행 표시
+    function showSchoolRow() {
+        if (schoolRow && regionSelect && regionSelect.value) {
+            schoolRow.classList.add('show');
+            if (stepPrompt) stepPrompt.textContent = '학교를 검색하세요.';
         }
     }
-
-    // 이미 지역이 선택된 상태면 즉시 표시 (쿠키 복원 등)
-    if (regionSelect && regionSelect.value) showSchoolStep();
+    // 쿠키 복원 or 에러 복귀 시 이미 지역이 선택되어 있으면 즉시 표시
+    if (regionSelect && regionSelect.value && schoolRow) showSchoolRow();
 
     if (regionSelect) {
         regionSelect.addEventListener('change', function() {
-            showSchoolStep();
+            showSchoolRow();
             hideAutocomplete();
-            const query = schoolNameInput ? schoolNameInput.value.trim() : '';
-            if (isValidSearchQuery(query) && this.value) performSearch(query, this.value, true);
+            const q = schoolNameInput ? schoolNameInput.value.trim() : '';
+            if (isValidSearchQuery(q) && this.value) performSearch(q, this.value, true);
         });
     }
 
+    // 자동완성 이벤트
     if (schoolNameInput && regionSelect && autocompleteResults) {
         schoolNameInput.addEventListener('compositionstart', () => {
             isComposing = true;
             if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
         });
+        // [수정] compositionend: 조합 완료 즉시 검색 트리거
         schoolNameInput.addEventListener('compositionend', (e) => {
             isComposing = false;
             const query = e.target.value.trim();
             const region = regionSelect.value;
-            if (query.length >= 2 && region) performSearch(query, region, true);
+            if (isValidSearchQuery(query) && region) performSearch(query, region, true);
             else hideAutocomplete();
         });
         schoolNameInput.addEventListener('input', function() {
+            if (isComposing) return;
             const query = this.value.trim();
             const region = regionSelect.value;
-            if (isComposing) return;
-            if (query.length < 2 || !region) { hideAutocomplete(); return; }
-            if (!isValidSearchQuery(query)) { autocompleteResults.style.display = 'none'; autocompleteVisible = false; return; }
+            if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
             performSearch(query, region);
         });
         schoolNameInput.addEventListener('keydown', function(e) {
             if (!autocompleteVisible) return;
-            const items = autocompleteResults.querySelectorAll('.autocomplete-item:not(.autocomplete-loading):not(.autocomplete-error):not(.autocomplete-no-results)');
-            if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = Math.min(selectedIndex + 1, items.length - 1); updateSelection(items); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIndex = Math.max(selectedIndex - 1, -1); updateSelection(items); }
+            const items = autocompleteResults.querySelectorAll('.autocomplete-item');
+            if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = Math.min(selectedIndex+1, items.length-1); updateSelection(items); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIndex = Math.max(selectedIndex-1, -1); updateSelection(items); }
             else if (e.key === 'Enter' && selectedIndex >= 0 && items[selectedIndex]) { e.preventDefault(); selectSchool(items[selectedIndex]); }
             else if (e.key === 'Escape') hideAutocomplete();
         });
         schoolNameInput.addEventListener('focus', function() {
             const query = this.value.trim();
             const region = regionSelect.value;
-            if (query.length >= 2 && region) performSearch(query, region, true);
+            if (isValidSearchQuery(query) && region) performSearch(query, region, true);
         });
         document.addEventListener('click', function(e) {
             if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) hideAutocomplete();
         });
     }
 
+    // 지역별 학교 찾기 토글
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
     const manualFinderIcon = document.getElementById('manualFinderIcon');
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
         manualFinderToggle.addEventListener('click', function() {
-            const isExpanded = manualFinderContent.classList.contains('show');
-            if (isExpanded) { manualFinderContent.classList.remove('show'); manualFinderIcon.classList.remove('expanded'); manualFinderIcon.textContent = '▼'; }
+            const expanded = manualFinderContent.classList.contains('show');
+            if (expanded) { manualFinderContent.classList.remove('show'); manualFinderIcon.classList.remove('expanded'); manualFinderIcon.textContent = '▼'; }
             else { manualFinderContent.classList.add('show'); manualFinderIcon.classList.add('expanded'); manualFinderIcon.textContent = '▲'; }
         });
     }
 
+    // 주변 학교 토글
     const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
         toggleNearbyBtn.addEventListener('click', function() {
-            const isHidden = nearbyContainer.style.display === 'none';
-            if (isHidden) {
-                nearbyContainer.style.display = 'block';
-                toggleNearbyBtn.textContent = '▲ 주변 학교 급식 비교 접기';
-                toggleNearbyBtn.classList.add('active');
-                nearbyContainer.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                nearbyContainer.style.display = 'none';
-                toggleNearbyBtn.textContent = '🏫 주변 학교 급식과 비교하기';
-                toggleNearbyBtn.classList.remove('active');
-            }
+            const hidden = nearbyContainer.style.display === 'none';
+            if (hidden) { nearbyContainer.style.display='block'; toggleNearbyBtn.textContent='▲ 주변 학교 급식 비교 접기'; toggleNearbyBtn.classList.add('active'); nearbyContainer.scrollIntoView({behavior:'smooth'}); }
+            else { nearbyContainer.style.display='none'; toggleNearbyBtn.textContent='🏫 주변 학교 급식과 비교하기'; toggleNearbyBtn.classList.remove('active'); }
         });
     }
 
+    // 공유 버튼
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
@@ -580,11 +529,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const schoolName = getCookie('school_name') || '학교';
             const shareUrl = `https://imsleepy.xyz/meal/${schoolCode}`;
             if (navigator.share && schoolCode) {
-                try { await navigator.share({ title: `${schoolName} 급식 정보`, text: `${schoolName}의 급식을 확인하세요!`, url: shareUrl }); }
-                catch (error) { console.error('공유 실패:', error); }
+                try { await navigator.share({title:`${schoolName} 급식 정보`,text:`${schoolName}의 급식을 확인하세요!`,url:shareUrl}); }
+                catch (e) {}
             } else if (schoolCode) {
                 try { await navigator.clipboard.writeText(shareUrl); alert('공유 링크가 클립보드에 복사되었습니다.'); }
-                catch (err) { alert('공유 기능을 지원하지 않는 브라우저입니다.'); }
+                catch (e) { alert('공유 기능을 지원하지 않는 브라우저입니다.'); }
             } else { alert('학교를 먼저 검색해주세요.'); }
         });
     }
@@ -593,55 +542,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (dismissBtn) dismissBtn.addEventListener('click', dismissIOSGuide);
 
     if (regionForm) {
-        regionForm.addEventListener('submit', function(event) {
-            if (!regionSelect || !regionSelect.value) {
-                event.preventDefault();
-                alert("지역을 선택해주세요.");
-                if (regionSelect) regionSelect.focus();
-                return;
-            }
+        regionForm.addEventListener('submit', function(e) {
+            if (!regionSelect || !regionSelect.value) { e.preventDefault(); alert("지역을 선택해주세요."); if (regionSelect) regionSelect.focus(); return; }
             if (loadingDiv) loadingDiv.style.display = 'flex';
         });
     }
 
+    // 월간 급식표 토글
     const toggleMonthBtn = document.getElementById('toggleMonthBtn');
     const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
         toggleMonthBtn.addEventListener('click', function() {
-            const isHidden = monthTable.style.display === 'none';
-            monthTable.style.display = isHidden ? 'block' : 'none';
-            toggleMonthBtn.innerHTML = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
-            if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth' });
+            const hidden = monthTable.style.display === 'none';
+            monthTable.style.display = hidden ? 'block' : 'none';
+            toggleMonthBtn.innerHTML = hidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
+            if (hidden) monthTable.scrollIntoView({behavior:'smooth'});
         });
     }
 
+    // iOS 가이드
     const iosGuide = document.getElementById('ios-webapp-guide');
     if (iosGuide && shouldShowGuide()) {
-        setTimeout(() => {
-            iosGuide.style.display = 'block';
-            setTimeout(() => iosGuide.classList.add('show'), 10);
-        }, 1000);
+        setTimeout(() => { iosGuide.style.display='block'; setTimeout(() => iosGuide.classList.add('show'), 10); }, 1000);
     }
 
     if (loadingDiv) loadingDiv.style.display = 'none';
 
     // 쿠키 복원
     const savedSchool = getCookie('school_name');
-    const savedRegionName = getCookie('region_name');
+    const savedRegion = getCookie('region_name');
     if (savedSchool && schoolNameInput) {
-        try { schoolNameInput.value = decodeURIComponent(savedSchool); }
-        catch (e) { schoolNameInput.value = savedSchool; }
+        try { schoolNameInput.value = decodeURIComponent(savedSchool); } catch (e) { schoolNameInput.value = savedSchool; }
     }
-    if (savedRegionName && regionSelect) {
-        regionSelect.value = savedRegionName;
-        showSchoolStep();
-    }
+    if (savedRegion && regionSelect) { regionSelect.value = savedRegion; showSchoolRow(); }
 
     setTimeout(() => {
-        const bodyAdDesktop = document.getElementById('bodyad-desktop');
-        const bodyAdMobile = document.getElementById('bodyad-mobile');
-        if (bodyAdDesktop) bodyAdDesktop.classList.add('show-ad');
-        if (bodyAdMobile) bodyAdMobile.classList.add('show-ad');
+        const bdd = document.getElementById('bodyad-desktop');
+        const bdm = document.getElementById('bodyad-mobile');
+        if (bdd) bdd.classList.add('show-ad');
+        if (bdm) bdm.classList.add('show-ad');
     }, 1500);
 });
 </script>
