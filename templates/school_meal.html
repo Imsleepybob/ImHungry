@@ -78,7 +78,6 @@
   </div>
 
   {% if school_name and week_meals %}
-  {# [수정] 학교 조회 중: 컴팩트 폼 #}
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form-compact">
     <select id="region" name="region" class="step-select">
       <option value="" disabled {% if not region %}selected{% endif %}>지역</option>
@@ -93,7 +92,6 @@
     <button type="submit" class="submit-btn">검색</button>
   </form>
   {% else %}
-  {# [수정] 기본 상태: 지역-학교 통합 풀 폼 #}
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
     <p class="step-prompt" id="stepPrompt">지역을 선택해주세요.</p>
     <select id="region" name="region" class="step-select">
@@ -104,7 +102,7 @@
     </select>
     <div class="search-row-school" id="schoolRow">
       <div class="autocomplete-container" style="margin-top: 14px;">
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="예) 한국중학교">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="입력">
         <div id="autocomplete-results" class="autocomplete-results"></div>
       </div>
       <button type="submit" class="submit-btn">검색</button>
@@ -303,9 +301,8 @@ function dismissIOSGuide() {
     if (el) { el.classList.remove('show'); setTimeout(() => { el.style.display = 'none'; }, 500); localStorage.setItem('ios-webapp-guide-shown', 'true'); }
 }
 
-// [수정] 자동완성 유효성 검사 - 길이만 확인 (한국어 완성 문자 필터링 제거)
 function isValidSearchQuery(query) {
-    return query && query.trim().length >= 2;
+    return query && query.trim().length >= 1;
 }
 
 async function searchSchoolsAPI(query, region) {
@@ -378,7 +375,7 @@ function selectSchool(item) {
     window.location.href = `/meal/${item.dataset.code}`;
 }
 
-// [수정] performSearch - 딜레이 300ms, isComposing 중에는 호출하지 않음
+// performSearch - 딜레이 300ms, isComposing 중에는 호출하지 않음
 function performSearch(query, region, immediate = false) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
     if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
@@ -395,7 +392,6 @@ function performSearch(query, region, immediate = false) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 테마 토글
     const toggleBtn = document.getElementById('themeToggleBtn');
     const popover = document.getElementById('themePopover');
     const options = document.querySelectorAll('.theme-option');
@@ -440,14 +436,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const schoolRow = document.getElementById('schoolRow');
     const stepPrompt = document.getElementById('stepPrompt');
 
-    // [수정] 풀 폼에서 지역 선택 시 학교 입력 행 표시
     function showSchoolRow() {
         if (schoolRow && regionSelect && regionSelect.value) {
             schoolRow.classList.add('show');
-            if (stepPrompt) stepPrompt.textContent = '학교를 검색하세요.';
+            if (stepPrompt) stepPrompt.textContent = '학교를 검색하세요!';
         }
     }
-    // 쿠키 복원 or 에러 복귀 시 이미 지역이 선택되어 있으면 즉시 표시
     if (regionSelect && regionSelect.value && schoolRow) showSchoolRow();
 
     if (regionSelect) {
@@ -459,13 +453,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 자동완성 이벤트
     if (schoolNameInput && regionSelect && autocompleteResults) {
         schoolNameInput.addEventListener('compositionstart', () => {
             isComposing = true;
             if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
         });
-        // [수정] compositionend: 조합 완료 즉시 검색 트리거
         schoolNameInput.addEventListener('compositionend', (e) => {
             isComposing = false;
             const query = e.target.value.trim();
@@ -498,7 +490,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 지역별 학교 찾기 토글
     const manualFinderToggle = document.getElementById('manualFinderToggle');
     const manualFinderContent = document.getElementById('manualFinderContent');
     const manualFinderIcon = document.getElementById('manualFinderIcon');
@@ -510,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 주변 학교 토글
     const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
@@ -521,7 +511,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 공유 버튼
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
@@ -548,7 +537,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 월간 급식표 토글
     const toggleMonthBtn = document.getElementById('toggleMonthBtn');
     const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
@@ -568,7 +556,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (loadingDiv) loadingDiv.style.display = 'none';
 
-    // 쿠키 복원
     const savedSchool = getCookie('school_name');
     const savedRegion = getCookie('region_name');
     if (savedSchool && schoolNameInput) {
