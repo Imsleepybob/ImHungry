@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.3">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -72,23 +72,31 @@
 </div>
 <div class="container">
   <div class="header-logo"> <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"> <g stroke-linecap="round" stroke-linejoin="round"> <path fill="#faa41a" stroke="#faa41a" d="M17.29 11.162c-5.567.676-5.582 3.252-4.907 6.063l2.875 2.562c4.905 1.97 6.183-1.955 7.156-6.375z"></path> <path fill="#faa41a" stroke="#383747" d="M22.542 13.677c2.016.036 3.63 2.369 3.605 5.21-.024 2.748-1.538 4.983-3.486 5.077-.32 0-11.06.011-11.403.017-1.707.043-3.602.081-4.584-1.01-1.024-1.14-1.032-3.798-.86-5.44.313-2.967 3.331-5.597 6.444-6.432.28-.076 2.014-.619 4.427-.105m-1.456 8.628a3.924 3.924 0 0 0 6.245-2.451c.036-.214 1.298-8.318 4.64-7.874.61.08 1.282.225 1.739-.185a1.4 1.4 0 0 0 .106-1.98 1.406 1.406 0 0 0-1.985-.106c.25-.25.523-.698.536-1.051a1.403 1.403 0 0 0-1.35-1.455c-.665-.025-1.35.395-1.408 1.028-.515 5.653-6.672 4.887-9.083 6.08-2.411 1.194-3.436 3.129-2.315 5.396"></path> <path fill="none" stroke="#383747" d="M3.685 25.534h24.557c-.015.958-.198 1.78-1.205 1.946H5.174c-1.484-.254-1.248-1.195-1.489-1.946z"></path> <path fill="none" stroke="#fff" d="M13.846 15.478a2.01 2.01 0 0 1 .58-1.439 2.01 2.01 0 0 1 1.43-.598"></path> </g> </svg> </div>
-<form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
-    <div class="form-group">
-        <label for="region">지역 선택</label>
-        <select id="region" name="region" class="form-control">
-            <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
-            {% for region_name_iter, region_code_iter in regions.items() %}
-            <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
-            {% endfor %}
-        </select>
+
+  <!-- [수정] 2단계 분리 검색 폼 -->
+  <form method="POST" action="{{ url_for('index') }}" id="regionForm">
+    <!-- Step 1: 지역 선택 -->
+    <div class="search-step search-step-region" id="stepRegion">
+      <p class="step-prompt">지역을 선택해주세요.</p>
+      <select id="region" name="region" class="form-control step-select">
+        <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
+        {% for region_name_iter, region_code_iter in regions.items() %}
+        <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
+        {% endfor %}
+      </select>
     </div>
-    <div class="form-group autocomplete-container">
-        <label for="school_name">학교 이름 입력</label>
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off">
+
+    <!-- Step 2: 학교 검색 (지역 선택 후 표시) -->
+    <div class="search-step search-step-school" id="stepSchool">
+      <p class="step-prompt">학교 이름을 검색하세요.</p>
+      <div class="autocomplete-container">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required class="form-control" autocomplete="off" placeholder="예) 한국중학교">
         <div id="autocomplete-results" class="autocomplete-results"></div>
+      </div>
+      <button type="submit" class="submit-btn">검색</button>
     </div>
-    <button type="submit" class="submit-btn">검색</button>
-</form>
+  </form>
+
 <div id=bodyad-desktop>
      <ins class="kakao_ad_area" data-ad-unit = "DAN-ODZjnUToMyS7iXmi" data-ad-width = "728" data-ad-height = "90"></ins>
      <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
@@ -251,18 +259,9 @@ y1="2" x2="12" y2="15"></line> </svg> </span> 버튼을 눌러 <strong>홈 화�
 </footer>
 
 <div id="themePopover" class="theme-popover">
-    <div class="theme-option" data-value="light">
-        <span>라이트 모드</span>
-        <span>☀</span>
-    </div>
-    <div class="theme-option" data-value="dark">
-        <span>다크 모드</span>
-        <span>🌙</span>
-    </div>
-    <div class="theme-option" data-value="system">
-        <span>시스템 설정</span>
-        <span>⚙</span>
-    </div>
+    <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
+    <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
+    <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
 </div>
 
 <script>
@@ -279,11 +278,8 @@ function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) {
-        try {
-            return decodeURIComponent(parts.pop().split(';').shift());
-        } catch (e) {
-            return parts.pop().split(';').shift();
-        }
+        try { return decodeURIComponent(parts.pop().split(';').shift()); }
+        catch (e) { return parts.pop().split(';').shift(); }
     }
     return null;
 }
@@ -305,16 +301,12 @@ function dismissIOSGuide() {
     const guideElement = document.getElementById('ios-webapp-guide');
     if (guideElement) {
         guideElement.classList.remove('show');
-        setTimeout(() => {
-            guideElement.style.display = 'none';
-        }, 500);
+        setTimeout(() => { guideElement.style.display = 'none'; }, 500);
         localStorage.setItem('ios-webapp-guide-shown', 'true');
     }
 }
 
-function removeSpaces(text) {
-    return text.replace(/\s/g, '');
-}
+function removeSpaces(text) { return text.replace(/\s/g, ''); }
 
 function getCompleteCharacters(text) {
     return text.split('').filter(char => {
@@ -326,189 +318,115 @@ function getCompleteCharacters(text) {
 
 function isValidSearchQuery(query) {
     if (!query || query.length < 2) return false;
-    const spaceRemovedText = removeSpaces(query);
-    const completeText = getCompleteCharacters(spaceRemovedText);
-    return completeText.length >= 2;
+    return getCompleteCharacters(removeSpaces(query)).length >= 2;
 }
 
 async function searchSchoolsAPI(query, region) {
-    if (!isValidSearchQuery(query) || !region) {
-        hideAutocomplete();
-        return;
-    }
+    if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
 
     const requestId = ++searchRequestId;
-    console.log(`Starting API search #${requestId} for: "${query}"`);
-
     isSearching = true;
     showLoadingState();
     try {
         const searchQuery = removeSpaces(getCompleteCharacters(query));
         const response = await fetch(`/api/schools/search?q=${encodeURIComponent(searchQuery)}&region=${encodeURIComponent(region)}`);
-        if (requestId !== searchRequestId) {
-            console.log(`API response #${requestId} ignored: newer search #${searchRequestId} in progress`);
-            return;
-        }
+        if (requestId !== searchRequestId) return;
 
         if (!response.ok) {
             if (response.status === 500) {
                 const errorData = await response.json().catch(() => ({}));
-                if (errorData.error && requestId === searchRequestId) {
-                    showErrorMessage(errorData.error);
-                }
+                if (errorData.error && requestId === searchRequestId) showErrorMessage(errorData.error);
                 return;
             }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const schools = await response.json();
-        if (requestId !== searchRequestId) {
-            console.log(`API response #${requestId} ignored: newer search #${searchRequestId} completed`);
-            return;
-        }
+        if (requestId !== searchRequestId) return;
 
         const currentQuery = document.getElementById("school_name")?.value.trim();
         const currentRegion = document.getElementById("region")?.value;
         if (currentQuery && currentRegion === region && isValidSearchQuery(currentQuery)) {
             const currentComplete = removeSpaces(getCompleteCharacters(currentQuery).toLowerCase());
             const searchComplete = removeSpaces(getCompleteCharacters(query).toLowerCase());
-
-            const isRelated = currentComplete.includes(searchComplete) || searchComplete.includes(currentComplete);
-            if (isRelated || currentComplete === searchComplete) {
-                console.log(`API search #${requestId}: "${query}" → ${schools.length} results (related to current: "${currentQuery}")`);
+            if (currentComplete.includes(searchComplete) || searchComplete.includes(currentComplete)) {
                 showAutocomplete(schools);
-            } else {
-                console.log(`API response #${requestId} ignored: not related. Original:"${searchComplete}" vs Current:"${currentComplete}"`);
             }
-        } else {
-            console.log(`API response #${requestId} ignored: currentQuery="${currentQuery}", region match: ${currentRegion === region}`);
         }
     } catch (error) {
-        if (requestId === searchRequestId) {
-            console.error(`API search #${requestId} failed:`, error);
-            showErrorMessage('검색 중 오류가 발생했습니다.');
-        }
+        if (requestId === searchRequestId) showErrorMessage('검색 중 오류가 발생했습니다.');
     } finally {
-        if (requestId === searchRequestId) {
-            isSearching = false;
-        }
+        if (requestId === searchRequestId) isSearching = false;
     }
 }
 
 function showLoadingState() {
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    if (autocompleteResults) {
-        autocompleteResults.innerHTML = '<div class="autocomplete-loading">검색 중...</div>';
-        autocompleteResults.style.display = 'block';
-        autocompleteVisible = true;
-    }
+    const el = document.getElementById("autocomplete-results");
+    if (el) { el.innerHTML = '<div class="autocomplete-loading">검색 중...</div>'; el.style.display = 'block'; autocompleteVisible = true; }
 }
 
 function showErrorMessage(message) {
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    if (autocompleteResults) {
-        autocompleteResults.innerHTML = `<div class="autocomplete-error">${message}</div>`;
-        autocompleteResults.style.display = 'block';
-        autocompleteVisible = true;
-    }
+    const el = document.getElementById("autocomplete-results");
+    if (el) { el.innerHTML = `<div class="autocomplete-error">${message}</div>`; el.style.display = 'block'; autocompleteVisible = true; }
 }
 
 function showAutocomplete(schools) {
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    if (!autocompleteResults) return;
+    const el = document.getElementById("autocomplete-results");
+    if (!el) return;
     if (schools.length === 0) {
-        autocompleteResults.innerHTML = '<div class="autocomplete-no-results">검색 결과가 없습니다.</div>';
-        autocompleteResults.style.display = 'block';
-        autocompleteVisible = true;
-        return;
+        el.innerHTML = '<div class="autocomplete-no-results">검색 결과가 없습니다.</div>';
+        el.style.display = 'block'; autocompleteVisible = true; return;
     }
-
-    autocompleteResults.innerHTML = '';
-    schools.forEach((school, index) => {
+    el.innerHTML = '';
+    schools.forEach(school => {
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
         item.textContent = school.name;
         item.dataset.code = school.code;
         item.dataset.name = school.name;
         item.addEventListener('click', () => selectSchool(item));
-        autocompleteResults.appendChild(item);
+        el.appendChild(item);
     });
-    autocompleteResults.style.display = 'block';
-    autocompleteVisible = true;
-    selectedIndex = -1;
+    el.style.display = 'block'; autocompleteVisible = true; selectedIndex = -1;
 }
 
 function hideAutocomplete() {
-    const autocompleteResults = document.getElementById("autocomplete-results");
-    if (autocompleteResults) {
-        autocompleteResults.style.display = 'none';
-    }
-    autocompleteVisible = false;
-    selectedIndex = -1;
-    searchRequestId++;
-    isSearching = false;
+    const el = document.getElementById("autocomplete-results");
+    if (el) el.style.display = 'none';
+    autocompleteVisible = false; selectedIndex = -1; searchRequestId++; isSearching = false;
 }
 
 function updateSelection(items) {
-    items.forEach((item, index) => {
-        item.classList.toggle('selected', index === selectedIndex);
-    });
+    items.forEach((item, index) => item.classList.toggle('selected', index === selectedIndex));
 }
 
 function selectSchool(item) {
-    const schoolNameInput = document.getElementById("school_name");
-    if (schoolNameInput) {
-        schoolNameInput.value = item.dataset.name;
-    }
+    const input = document.getElementById("school_name");
+    if (input) input.value = item.dataset.name;
     hideAutocomplete();
     const loadingDiv = document.getElementById('loading');
-    if (loadingDiv) {
-        loadingDiv.style.display = 'flex';
-    }
-
+    if (loadingDiv) loadingDiv.style.display = 'flex';
     window.location.href = `/meal/${item.dataset.code}`;
 }
 
 function performSearch(query, region, immediate = false) {
-    if (!isValidSearchQuery(query) || !region) {
-        hideAutocomplete();
-        return;
-    }
+    if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
+    if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
 
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
-        searchTimeout = null;
-    }
-
-    const executeSearch = () => {
+    const execute = () => {
         if (isComposing) return;
-        const schoolNameInput = document.getElementById("school_name");
-        const regionSelect = document.getElementById("region");
-
-        if (!schoolNameInput || !regionSelect) return;
-
-        const currentInputQuery = schoolNameInput.value.trim();
-        const currentInputRegion = regionSelect.value;
-
-        if (currentInputQuery !== query || currentInputRegion !== region) {
-            console.log('Search cancelled: input changed during delay');
-            return;
-        }
-
-        console.log('Using API search for:', query);
+        const input = document.getElementById("school_name");
+        const select = document.getElementById("region");
+        if (!input || !select) return;
+        if (input.value.trim() !== query || select.value !== region) return;
         searchSchoolsAPI(query, region);
     };
-    if (immediate) {
-        executeSearch();
-    } else {
-        const delay = 250;
-        searchTimeout = setTimeout(executeSearch, delay);
-    }
+
+    if (immediate) { execute(); }
+    else { searchTimeout = setTimeout(execute, 300); }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM Content Loaded - Starting initialization");
-
     const toggleBtn = document.getElementById('themeToggleBtn');
     const popover = document.getElementById('themePopover');
     const options = document.querySelectorAll('.theme-option');
@@ -519,15 +437,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (isDark) {
             if(iconLight) iconLight.style.display = 'none';
-            if(iconDark) {
-                iconDark.style.display = 'block';
-                iconDark.style.fill = 'currentColor';
-            }
+            if(iconDark) { iconDark.style.display = 'block'; iconDark.style.fill = 'currentColor'; }
         } else {
-            if(iconLight) {
-                iconLight.style.display = 'block';
-                iconLight.style.fill = 'currentColor';
-            }
+            if(iconLight) { iconLight.style.display = 'block'; iconLight.style.fill = 'currentColor'; }
             if(iconDark) iconDark.style.display = 'none';
         }
     }
@@ -537,97 +449,122 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             popover.classList.toggle('show');
             const currentTheme = localStorage.getItem('theme') || 'system';
-            options.forEach(opt => {
-                opt.classList.toggle('active', opt.dataset.value === currentTheme);
-            });
+            options.forEach(opt => opt.classList.toggle('active', opt.dataset.value === currentTheme));
         });
-
         document.addEventListener('click', (e) => {
-            if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) {
-                popover.classList.remove('show');
-            }
+            if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) popover.classList.remove('show');
         });
-
         options.forEach(option => {
             option.addEventListener('click', () => {
                 const theme = option.dataset.value;
                 localStorage.setItem('theme', theme);
-                
                 if (theme === 'system') {
-                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        document.documentElement.setAttribute('data-theme', 'dark');
-                    } else {
-                        document.documentElement.removeAttribute('data-theme');
-                    }
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme', 'dark');
+                    else document.documentElement.removeAttribute('data-theme');
                 } else if (theme === 'dark') {
                     document.documentElement.setAttribute('data-theme', 'dark');
                 } else {
                     document.documentElement.removeAttribute('data-theme');
                 }
-                
-                updateIcon();
-                popover.classList.remove('show');
+                updateIcon(); popover.classList.remove('show');
             });
         });
-
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
             if (!localStorage.getItem('theme') || localStorage.getItem('theme') === 'system') {
-                if (e.matches) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                } else {
-                    document.documentElement.removeAttribute('data-theme');
-                }
+                if (e.matches) document.documentElement.setAttribute('data-theme', 'dark');
+                else document.documentElement.removeAttribute('data-theme');
                 updateIcon();
             }
         });
         updateIcon();
     }
 
-    const manualFinderToggle = document.getElementById('manualFinderToggle');
-    const manualFinderContent = document.getElementById('manualFinderContent');
-    const manualFinderIcon = document.getElementById('manualFinderIcon');
-    const schoolNameInput = document.getElementById("school_name");
+    const stepSchool = document.getElementById('stepSchool');
     const regionSelect = document.getElementById("region");
+    const schoolNameInput = document.getElementById("school_name");
     const autocompleteResults = document.getElementById("autocomplete-results");
     const regionForm = document.getElementById('regionForm');
     const loadingDiv = document.getElementById('loading');
-    const toggleMonthBtn = document.getElementById('toggleMonthBtn');
-    const monthTable = document.getElementById('monthTable');
-    const iosGuide = document.getElementById('ios-webapp-guide');
-    const dismissBtn = document.getElementById('dismiss-ios-btn');
-    const shareBtn = document.getElementById('share-btn');
-    const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
-    const nearbyContainer = document.getElementById('nearbySchoolsContainer');
 
-    if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
-        manualFinderToggle.addEventListener('click', function() {
-            const isExpanded = manualFinderContent.classList.contains('show');
-            if (isExpanded) {
-                manualFinderContent.classList.remove('show');
-                manualFinderIcon.classList.remove('expanded');
-                manualFinderIcon.textContent = '▼';
-            } else {
-                manualFinderContent.classList.add('show');
-                manualFinderIcon.classList.add('expanded');
-                manualFinderIcon.textContent = '▲';
-            }
+    // [수정] 지역 선택 시 학교 검색 step 표시
+    function showSchoolStep() {
+        if (regionSelect && regionSelect.value && stepSchool) {
+            stepSchool.classList.add('show');
+            if (schoolNameInput) schoolNameInput.focus();
+        }
+    }
+
+    // 이미 지역이 선택된 상태면 즉시 표시 (쿠키 복원 등)
+    if (regionSelect && regionSelect.value) showSchoolStep();
+
+    if (regionSelect) {
+        regionSelect.addEventListener('change', function() {
+            showSchoolStep();
+            hideAutocomplete();
+            const query = schoolNameInput ? schoolNameInput.value.trim() : '';
+            if (isValidSearchQuery(query) && this.value) performSearch(query, this.value, true);
         });
     }
 
-    if (toggleNearbyBtn && nearbyContainer) {
-        console.log("Setting up nearby schools toggle functionality");
-        toggleNearbyBtn.addEventListener('click', function() {
-            console.log("Nearby toggle clicked!");
-            const isHidden = nearbyContainer.style.display === 'none';
+    if (schoolNameInput && regionSelect && autocompleteResults) {
+        schoolNameInput.addEventListener('compositionstart', () => {
+            isComposing = true;
+            if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
+        });
+        schoolNameInput.addEventListener('compositionend', (e) => {
+            isComposing = false;
+            const query = e.target.value.trim();
+            const region = regionSelect.value;
+            if (query.length >= 2 && region) performSearch(query, region, true);
+            else hideAutocomplete();
+        });
+        schoolNameInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            const region = regionSelect.value;
+            if (isComposing) return;
+            if (query.length < 2 || !region) { hideAutocomplete(); return; }
+            if (!isValidSearchQuery(query)) { autocompleteResults.style.display = 'none'; autocompleteVisible = false; return; }
+            performSearch(query, region);
+        });
+        schoolNameInput.addEventListener('keydown', function(e) {
+            if (!autocompleteVisible) return;
+            const items = autocompleteResults.querySelectorAll('.autocomplete-item:not(.autocomplete-loading):not(.autocomplete-error):not(.autocomplete-no-results)');
+            if (e.key === 'ArrowDown') { e.preventDefault(); selectedIndex = Math.min(selectedIndex + 1, items.length - 1); updateSelection(items); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIndex = Math.max(selectedIndex - 1, -1); updateSelection(items); }
+            else if (e.key === 'Enter' && selectedIndex >= 0 && items[selectedIndex]) { e.preventDefault(); selectSchool(items[selectedIndex]); }
+            else if (e.key === 'Escape') hideAutocomplete();
+        });
+        schoolNameInput.addEventListener('focus', function() {
+            const query = this.value.trim();
+            const region = regionSelect.value;
+            if (query.length >= 2 && region) performSearch(query, region, true);
+        });
+        document.addEventListener('click', function(e) {
+            if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) hideAutocomplete();
+        });
+    }
 
+    const manualFinderToggle = document.getElementById('manualFinderToggle');
+    const manualFinderContent = document.getElementById('manualFinderContent');
+    const manualFinderIcon = document.getElementById('manualFinderIcon');
+    if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
+        manualFinderToggle.addEventListener('click', function() {
+            const isExpanded = manualFinderContent.classList.contains('show');
+            if (isExpanded) { manualFinderContent.classList.remove('show'); manualFinderIcon.classList.remove('expanded'); manualFinderIcon.textContent = '▼'; }
+            else { manualFinderContent.classList.add('show'); manualFinderIcon.classList.add('expanded'); manualFinderIcon.textContent = '▲'; }
+        });
+    }
+
+    const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
+    const nearbyContainer = document.getElementById('nearbySchoolsContainer');
+    if (toggleNearbyBtn && nearbyContainer) {
+        toggleNearbyBtn.addEventListener('click', function() {
+            const isHidden = nearbyContainer.style.display === 'none';
             if (isHidden) {
                 nearbyContainer.style.display = 'block';
                 toggleNearbyBtn.textContent = '▲ 주변 학교 급식 비교 접기';
                 toggleNearbyBtn.classList.add('active');
-
-                nearbyContainer.scrollIntoView({
-                    behavior: 'smooth'
-                });
+                nearbyContainer.scrollIntoView({ behavior: 'smooth' });
             } else {
                 nearbyContainer.style.display = 'none';
                 toggleNearbyBtn.textContent = '🏫 주변 학교 급식과 비교하기';
@@ -636,131 +573,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (schoolNameInput && regionSelect && autocompleteResults) {
-        schoolNameInput.addEventListener('compositionstart', () => {
-            console.log('IME composition started');
-            isComposing = true;
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
-                searchTimeout = null;
-            }
-        });
-        schoolNameInput.addEventListener('compositionend', (e) => {
-            console.log('IME composition ended');
-            isComposing = false;
-            const query = e.target.value.trim();
-            const region = regionSelect.value;
-            if (query.length >= 2 && region) {
-                performSearch(query, region, true);
-            } else {
-                hideAutocomplete();
-            }
-        });
-        schoolNameInput.addEventListener('input', function(e) {
-            const query = this.value.trim();
-            const region = regionSelect.value;
-
-            console.log(`Input event: "${query}", composing: ${isComposing}, region: ${region}`);
-
-            if (isComposing) {
-                return;
-            }
-
-            if (query.length < 2 || !region) {
-                hideAutocomplete();
-                return;
-            }
-
-            if (!isValidSearchQuery(query)) {
-                const autocompleteResults = document.getElementById("autocomplete-results");
-                if (autocompleteResults) {
-                    autocompleteResults.style.display = 'none';
-                }
-                autocompleteVisible = false;
-                return;
-            }
-
-            performSearch(query, region);
-        });
-        schoolNameInput.addEventListener('keydown', function(e) {
-            if (!autocompleteVisible) return;
-
-            const items = autocompleteResults.querySelectorAll('.autocomplete-item:not(.autocomplete-loading):not(.autocomplete-error):not(.autocomplete-no-results)');
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-                updateSelection(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                selectedIndex = Math.max(selectedIndex - 1, -1);
-                updateSelection(items);
-            } else if (e.key === 'Enter' && selectedIndex >= 0 && items[selectedIndex]) {
-                e.preventDefault();
-                selectSchool(items[selectedIndex]);
-            } else if (e.key === 'Escape') {
-                hideAutocomplete();
-            }
-        });
-        regionSelect.addEventListener('change', function() {
-            console.log(`Region changed to: ${this.value}`);
-            hideAutocomplete();
-
-            const query = schoolNameInput.value.trim();
-            if (isValidSearchQuery(query) && this.value) {
-                performSearch(query, this.value, true);
-            }
-        });
-        schoolNameInput.addEventListener('focus', function() {
-            const query = this.value.trim();
-            const region = regionSelect.value;
-
-            console.log(`Focus event: "${query}"`);
-
-            if (query.length >= 2 && region) {
-                performSearch(query, region, true);
-            }
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!schoolNameInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
-                hideAutocomplete();
-            }
-        });
-    }
-
+    const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
             const schoolCode = getCookie('school_code');
             const schoolName = getCookie('school_name') || '학교';
             const shareUrl = `https://imsleepy.xyz/meal/${schoolCode}`;
-
             if (navigator.share && schoolCode) {
-                try {
-                    await navigator.share({
-                        title: `${schoolName} 급식 정보`,
-                        text: `${schoolName}의 급식을 확인하세요!`,
-                        url: shareUrl
-                    });
-                } catch (error) {
-                    console.error('공유 실패:', error);
-                }
+                try { await navigator.share({ title: `${schoolName} 급식 정보`, text: `${schoolName}의 급식을 확인하세요!`, url: shareUrl }); }
+                catch (error) { console.error('공유 실패:', error); }
             } else if (schoolCode) {
-                try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    alert('공유 링크가 클립보드에 복사되었습니다.');
-                } catch (err) {
-                    alert('공유 기능을 지원하지 않는 브라우저입니다.');
-                }
-            } else {
-                alert('학교를 먼저 검색해주세요.');
-            }
+                try { await navigator.clipboard.writeText(shareUrl); alert('공유 링크가 클립보드에 복사되었습니다.'); }
+                catch (err) { alert('공유 기능을 지원하지 않는 브라우저입니다.'); }
+            } else { alert('학교를 먼저 검색해주세요.'); }
         });
     }
 
-    if (dismissBtn) {
-        dismissBtn.addEventListener('click', dismissIOSGuide);
-    }
+    const dismissBtn = document.getElementById('dismiss-ios-btn');
+    if (dismissBtn) dismissBtn.addEventListener('click', dismissIOSGuide);
 
     if (regionForm) {
         regionForm.addEventListener('submit', function(event) {
@@ -770,65 +600,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (regionSelect) regionSelect.focus();
                 return;
             }
-
             if (loadingDiv) loadingDiv.style.display = 'flex';
         });
     }
 
+    const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+    const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
-        console.log("Setting up month toggle functionality");
         toggleMonthBtn.addEventListener('click', function() {
-            console.log("Month toggle clicked!");
             const isHidden = monthTable.style.display === 'none';
             monthTable.style.display = isHidden ? 'block' : 'none';
             toggleMonthBtn.innerHTML = isHidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
-
-            if (isHidden) {
-                monthTable.scrollIntoView({
-                    behavior: 'smooth'
-                });
-            }
+            if (isHidden) monthTable.scrollIntoView({ behavior: 'smooth' });
         });
     }
 
+    const iosGuide = document.getElementById('ios-webapp-guide');
     if (iosGuide && shouldShowGuide()) {
-        console.log("Showing iOS Guide");
         setTimeout(() => {
             iosGuide.style.display = 'block';
-            setTimeout(() => {
-                iosGuide.classList.add('show');
-            }, 10);
+            setTimeout(() => iosGuide.classList.add('show'), 10);
         }, 1000);
     }
 
-    if (loadingDiv) {
-        loadingDiv.style.display = 'none';
-    }
+    if (loadingDiv) loadingDiv.style.display = 'none';
 
+    // 쿠키 복원
     const savedSchool = getCookie('school_name');
     const savedRegionName = getCookie('region_name');
     if (savedSchool && schoolNameInput) {
-        try {
-            schoolNameInput.value = decodeURIComponent(savedSchool);
-        } catch (e) {
-            schoolNameInput.value = savedSchool;
-        }
+        try { schoolNameInput.value = decodeURIComponent(savedSchool); }
+        catch (e) { schoolNameInput.value = savedSchool; }
     }
-
     if (savedRegionName && regionSelect) {
         regionSelect.value = savedRegionName;
+        showSchoolStep();
     }
 
-    console.log("DOM Loaded and JS initialized successfully");
     setTimeout(() => {
         const bodyAdDesktop = document.getElementById('bodyad-desktop');
         const bodyAdMobile = document.getElementById('bodyad-mobile');
-        if (bodyAdDesktop) {
-            bodyAdDesktop.classList.add('show-ad');
-        }
-        if (bodyAdMobile) {
-            bodyAdMobile.classList.add('show-ad');
-        }
+        if (bodyAdDesktop) bodyAdDesktop.classList.add('show-ad');
+        if (bodyAdMobile) bodyAdMobile.classList.add('show-ad');
     }, 1500);
 });
 </script>
