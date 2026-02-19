@@ -1,4 +1,3 @@
-/* [통합] 색상 및 공통 속성 정의 */
 :root {
     --bg-body: #f9f9f9;
     --bg-container: #ffffff;
@@ -16,7 +15,7 @@
     --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 5px 15px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 5px 20px rgba(0, 0, 0, 0.06);
-    --shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.12);
+    --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.1);
     --link-color: #007aff;
     --table-header-bg: #f8f9fa;
     --table-border: #e9ecef;
@@ -39,7 +38,7 @@
     --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 5px 15px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 5px 20px rgba(0, 0, 0, 0.4);
-    --shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.45);
     --table-header-bg: #2c2c2c;
     --table-border: #333333;
     --highlight-bg: #554422;
@@ -61,7 +60,7 @@ body {
     padding: 20px;
 }
 
-/* 헤더 및 내비게이션 */
+/* 헤더 */
 .main-header {
     display: flex;
     justify-content: space-between;
@@ -73,7 +72,7 @@ body {
     top: 0;
     z-index: 1000;
     box-shadow: var(--shadow-sm);
-    transition: box-shadow 0.3s ease, background-color 0.3s ease;
+    transition: background-color 0.3s ease;
 }
 
 .main-header .logo {
@@ -81,11 +80,8 @@ body {
     font-weight: bold;
     display: flex;
     align-items: center;
-    transition: transform 0.2s ease;
 }
-.main-header .logo:hover { transform: scale(1.05); }
 
-/* 테마 토글 버튼 */
 .theme-toggle-btn {
     background: none;
     border: none;
@@ -96,97 +92,87 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.2s ease;
 }
 .theme-toggle-btn:hover { background-color: var(--bg-secondary); }
 .theme-toggle-btn svg { fill: var(--text-primary); }
 
-/* 로고 스타일 */
-.header-logo { margin: 20px auto; text-align: center; transition: transform 0.3s ease; }
-.header-logo:hover { transform: scale(1.05); }
+.header-logo { margin: 16px auto 10px; text-align: center; }
 .header-logo svg { max-width: 100%; height: auto; }
 
-/* [수정] 2단계 분리 검색 폼 */
-#regionForm {
-    max-width: 600px;
-    margin: 20px auto;
-}
-
-.search-step {
+/* [수정] 통합 검색 폼 - 풀 모드 (학교 미선택 상태) */
+.search-form {
+    max-width: 560px;
+    margin: 10px auto 20px;
     background-color: var(--bg-container);
-    padding: 28px 24px;
+    padding: 24px 22px;
     border-radius: 16px;
     box-shadow: var(--shadow-md);
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-    margin-bottom: 16px;
+    transition: background-color 0.3s ease;
 }
-.search-step:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 
-/* 단계 안내 텍스트 */
 .step-prompt {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
     font-weight: 700;
     text-align: center;
     color: var(--text-primary);
-    margin: 0 0 20px 0;
+    margin: 0 0 14px 0;
 }
 
-.step-select {
+.step-select, select {
     width: 100%;
-    padding: 14px 16px;
-    border: 2px solid var(--border-light);
-    border-radius: 10px;
-    box-sizing: border-box;
-    font-size: 17px;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
-}
-.step-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-    background-color: var(--bg-container);
-}
-
-/* [수정] 학교 검색 step - 기본 숨김, show 클래스 시 슬라이드 인 */
-.search-step-school {
-    display: none;
-    overflow: hidden;
-}
-.search-step-school.show {
-    display: block;
-    animation: slideDown 0.35s ease-out;
-}
-
-input[type="text"] {
-    width: 100%;
-    padding: 13px 14px;
+    padding: 12px 14px;
     border: 2px solid var(--border-light);
     border-radius: 10px;
     box-sizing: border-box;
     font-size: 16px;
-    transition: all 0.3s ease;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
-    margin-bottom: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+}
+.step-select:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.18);
+    background-color: var(--bg-container);
+}
+
+/* [수정] 학교 검색 행 - 지역 선택 후 슬라이드 인 */
+.search-row-school {
+    display: none;
+    margin-top: 14px;
+}
+.search-row-school.show {
+    display: block;
+    animation: slideDown 0.3s ease-out;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border-light);
+    border-radius: 10px;
+    box-sizing: border-box;
+    font-size: 16px;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.18);
     background-color: var(--bg-container);
-    margin-bottom: 0;
 }
 
 .submit-btn {
     display: inline-block;
-    padding: 13px 20px;
+    padding: 12px 20px;
     background-color: var(--primary-color);
     color: #fff;
     border: none;
@@ -195,29 +181,66 @@ input[type="text"]:focus {
     font-size: 16px;
     font-weight: 600;
     width: 100%;
-    margin-top: 12px;
-    transition: all 0.3s ease;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
 }
-.submit-btn:hover {
-    background-color: var(--primary-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.35);
+.submit-btn:hover { background-color: var(--primary-hover); }
+
+/* [수정] 컴팩트 검색 폼 - 학교 급식 조회 중일 때 */
+.search-form-compact {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    max-width: 700px;
+    margin: 0 auto 20px;
+    background-color: var(--bg-container);
+    padding: 12px 14px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.3s ease;
+}
+.search-form-compact select {
+    width: 95px;
+    flex-shrink: 0;
+    padding: 9px 10px;
+    font-size: 14px;
+    border-radius: 8px;
+    border-width: 1.5px;
+}
+.search-form-compact .autocomplete-container {
+    flex: 1;
+    min-width: 0;
+}
+.search-form-compact input[type="text"] {
+    padding: 9px 11px;
+    font-size: 14px;
+    border-radius: 8px;
+    border-width: 1.5px;
+    margin: 0;
+}
+.search-form-compact .submit-btn {
+    width: auto;
+    flex-shrink: 0;
+    padding: 9px 16px;
+    font-size: 14px;
+    border-radius: 8px;
+    margin: 0;
+    white-space: nowrap;
+    align-self: flex-start;
 }
 
-/* 타이틀 애니메이션 */
+/* 급식 정보 컨테이너 */
 .meal-container { padding: 10px 0; max-width: 850px; margin: 0 auto; }
 
 .school-title {
     text-align: center;
     font-size: 1.8rem;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
     color: var(--text-primary);
     font-weight: 600;
     position: relative;
     padding-bottom: 12px;
-    animation: pulse 2s infinite;
 }
-
 .school-title::after {
     content: '';
     position: absolute;
@@ -230,23 +253,16 @@ input[type="text"]:focus {
     border-radius: 3px;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-/* 카드 스타일 */
+/* 카드 */
 .meal-card {
     background-color: var(--bg-container);
     border-radius: 16px;
     box-shadow: var(--shadow-lg);
     padding: 25px;
     margin-bottom: 30px;
-    transition: all 0.4s ease;
     overflow: hidden;
+    transition: background-color 0.3s ease;
 }
-.meal-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-5px); }
 
 .meal-title {
     font-size: 1.4rem;
@@ -264,7 +280,7 @@ input[type="text"]:focus {
     border-radius: 4px;
 }
 
-/* 오늘 급식 카드 */
+/* 오늘 급식 */
 .today-meal-card {
     background: var(--bg-container);
     border: 1px solid var(--border-color);
@@ -277,10 +293,8 @@ input[type="text"]:focus {
 .today-meal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px; }
 .today-meal-item {
     border-radius: 10px; padding: 15px; text-align: center;
-    border: 2px solid var(--bg-secondary); transition: all 0.3s ease;
+    border: 2px solid var(--bg-secondary);
 }
-.today-meal-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-
 .today-meal-item:nth-child(1) { background: #fff8e1; border-color: #ffb74d; }
 [data-theme="dark"] .today-meal-item:nth-child(1) { background: #4a3b22; border-color: #cc9933; }
 .today-meal-item:nth-child(2) { background: #e8f5e8; border-color: #66bb6a; }
@@ -308,8 +322,8 @@ input[type="text"]:focus {
     z-index: 10;
 }
 .meal-table th:first-child { width: 120px; }
-.meal-row { transition: all 0.2s ease; }
-.meal-row:hover { background-color: var(--bg-hover); transform: translateX(5px); }
+.meal-row { transition: background-color 0.15s ease; }
+.meal-row:hover { background-color: var(--bg-hover); }
 .date-cell { padding: 16px; font-weight: 500; color: var(--primary-color); border-bottom: 1px solid var(--table-border); }
 .menu-cell { padding: 16px; line-height: 1.6; border-bottom: 1px solid var(--table-border); color: var(--text-primary); }
 
@@ -321,7 +335,7 @@ input[type="text"]:focus {
 .meal-type p { display: inline; white-space: pre-line; }
 .no-meal { color: var(--text-muted); font-style: italic; }
 
-/* schools_by_region 및 level 페이지 전용 스타일 */
+/* schools_by_region / level 전용 */
 .region-header, .level-header {
     text-align: center;
     margin: 30px 0;
@@ -341,9 +355,9 @@ input[type="text"]:focus {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.2s ease;
 }
-.level-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.level-card:hover { box-shadow: var(--shadow-hover); }
 .level-title {
     font-size: 1.2em;
     font-weight: bold;
@@ -367,12 +381,11 @@ input[type="text"]:focus {
     padding: 10px 20px;
     border-radius: 6px;
     text-decoration: none;
-    transition: background 0.3s ease;
+    transition: background-color 0.2s ease;
 }
 .view-meal-btn, .view-nearby-meal-btn { padding: 8px 16px; font-size: 0.9em; }
 .view-all-btn:hover, .view-meal-btn:hover, .view-nearby-meal-btn:hover { background: var(--primary-hover); color: white; text-decoration: none; }
 
-/* Schools by Level Grid */
 .schools-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -384,10 +397,10 @@ input[type="text"]:focus {
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 15px;
-    transition: all 0.3s ease;
+    transition: box-shadow 0.2s ease;
     text-align: center;
 }
-.school-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.school-card:hover { box-shadow: var(--shadow-md); }
 .school-name { font-weight: bold; color: var(--text-primary); margin-bottom: 10px; font-size: 1.05em; }
 .school-count-info { background: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; color: var(--text-secondary); }
 .no-schools { text-align: center; padding: 50px 20px; color: var(--text-muted); font-size: 1.1em; }
@@ -399,7 +412,7 @@ input[type="text"]:focus {
     padding: 10px 20px;
     border-radius: 6px;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     margin-bottom: 20px;
 }
 .back-btn:hover { background: var(--border-color); }
@@ -424,7 +437,7 @@ input[type="text"]:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
 }
 .manual-finder-header:hover { background: var(--accent-hover); }
 .manual-finder-title { font-weight: bold; font-size: 1.1em; }
@@ -443,8 +456,8 @@ input[type="text"]:focus {
     border-left: 4px solid var(--accent-color);
 }
 .regions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
-.region-card { background: var(--bg-container); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: all 0.3s ease; }
-.region-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.region-card { background: var(--bg-container); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; transition: box-shadow 0.2s ease; }
+.region-card:hover { box-shadow: var(--shadow-md); }
 .region-name { font-weight: bold; color: var(--text-primary); margin-bottom: 10px; font-size: 1.1em; }
 .school-levels { display: flex; flex-wrap: wrap; gap: 8px; }
 .level-link {
@@ -454,10 +467,10 @@ input[type="text"]:focus {
     border-radius: 20px;
     text-decoration: none;
     font-size: 0.9em;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
     border: 1px solid transparent;
 }
-.level-link:hover { background: var(--primary-color); color: white; text-decoration: none; transform: translateY(-1px); }
+.level-link:hover { background: var(--primary-color); color: white; text-decoration: none; }
 
 /* 주변 학교 */
 .nearby-schools-section { max-width: 850px; margin: 30px auto; }
@@ -465,10 +478,10 @@ input[type="text"]:focus {
     display: block; margin: 0 auto 30px; padding: 14px 28px;
     background: linear-gradient(135deg, var(--accent-color), #ff8c00);
     color: white; border: none; border-radius: 30px; font-size: 16px; font-weight: 600;
-    cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(250, 164, 26, 0.3);
+    cursor: pointer; transition: background 0.2s ease; box-shadow: 0 4px 12px rgba(250, 164, 26, 0.25);
 }
-.toggle-nearby-btn:hover { background: linear-gradient(135deg, #ff8c00, #e6750a); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(250, 164, 26, 0.4); }
-.toggle-nearby-btn.active { background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); }
+.toggle-nearby-btn:hover { background: linear-gradient(135deg, #ff8c00, #e6750a); }
+.toggle-nearby-btn.active { background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); }
 .nearby-schools-container { background: var(--bg-container); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 25px; margin-bottom: 30px; animation: slideDown 0.3s ease-out; }
 .nearby-schools-header { text-align: center; margin-bottom: 25px; }
 .nearby-schools-title { font-size: 1.4em; color: var(--text-primary); margin-bottom: 8px; font-weight: 700; }
@@ -476,14 +489,9 @@ input[type="text"]:focus {
 .nearby-schools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .nearby-school-card {
     background: var(--bg-hover); border: 2px solid var(--border-color); border-radius: 12px; padding: 18px;
-    text-align: center; transition: all 0.3s ease; position: relative; overflow: hidden;
+    text-align: center; transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.nearby-school-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
-    background: linear-gradient(90deg, var(--primary-color), #00d4ff); transform: scaleX(0); transition: transform 0.3s ease;
-}
-.nearby-school-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15); border-color: var(--primary-color); }
-.nearby-school-card:hover::before { transform: scaleX(1); }
+.nearby-school-card:hover { box-shadow: var(--shadow-md); border-color: var(--primary-color); }
 .nearby-school-name { font-weight: 600; color: var(--text-primary); margin-bottom: 12px; font-size: 1.05em; line-height: 1.3; }
 .nearby-school-distance {
     color: var(--text-secondary); font-size: 0.85em; margin-bottom: 15px;
@@ -496,44 +504,43 @@ input[type="text"]:focus {
     position: absolute; top: 100%; left: 0; right: 0;
     background: var(--bg-container); border: 1px solid var(--border-light); border-top: none;
     border-radius: 0 0 8px 8px; max-height: 250px; overflow-y: auto; display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1050;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 1050;
 }
-.autocomplete-item { padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: all 0.2s ease; font-size: 0.95em; background-color: var(--bg-container); color: var(--text-primary); }
+.autocomplete-item { padding: 13px 16px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: background-color 0.15s ease; font-size: 0.95em; background-color: var(--bg-container); color: var(--text-primary); }
 .autocomplete-item:last-child { border-bottom: none; }
 .autocomplete-item:hover { background-color: var(--bg-hover); }
 .autocomplete-item.selected { background-color: #667eea; color: white; }
-.autocomplete-loading, .autocomplete-error, .autocomplete-no-results { padding: 14px 16px; text-align: center; color: var(--text-secondary); background-color: var(--bg-body); border-bottom: 1px solid var(--border-light); }
+.autocomplete-loading, .autocomplete-error, .autocomplete-no-results { padding: 13px 16px; text-align: center; color: var(--text-secondary); background-color: var(--bg-body); border-bottom: 1px solid var(--border-light); }
 .autocomplete-error { color: #d32f2f; background-color: #ffebee; border-left: 4px solid #d32f2f; }
 [data-theme="dark"] .autocomplete-error { background-color: #442222; color: #ff8888; border-bottom-color: #553333; }
 
-/* 로딩, 버튼, 기타 */
+/* 로딩 */
 .loading-container { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 0; }
 .spinner, .spinner-small { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; }
 .spinner { width: 50px; height: 50px; margin-bottom: 15px; }
 .spinner-small { width: 24px; height: 24px; border-width: 3px; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-.toggle-month-btn { display: block; margin: 0 auto 30px; padding: 14px 28px; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; border: none; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); }
-.toggle-month-btn:hover { background: linear-gradient(135deg, var(--primary-hover), #004085); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4); }
-.share-btn { display: block; margin: -20px auto 20px; padding: 10px 20px; background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 500; transition: all 0.3s ease; box-shadow: var(--shadow-sm); }
-.share-btn:hover { background-color: var(--border-color); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
-.error-message { background-color: #fee; color: #e55; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #e55; font-weight: 500; animation: fadeIn 0.5s ease; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+.toggle-month-btn { display: block; margin: 0 auto 30px; padding: 13px 28px; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; border: none; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s ease; box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25); }
+.toggle-month-btn:hover { background: linear-gradient(135deg, var(--primary-hover), #004085); }
+
+.share-btn { display: block; margin: -20px auto 20px; padding: 10px 20px; background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 500; transition: background-color 0.2s ease; box-shadow: var(--shadow-sm); }
+.share-btn:hover { background-color: var(--border-color); }
+
+.error-message { background-color: #fee; color: #e55; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #e55; font-weight: 500; animation: fadeIn 0.4s ease; }
 [data-theme="dark"] .error-message { background-color: #3e1f1f; color: #ff8080; border-left-color: #ff8080; }
 
-/* 알레르기 정보 */
+/* 알레르기 */
 .allergy-info-container { max-width: 850px; margin: 40px auto 20px; padding: 25px; background-color: var(--bg-container); border-radius: 16px; box-shadow: var(--shadow-lg); }
-.allergy-info-container h4 { margin-top: 0; margin-bottom: 20px; font-size: 1.3rem; color: var(--text-primary); text-align: center; position: relative; padding-left: 12px; }
 .allergy-list { columns: 2; -webkit-columns: 2; -moz-columns: 2; list-style-position: inside; padding-left: 0; margin: 0; }
 .allergy-list li { font-size: 0.9em; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.6; }
-.menu-highlight { display: inline-block; margin: 2px 0; padding: 2px 0; transition: all 0.2s ease; border-radius: 3px; }
-.menu-highlight:hover { background-color: var(--highlight-bg); color: var(--highlight-text); padding: 2px 5px; transform: scale(1.05); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-.menu-cell span[data-allergy] { position: relative; cursor: pointer; }
-.menu-cell span[data-allergy]::after { content: attr(data-allergy); position: absolute; top: -2px; right: -5px; font-size: 10px; color: #e55; font-weight: bold; }
-.menu-cell span[data-allergy]:hover { color: var(--primary-color); text-decoration: underline; }
+.menu-highlight { display: inline-block; margin: 2px 0; padding: 2px 0; transition: background-color 0.15s ease; border-radius: 3px; }
+.menu-highlight:hover { background-color: var(--highlight-bg); color: var(--highlight-text); padding: 2px 5px; }
 
-/* 팝오버(Popover) 스타일 */
+/* 테마 팝오버 */
 .theme-popover {
     display: none;
     position: fixed;
@@ -561,22 +568,22 @@ input[type="text"]:focus {
     align-items: center;
     justify-content: space-between;
     color: var(--text-primary);
-    transition: all 0.2s ease;
+    transition: background-color 0.15s ease;
     font-size: 0.95rem;
 }
 .theme-option:hover { background-color: var(--bg-hover); }
 .theme-option.active { background-color: rgba(0, 123, 255, 0.1); color: var(--primary-color); font-weight: 500; }
 [data-theme="dark"] .theme-option.active { background-color: rgba(77, 163, 255, 0.2); }
 
-/* 유틸리티 및 푸터 */
-#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 15px 20px; width: 90%; max-width: 400px; color: white; z-index: 1000; opacity: 0; transition: all 0.5s ease; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); }
+/* iOS 가이드 & 푸터 */
+#ios-webapp-guide { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100%); background-color: rgba(0, 0, 0, 0.85); border-radius: 16px; padding: 15px 20px; width: 90%; max-width: 400px; color: white; z-index: 1000; opacity: 0; transition: all 0.5s ease; }
 #ios-webapp-guide.show { display: block; opacity: 1; transform: translateX(-50%) translateY(0); }
 .ios-webapp-guide-content { text-align: center; }
 .ios-webapp-guide-content p { color: white; margin-bottom: 12px; font-size: 15px; line-height: 1.5; }
 .main-footer { background-color: var(--bg-secondary); padding: 20px; text-align: center; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.85em; margin-top: 30px; }
 .footer-content { max-width: 960px; margin: 0 auto; }
 .footer-content p { margin-bottom: 10px; line-height: 1.5; }
-.footer-links a { color: var(--primary-color); text-decoration: none; margin: 0 10px; transition: color 0.3s ease; }
+.footer-links a { color: var(--primary-color); text-decoration: none; margin: 0 10px; transition: color 0.2s ease; }
 .footer-links a:hover { color: var(--primary-hover); text-decoration: underline; }
 
 /* 광고 */
@@ -592,7 +599,10 @@ input[type="text"]:focus {
 
 /* 모바일 반응형 */
 @media (max-width: 767px) {
-    .step-prompt { font-size: 1.25rem; }
+    .search-form-compact { flex-wrap: wrap; }
+    .search-form-compact select { width: 100%; }
+    .search-form-compact .submit-btn { width: 100%; }
+    .step-prompt { font-size: 1.2rem; }
     .meal-table th, .meal-table td { padding: 12px 10px; font-size: 14px; }
     .school-title { font-size: 1.5rem; }
     .meal-title { font-size: 1.2rem; }
@@ -600,9 +610,8 @@ input[type="text"]:focus {
     .allergy-list { columns: 1; -webkit-columns: 1; -moz-columns: 1; }
     .today-meal-grid { grid-template-columns: 1fr; gap: 10px; }
     .today-meal-item { padding: 12px; }
-    .today-meal-type { font-size: 1em; }
     .nearby-schools-grid { grid-template-columns: 1fr; gap: 12px; }
-    .toggle-nearby-btn { padding: 12px 20px; font-size: 15px; }
+    .toggle-nearby-btn, .toggle-month-btn { padding: 12px 20px; font-size: 15px; }
     .nearby-schools-container { padding: 20px 15px; }
     .regions-grid { grid-template-columns: 1fr; gap: 10px; }
     .school-levels { gap: 6px; }
