@@ -232,6 +232,7 @@ input[type="text"]:focus {
 /* 급식 정보 컨테이너 */
 .meal-container { padding: 10px 0; max-width: 850px; margin: 0 auto; }
 
+/* [수정] pulse 애니메이션 복구 */
 .school-title {
     text-align: center;
     font-size: 1.8rem;
@@ -240,6 +241,11 @@ input[type="text"]:focus {
     font-weight: 600;
     position: relative;
     padding-bottom: 12px;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
 }
 .school-title::after {
     content: '';
@@ -421,13 +427,15 @@ input[type="text"]:focus {
 .breadcrumb a:hover { text-decoration: underline; color: var(--primary-hover); }
 
 /* 수동 학교 찾기 */
+/* [수정] 다른 카드와 동일한 크기/스타일로 통일 */
 .manual-school-finder {
-    margin-top: 30px;
-    margin-bottom: 100px;
+    max-width: 560px;
+    margin: 16px auto 40px;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
     background: var(--bg-container);
+    box-shadow: var(--shadow-md);
 }
 .manual-finder-header {
     background: var(--accent-color);
@@ -617,7 +625,35 @@ input[type="text"]:focus {
     .school-levels { gap: 6px; }
     .level-link { padding: 5px 10px; font-size: 0.85em; }
     .manual-finder-content { padding: 15px; }
-    .manual-school-finder { margin-bottom: 80px; }
+    .manual-school-finder { margin-bottom: 30px; }
     .school-level-grid { grid-template-columns: 1fr; }
     .schools-grid { grid-template-columns: 1fr; gap: 10px; }
+    .allergy-info { padding: 12px 16px; }
+    .allergy-info-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* 알레르기 성분표 */
+.allergy-info {
+    max-width: 850px;
+    margin: 0 auto 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+.allergy-info-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+.allergy-info-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px 10px;
+}
+.allergy-info-item {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
 }
