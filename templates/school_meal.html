@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.4">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.5">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -214,7 +214,7 @@
   </div>
   {% endif %}
 
-  {% if not school_name or not week_meals %}
+  {# [수정] 조건 제거 - 항상 표시 #}
   <div class="manual-school-finder">
     <div class="manual-finder-header" id="manualFinderToggle">
       <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
@@ -240,9 +240,37 @@
       </div>
     </div>
   </div>
-  {% endif %}
 
+  {# [수정] school_name 있을 때만 공유 버튼 표시 #}
+  {% if school_name %}
   <button id="share-btn" class="share-btn">🔗 공유하기</button>
+  {% endif %}
+</div>
+
+{# [추가] 알레르기 성분표 - footer 바로 위 #}
+<div class="allergy-info">
+  <div class="allergy-info-title">급식 알레르기 성분표</div>
+  <div class="allergy-info-grid">
+    <span class="allergy-info-item">①난류</span>
+    <span class="allergy-info-item">②우유</span>
+    <span class="allergy-info-item">③메밀</span>
+    <span class="allergy-info-item">④땅콩</span>
+    <span class="allergy-info-item">⑤대두</span>
+    <span class="allergy-info-item">⑥밀</span>
+    <span class="allergy-info-item">⑦고등어</span>
+    <span class="allergy-info-item">⑧게</span>
+    <span class="allergy-info-item">⑨새우</span>
+    <span class="allergy-info-item">⑩돼지고기</span>
+    <span class="allergy-info-item">⑪복숭아</span>
+    <span class="allergy-info-item">⑫토마토</span>
+    <span class="allergy-info-item">⑬아황산류</span>
+    <span class="allergy-info-item">⑭호두</span>
+    <span class="allergy-info-item">⑮닭고기</span>
+    <span class="allergy-info-item">⑯쇠고기</span>
+    <span class="allergy-info-item">⑰오징어</span>
+    <span class="allergy-info-item">⑱조개류</span>
+    <span class="allergy-info-item">⑲잣</span>
+  </div>
 </div>
 
 <div id="ios-webapp-guide">
