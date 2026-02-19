@@ -106,59 +106,105 @@ body {
 .header-logo:hover { transform: scale(1.05); }
 .header-logo svg { max-width: 100%; height: auto; }
 
-/* 검색 폼 */
-.search-form {
-    margin: 20px auto;
-    background-color: var(--bg-container);
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: var(--shadow-md);
+/* [수정] 2단계 분리 검색 폼 */
+#regionForm {
     max-width: 600px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    margin: 20px auto;
 }
-.search-form:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); }
 
-.form-group { margin-bottom: 20px; }
-label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-secondary); font-size: 0.95rem; }
+.search-step {
+    background-color: var(--bg-container);
+    padding: 28px 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    margin-bottom: 16px;
+}
+.search-step:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
 
-input[type="text"], select {
+/* 단계 안내 텍스트 */
+.step-prompt {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-primary);
+    margin: 0 0 20px 0;
+}
+
+.step-select {
     width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
+    padding: 14px 16px;
+    border: 2px solid var(--border-light);
+    border-radius: 10px;
+    box-sizing: border-box;
+    font-size: 17px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+}
+.step-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    background-color: var(--bg-container);
+}
+
+/* [수정] 학교 검색 step - 기본 숨김, show 클래스 시 슬라이드 인 */
+.search-step-school {
+    display: none;
+    overflow: hidden;
+}
+.search-step-school.show {
+    display: block;
+    animation: slideDown 0.35s ease-out;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 13px 14px;
+    border: 2px solid var(--border-light);
+    border-radius: 10px;
     box-sizing: border-box;
     font-size: 16px;
     transition: all 0.3s ease;
     background-color: var(--bg-secondary);
     color: var(--text-primary);
+    margin-bottom: 12px;
 }
-input[type="text"]:focus, select:focus {
+input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
     background-color: var(--bg-container);
+    margin-bottom: 0;
 }
 
 .submit-btn {
     display: inline-block;
-    padding: 12px 20px;
+    padding: 13px 20px;
     background-color: var(--primary-color);
     color: #fff;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     width: 100%;
+    margin-top: 12px;
     transition: all 0.3s ease;
 }
 .submit-btn:hover {
     background-color: var(--primary-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.35);
 }
 
-/* [수정] 타이틀 애니메이션 및 정렬 수정 */
+/* 타이틀 애니메이션 */
 .meal-container { padding: 10px 0; max-width: 850px; margin: 0 auto; }
 
 .school-title {
@@ -169,7 +215,6 @@ input[type="text"]:focus, select:focus {
     font-weight: 600;
     position: relative;
     padding-bottom: 12px;
-    /* 애니메이션 적용 */
     animation: pulse 2s infinite;
 }
 
@@ -178,15 +223,13 @@ input[type="text"]:focus, select:focus {
     position: absolute;
     bottom: 0;
     left: 50%;
-    /* 중요: transform은 애니메이션과 충돌하지 않도록 별도 처리 필요없음 (scale은 부모가 하므로) */
-    transform: translateX(-50%); 
+    transform: translateX(-50%);
     width: 80px;
     height: 3px;
     background-color: var(--primary-color);
     border-radius: 3px;
 }
 
-/* 펄스 애니메이션 정의 */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
@@ -238,7 +281,6 @@ input[type="text"]:focus, select:focus {
 }
 .today-meal-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 
-/* 오늘 급식 색상 */
 .today-meal-item:nth-child(1) { background: #fff8e1; border-color: #ffb74d; }
 [data-theme="dark"] .today-meal-item:nth-child(1) { background: #4a3b22; border-color: #cc9933; }
 .today-meal-item:nth-child(2) { background: #e8f5e8; border-color: #66bb6a; }
@@ -279,7 +321,7 @@ input[type="text"]:focus, select:focus {
 .meal-type p { display: inline; white-space: pre-line; }
 .no-meal { color: var(--text-muted); font-style: italic; }
 
-/* [복구] schools_by_region 및 level 페이지 전용 스타일 */
+/* schools_by_region 및 level 페이지 전용 스타일 */
 .region-header, .level-header {
     text-align: center;
     margin: 30px 0;
@@ -318,7 +360,7 @@ input[type="text"]:focus, select:focus {
     border-radius: 12px;
     font-size: 0.8em;
 }
-.view-all-btn, .view-meal-btn {
+.view-all-btn, .view-meal-btn, .view-nearby-meal-btn {
     display: inline-block;
     background: var(--primary-color);
     color: white;
@@ -327,8 +369,8 @@ input[type="text"]:focus, select:focus {
     text-decoration: none;
     transition: background 0.3s ease;
 }
-.view-meal-btn { padding: 8px 16px; font-size: 0.9em; }
-.view-all-btn:hover, .view-meal-btn:hover { background: var(--primary-hover); color: white; text-decoration: none; }
+.view-meal-btn, .view-nearby-meal-btn { padding: 8px 16px; font-size: 0.9em; }
+.view-all-btn:hover, .view-meal-btn:hover, .view-nearby-meal-btn:hover { background: var(--primary-hover); color: white; text-decoration: none; }
 
 /* Schools by Level Grid */
 .schools-grid {
@@ -475,7 +517,6 @@ input[type="text"]:focus, select:focus {
 
 .toggle-month-btn { display: block; margin: 0 auto 30px; padding: 14px 28px; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; border: none; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); }
 .toggle-month-btn:hover { background: linear-gradient(135deg, var(--primary-hover), #004085); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4); }
-.toggle-month-btn.active { background-color: var(--primary-color); }
 .share-btn { display: block; margin: -20px auto 20px; padding: 10px 20px; background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: 500; transition: all 0.3s ease; box-shadow: var(--shadow-sm); }
 .share-btn:hover { background-color: var(--border-color); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
 .error-message { background-color: #fee; color: #e55; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #e55; font-weight: 500; animation: fadeIn 0.5s ease; }
@@ -492,11 +533,11 @@ input[type="text"]:focus, select:focus {
 .menu-cell span[data-allergy]::after { content: attr(data-allergy); position: absolute; top: -2px; right: -5px; font-size: 10px; color: #e55; font-weight: bold; }
 .menu-cell span[data-allergy]:hover { color: var(--primary-color); text-decoration: underline; }
 
-/* [수정] 팝오버(Popover) 스타일 */
+/* 팝오버(Popover) 스타일 */
 .theme-popover {
     display: none;
     position: fixed;
-    top: 65px; /* 헤더 높이 고려 */
+    top: 65px;
     right: 20px;
     width: 150px;
     background-color: var(--bg-container);
@@ -551,17 +592,11 @@ input[type="text"]:focus, select:focus {
 
 /* 모바일 반응형 */
 @media (max-width: 767px) {
+    .step-prompt { font-size: 1.25rem; }
     .meal-table th, .meal-table td { padding: 12px 10px; font-size: 14px; }
     .school-title { font-size: 1.5rem; }
     .meal-title { font-size: 1.2rem; }
     .meal-card { padding: 15px; border-radius: 12px; }
-    .main-nav { display: none; position: absolute; top: 60px; right: 0; background-color: var(--bg-container); width: 100%; box-shadow: 0 5px 15px rgba(0,0,0,0.1); flex-direction: column; border-radius: 0 0 12px 12px; overflow: hidden; z-index: 999; }
-    .main-nav.active { display: block; animation: slideDown 0.3s ease; }
-    .main-nav ul { flex-direction: column; width: 100%; }
-    .main-nav ul li { border-bottom: 1px solid var(--border-color); }
-    .main-nav ul li:last-child { border-bottom: none; }
-    .main-nav ul li a { display: block; padding: 15px; color: var(--text-primary); }
-    .main-nav ul li a:hover { background-color: var(--bg-hover); padding-left: 20px; }
     .allergy-list { columns: 1; -webkit-columns: 1; -moz-columns: 1; }
     .today-meal-grid { grid-template-columns: 1fr; gap: 10px; }
     .today-meal-item { padding: 12px; }
