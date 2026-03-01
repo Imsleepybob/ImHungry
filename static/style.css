@@ -664,6 +664,7 @@ input[type="text"]:focus {
     .allergy-info-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* 알레르기 성분표 */
 .allergy-info {
     max-width: 850px;
     margin: 0 auto 8px;
