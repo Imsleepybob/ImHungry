@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.7">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.8">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -104,11 +104,11 @@
       </select>
     </div>
     <div class="search-row-school form-field-animated" id="schoolRow">
-      <div class="autocomplete-container" style="margin-top: 14px;">
+      <div class="autocomplete-container">
         <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교명 입력">
         <div id="autocomplete-results" class="autocomplete-results"></div>
       </div>
-      <button type="submit" class="submit-btn">검색</button>
+      <button type="submit" class="submit-btn" style="margin-top: 0;">검색</button>
     </div>
   </form>
   {% endif %}
@@ -570,13 +570,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         schoolNameInput.addEventListener('compositionend', (e) => {
             isComposing = false;
+            // [수정] pending 타임아웃 취소 후 즉시 검색 (완성된 음절 기준으로 재검색)
+            if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
             const query = e.target.value.trim();
             const region = regionSelect.value;
             if (isValidSearchQuery(query) && region) performSearch(query, region, true);
             else hideAutocomplete();
         });
         schoolNameInput.addEventListener('input', function() {
-            if (isComposing) return;
+            // [수정] isComposing 가드 제거 - compositionend가 즉시 재검색하므로 debounce로 충분
             const query = this.value.trim();
             const region = regionSelect.value;
             if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
