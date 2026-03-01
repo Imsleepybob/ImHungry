@@ -119,7 +119,8 @@ body {
     text-align: center;
     color: var(--text-primary);
     margin: 0 0 14px 0;
-    min-height: 4.4rem;
+    /* [수정] 텍스트 전환 중 카드 높이 변동 방지용 최소 높이 (1줄 기준) */
+    min-height: 2.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -135,17 +136,24 @@ body {
     transition: none;
 }
 
-/* [수정] form 요소 fade+translate 등장 애니메이션 */
+/* [수정] form 요소 fade+translate 등장 애니메이션 - max-height로 레이아웃 공간도 함께 제거 */
 .form-field-animated {
+    max-height: 0;
+    overflow: hidden;
     opacity: 0;
     transform: translateY(14px);
-    transition: opacity 0.4s ease, transform 0.4s ease;
+    transition: max-height 0.4s ease, opacity 0.4s ease, transform 0.4s ease;
     pointer-events: none;
 }
 .form-field-animated.visible {
+    max-height: 200px;
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
+}
+/* [수정] schoolRow는 입력창+버튼 포함으로 max-height를 더 크게 설정 */
+#schoolRow.visible {
+    max-height: 160px;
 }
 
 .step-select, select {
@@ -171,17 +179,9 @@ body {
     background-color: var(--bg-container);
 }
 
-/* [수정] 학교 검색 행 - fade+translate 전환으로 교체 */
+/* [수정] 학교 검색 행 - form-field-animated로 등장 처리, 별도 스타일 불필요 */
 .search-row-school {
-    display: none;
     margin-top: 14px;
-    opacity: 0;
-    transform: translateY(14px);
-    transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.search-row-school.visible {
-    opacity: 1;
-    transform: translateY(0);
 }
 
 input[type="text"] {
