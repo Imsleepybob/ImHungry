@@ -92,15 +92,18 @@
     <button type="submit" class="submit-btn">검색</button>
   </form>
   {% else %}
+  {# [수정] Toss 스타일 UX: stepPrompt는 fade-in-start로 초기화, select와 schoolRow를 form-field-animated로 감싸 fade+translate 등장 처리 #}
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
-    <p class="step-prompt" id="stepPrompt">지역을 선택해주세요.</p>
-    <select id="region" name="region" class="step-select">
-      <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
-      {% for region_name_iter, region_code_iter in regions.items() %}
-      <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
-      {% endfor %}
-    </select>
-    <div class="search-row-school" id="schoolRow">
+    <p class="step-prompt fade-in-start" id="stepPrompt"></p>
+    <div id="regionSelectWrapper" class="form-field-animated">
+      <select id="region" name="region" class="step-select">
+        <option value="" disabled {% if not region %}selected{% endif %}>지역 선택</option>
+        {% for region_name_iter, region_code_iter in regions.items() %}
+        <option value="{{ region_name_iter }}" {% if region == region_name_iter %}selected{% endif %}>{{ region_name_iter }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="search-row-school form-field-animated" id="schoolRow" style="display: none;">
       <div class="autocomplete-container" style="margin-top: 14px;">
         <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교명 입력">
         <div id="autocomplete-results" class="autocomplete-results"></div>
@@ -130,7 +133,7 @@
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
       <div class="today-meal-grid">
         <div class="today-meal-item">
-          <div class="today-meal-type">🍎 조식/div>
+          <div class="today-meal-type">🍎 조식</div>
           <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}</div>
         </div>
         <div class="today-meal-item">
@@ -214,7 +217,6 @@
   </div>
   {% endif %}
 
-  {# [수정] 조건 제거 - 항상 표시 #}
   <div class="manual-school-finder">
     <div class="manual-finder-header" id="manualFinderToggle">
       <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
@@ -416,6 +418,86 @@ function performSearch(query, region, immediate = false) {
     else searchTimeout = setTimeout(execute, 300);
 }
 
+// ── [수정] Toss 스타일 UX 애니메이션 함수 ──────────────────────────────────
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function fadePromptText(promptEl, text) {
+    promptEl.classList.add('fade-out');
+    await delay(350);
+    promptEl.textContent = text;
+    promptEl.classList.remove('fade-out');
+    promptEl.classList.add('fade-in-start');
+    promptEl.offsetHeight;
+    promptEl.classList.remove('fade-in-start');
+    await delay(350);
+}
+
+function showElement(el) {
+    if (!el) return;
+    el.classList.add('visible');
+}
+
+function showSchoolRowAnimated() {
+    const schoolRow = document.getElementById('schoolRow');
+    if (!schoolRow) return;
+    schoolRow.style.display = 'block';
+    requestAnimationFrame(() => requestAnimationFrame(() => showElement(schoolRow)));
+}
+
+async function initFormAnimation() {
+    const promptEl = document.getElementById('stepPrompt');
+    const regionSelectWrapper = document.getElementById('regionSelectWrapper');
+    const regionSelect = document.getElementById('region');
+    if (!promptEl) return;
+
+    // 지역이 이미 선택된 상태(쿠키·서버에서 넘어온 경우): 애니메이션 없이 즉시 표시
+    if (regionSelect && regionSelect.value) {
+        promptEl.classList.remove('fade-in-start');
+        promptEl.textContent = '학교를 검색하세요!';
+        showElement(regionSelectWrapper);
+        showSchoolRowAnimated();
+        return;
+    }
+
+    const isFirstVisit = !localStorage.getItem('imhungry-visited');
+    localStorage.setItem('imhungry-visited', 'true');
+
+    if (isFirstVisit) {
+        // 첫 방문: 소개 텍스트 시퀀스 실행
+        promptEl.textContent = '안녕하세요!';
+        promptEl.offsetHeight;
+        promptEl.classList.remove('fade-in-start');
+
+        await delay(350 + 1800);
+        await fadePromptText(promptEl, '급식알리미에 오신 것을 환영합니다!');
+        await delay(2200);
+        await fadePromptText(promptEl, '학교만 한 번 입력하면 앞으로는 접속하자마자 오늘의 급식을 확인하실 수 있어요!');
+        await delay(2800);
+        await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
+        showElement(regionSelectWrapper);
+    } else {
+        // 재방문: 바로 지역 선택 안내
+        promptEl.textContent = '지역을 선택해주세요.';
+        promptEl.offsetHeight;
+        promptEl.classList.remove('fade-in-start');
+        await delay(400);
+        showElement(regionSelectWrapper);
+    }
+}
+
+// ── [수정] 지역 선택 후 school row 전환 (fade+translate + prompt 텍스트 전환) ──
+
+async function showSchoolRow(promptEl, regionSelect) {
+    if (!regionSelect || !regionSelect.value) return;
+    await fadePromptText(promptEl, '학교를 검색하세요!');
+    showSchoolRowAnimated();
+    const schoolNameInput = document.getElementById('school_name');
+    if (schoolNameInput) schoolNameInput.focus();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.getElementById('themeToggleBtn');
     const popover = document.getElementById('themePopover');
@@ -458,21 +540,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const autocompleteResults = document.getElementById("autocomplete-results");
     const regionForm = document.getElementById('regionForm');
     const loadingDiv = document.getElementById('loading');
-    const schoolRow = document.getElementById('schoolRow');
-    const stepPrompt = document.getElementById('stepPrompt');
+    const promptEl = document.getElementById('stepPrompt');
 
-    function showSchoolRow() {
-        if (schoolRow && regionSelect && regionSelect.value) {
-            schoolRow.classList.add('show');
-            if (stepPrompt) stepPrompt.textContent = '학교를 검색하세요!';
-        }
+    // 쿠키에서 저장된 지역/학교 복원 (initFormAnimation 전에 실행)
+    const savedSchool = getCookie('school_name');
+    const savedRegion = getCookie('region_name');
+    if (savedSchool && schoolNameInput) {
+        try { schoolNameInput.value = decodeURIComponent(savedSchool); } catch (e) { schoolNameInput.value = savedSchool; }
     }
-    if (regionSelect && regionSelect.value && schoolRow) showSchoolRow();
+    if (savedRegion && regionSelect) {
+        regionSelect.value = savedRegion;
+    }
+
+    // [수정] Toss 스타일 UX 초기화
+    initFormAnimation();
 
     if (regionSelect) {
         regionSelect.addEventListener('change', function() {
-            showSchoolRow();
             hideAutocomplete();
+            if (promptEl) showSchoolRow(promptEl, regionSelect);
             const q = schoolNameInput ? schoolNameInput.value.trim() : '';
             if (isValidSearchQuery(q) && this.value) performSearch(q, this.value, true);
         });
@@ -579,13 +665,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (loadingDiv) loadingDiv.style.display = 'none';
-
-    const savedSchool = getCookie('school_name');
-    const savedRegion = getCookie('region_name');
-    if (savedSchool && schoolNameInput) {
-        try { schoolNameInput.value = decodeURIComponent(savedSchool); } catch (e) { schoolNameInput.value = savedSchool; }
-    }
-    if (savedRegion && regionSelect) { regionSelect.value = savedRegion; showSchoolRow(); }
 
     setTimeout(() => {
         const bdd = document.getElementById('bodyad-desktop');
