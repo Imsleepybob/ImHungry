@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.6">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.5">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -103,7 +103,7 @@
         {% endfor %}
       </select>
     </div>
-    <div class="search-row-school form-field-animated" id="schoolRow" style="display: none;">
+    <div class="search-row-school form-field-animated" id="schoolRow">
       <div class="autocomplete-container" style="margin-top: 14px;">
         <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교명 입력">
         <div id="autocomplete-results" class="autocomplete-results"></div>
@@ -441,7 +441,6 @@ function showElement(el) {
 function showSchoolRowAnimated() {
     const schoolRow = document.getElementById('schoolRow');
     if (!schoolRow) return;
-    schoolRow.style.display = 'block';
     requestAnimationFrame(() => requestAnimationFrame(() => showElement(schoolRow)));
 }
 
