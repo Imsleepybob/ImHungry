@@ -10,7 +10,7 @@
 <title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <meta property="og:type" content="website">
 <meta property="og:title" content="{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미">
-<meta property="og:description" content="초중고등학교의 급식 조회 사이트입니다. 빠르게 이번 주 급식 정보를 확인하세요!">
+<meta property="og:description" content="가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -86,7 +86,7 @@
       {% endfor %}
     </select>
     <div class="autocomplete-container">
-      <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교 검색">
+      <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교명 입력">
       <div id="autocomplete-results" class="autocomplete-results"></div>
     </div>
     <button type="submit" class="submit-btn">검색</button>
@@ -102,7 +102,7 @@
     </select>
     <div class="search-row-school" id="schoolRow">
       <div class="autocomplete-container" style="margin-top: 14px;">
-        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="입력">
+        <input type="text" id="school_name" name="school_name" value="{{ school_name if school_name else '' }}" required autocomplete="off" placeholder="학교명 입력">
         <div id="autocomplete-results" class="autocomplete-results"></div>
       </div>
       <button type="submit" class="submit-btn">검색</button>
@@ -130,15 +130,15 @@
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
       <div class="today-meal-grid">
         <div class="today-meal-item">
-          <div class="today-meal-type">🍎 아침</div>
+          <div class="today-meal-type">🍎 조식/div>
           <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}</div>
         </div>
         <div class="today-meal-item">
-          <div class="today-meal-type">🍔 점심</div>
+          <div class="today-meal-type">🍔 중식</div>
           <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}</div>
         </div>
         <div class="today-meal-item">
-          <div class="today-meal-type">🍝 저녁</div>
+          <div class="today-meal-type">🍝 석식</div>
           <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}</div>
         </div>
       </div>
@@ -153,9 +153,9 @@
             <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
                 {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
@@ -175,9 +175,9 @@
             <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>아침</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>저녁</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
@@ -222,7 +222,7 @@
     </div>
     <div class="manual-finder-content" id="manualFinderContent">
       <div class="finder-description">
-        <strong>💡 팁:</strong> 학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
+        학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
       </div>
       <div class="regions-grid">
         {% for region_name, region_code in regions.items() %}
@@ -241,13 +241,11 @@
     </div>
   </div>
 
-  {# [수정] school_name 있을 때만 공유 버튼 표시 #}
   {% if school_name %}
   <button id="share-btn" class="share-btn">🔗 공유하기</button>
   {% endif %}
 </div>
 
-{# [추가] 알레르기 성분표 - footer 바로 위 #}
 <div class="allergy-info">
   <div class="allergy-info-title">급식 알레르기 성분표</div>
   <div class="allergy-info-grid">
@@ -403,7 +401,6 @@ function selectSchool(item) {
     window.location.href = `/meal/${item.dataset.code}`;
 }
 
-// performSearch - 딜레이 300ms, isComposing 중에는 호출하지 않음
 function performSearch(query, region, immediate = false) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
     if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
@@ -576,7 +573,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // iOS 가이드
     const iosGuide = document.getElementById('ios-webapp-guide');
     if (iosGuide && shouldShowGuide()) {
         setTimeout(() => { iosGuide.style.display='block'; setTimeout(() => iosGuide.classList.add('show'), 10); }, 1000);
