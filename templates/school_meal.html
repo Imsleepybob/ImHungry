@@ -333,6 +333,15 @@ function isValidSearchQuery(query) {
     return query && query.trim().length >= 1;
 }
 
+// [수정] 미완성 자모(단독 초성/모음)로 끝나는 경우 해당 문자를 제거한 완성형 반환
+// 예: '강ㄴ' → '강', '가ㅎ' → '가', 완성형이면 그대로 반환
+function trimIncompleteJamo(query) {
+    if (!query) return query;
+    const last = query.charCodeAt(query.length - 1);
+    const isLooseJamo = (last >= 0x3131 && last <= 0x314E) || (last >= 0x3161 && last <= 0x3163);
+    return isLooseJamo ? query.slice(0, -1) : query;
+}
+
 async function searchSchoolsAPI(query, region) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
 
@@ -412,7 +421,10 @@ function performSearch(query, region, immediate = false) {
         const sel = document.getElementById("region");
         if (!input || !sel) return;
         if (input.value.trim() !== query || sel.value !== region) return;
-        searchSchoolsAPI(query, region);
+        // [수정] 미완성 자모 제거 후 검색 - '강ㄴ' 상태에서 '강'으로 검색
+        const cleanedQuery = trimIncompleteJamo(query);
+        if (!isValidSearchQuery(cleanedQuery)) { hideAutocomplete(); return; }
+        searchSchoolsAPI(cleanedQuery, region);
     };
     if (immediate) execute();
     else searchTimeout = setTimeout(execute, 300);
@@ -572,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             isComposing = false;
             // [수정] pending 타임아웃 취소 후 즉시 검색 (완성된 음절 기준으로 재검색)
             if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
-            const query = e.target.value.trim();
+            const query = trimIncompleteJamo(e.target.value.trim());
             const region = regionSelect.value;
             if (isValidSearchQuery(query) && region) performSearch(query, region, true);
             else hideAutocomplete();
