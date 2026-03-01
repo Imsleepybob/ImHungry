@@ -151,6 +151,10 @@ body {
     transform: translateY(0);
     pointer-events: auto;
 }
+/* [수정] visible 상태에서 overflow: visible로 전환 - autocomplete 드롭다운 클리핑 방지 */
+.form-field-animated.visible {
+    overflow: visible;
+}
 /* [수정] schoolRow는 입력창+버튼 포함으로 max-height를 더 크게 설정 */
 #schoolRow.visible {
     max-height: 160px;
@@ -181,7 +185,10 @@ body {
 
 /* [수정] 학교 검색 행 - form-field-animated로 등장 처리, 별도 스타일 불필요 */
 .search-row-school {
-    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 input[type="text"] {
