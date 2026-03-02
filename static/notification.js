@@ -4,6 +4,19 @@ const NotificationManager = {
         return !!(window.Capacitor?.Plugins?.LocalNotifications);
     },
 
+    // [수정] Capacitor 브릿지 준비될 때까지 대기 (최대 5초)
+    waitForCapacitor() {
+        return new Promise((resolve) => {
+            if (this.isAvailable()) { resolve(true); return; }
+            let tries = 0;
+            const interval = setInterval(() => {
+                tries++;
+                if (this.isAvailable()) { clearInterval(interval); resolve(true); }
+                else if (tries >= 50) { clearInterval(interval); resolve(false); }
+            }, 100);
+        });
+    },
+
     async requestPermission() {
         if (!this.isAvailable()) return false;
         const { LocalNotifications } = window.Capacitor.Plugins;
@@ -29,7 +42,6 @@ const NotificationManager = {
         }
     },
 
-    // [알림 스케줄링 - 핵심 함수]
     async schedule(settings, mealData) {
         if (!this.isAvailable()) return 0;
         const { LocalNotifications } = window.Capacitor.Plugins;
@@ -44,19 +56,21 @@ const NotificationManager = {
 
         const notifications = [];
         let id = 1;
-        const now = new Date();
+        // [수정] KST 기준 현재 시각
+        const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
 
         for (let offset = 0; offset < 30; offset++) {
-            const date = new Date();
-            date.setDate(now.getDate() + offset);
-            const dayOfWeek = date.getDay();
+            // [수정] KST 기준 날짜 계산
+            const dateKST = new Date(nowKST.getTime());
+            dateKST.setUTCDate(dateKST.getUTCDate() + offset);
 
+            const dayOfWeek = dateKST.getUTCDay();
             if (!settings.days.includes(dayOfWeek)) continue;
 
             const dateStr = [
-                date.getFullYear(),
-                String(date.getMonth() + 1).padStart(2, '0'),
-                String(date.getDate()).padStart(2, '0')
+                dateKST.getUTCFullYear(),
+                String(dateKST.getUTCMonth() + 1).padStart(2, '0'),
+                String(dateKST.getUTCDate()).padStart(2, '0')
             ].join('');
 
             const dayMeal = mealData[dateStr];
@@ -68,9 +82,16 @@ const NotificationManager = {
                 if (!menu || menu === '급식 정보 없음') continue;
 
                 const [hours, minutes] = mealType.time.split(':').map(Number);
-                const scheduleAt = new Date(date);
-                scheduleAt.setHours(hours, minutes, 0, 0);
-                if (scheduleAt <= now) continue;
+
+                // [수정] 알림 시각을 KST 기준으로 로컬 Date 객체 생성
+                const localDate = new Date(
+                    dateKST.getUTCFullYear(),
+                    dateKST.getUTCMonth(),
+                    dateKST.getUTCDate(),
+                    hours, minutes, 0, 0
+                );
+
+                if (localDate <= new Date()) continue;
 
                 const preview = menu.split('\n').slice(0, 3).join(', ');
 
@@ -78,7 +99,7 @@ const NotificationManager = {
                     id: id++,
                     title: `🍱 오늘의 ${mealType.label}`,
                     body: preview,
-                    schedule: { at: scheduleAt },
+                    schedule: { at: localDate },
                     extra: { dateStr, mealType: mealType.key }
                 });
             }
@@ -91,7 +112,6 @@ const NotificationManager = {
         return notifications.length;
     },
 
-    // [앱 실행 시 자동 재스케줄링]
     async autoSchedule(mealData) {
         const settings = this.loadSettings();
         if (!settings || !settings.enabled) return;
