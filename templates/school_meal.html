@@ -771,8 +771,9 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
     const selectedDays = new Set([1, 2, 3, 4, 5]); // 기본값: 월~금
 
-    function initNotification() {
-        if (!NotificationManager.isAvailable()) return;
+    async function initNotification() {
+        const ready = await NotificationManager.waitForCapacitor();
+        if (!ready) return;
 
         const notiBtn = document.getElementById('notification-btn');
         if (notiBtn) notiBtn.style.display = 'block';
