@@ -27,6 +27,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}">
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
+<script src="{{ url_for('static', filename='notification.js') }}"></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
@@ -244,6 +245,7 @@
 
   {% if school_name %}
   <button id="share-btn" class="share-btn">🔗 공유하기</button>
+  <button id="notification-btn" class="share-btn" style="display:none;">🔔 알림 설정</button>
   {% endif %}
 </div>
 
@@ -703,5 +705,160 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1500);
 });
 </script>
+{% if school_name and month_meals %}
+<!-- 알림 설정 모달 -->
+<div id="notification-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
+  <div style="background:var(--bg-container); border-radius:16px; padding:24px; max-width:360px; width:90%; max-height:80vh; overflow-y:auto;">
+    <h3 style="margin:0 0 16px; color:var(--text-primary);">🔔 알림 설정</h3>
+    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">앱이 설치된 기기에서 급식 알림을 받을 수 있습니다. 급식이 없는 날은 알림이 오지 않습니다.</p>
+
+    <div style="margin-bottom:12px;">
+      <label style="font-weight:600; color:var(--text-primary);">알림 받을 식사</label>
+      <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="noti-breakfast-enable">
+          <label for="noti-breakfast-enable" style="min-width:40px;">조식</label>
+          <input type="time" id="noti-breakfast-time" value="07:30" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="noti-lunch-enable">
+          <label for="noti-lunch-enable" style="min-width:40px;">중식</label>
+          <input type="time" id="noti-lunch-time" value="12:00" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="checkbox" id="noti-dinner-enable">
+          <label for="noti-dinner-enable" style="min-width:40px;">석식</label>
+          <input type="time" id="noti-dinner-time" value="18:00" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-weight:600; color:var(--text-primary);">알림 요일</label>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+        <label id="day-0" class="day-label">일</label>
+        <label id="day-1" class="day-label">월</label>
+        <label id="day-2" class="day-label">화</label>
+        <label id="day-3" class="day-label">수</label>
+        <label id="day-4" class="day-label">목</label>
+        <label id="day-5" class="day-label">금</label>
+        <label id="day-6" class="day-label">토</label>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <button id="noti-cancel-btn" style="flex:1; padding:12px; border-radius:10px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer;">취소</button>
+      <button id="noti-save-btn" style="flex:1; padding:12px; border-radius:10px; border:none; background:var(--primary-color); color:white; font-weight:600; cursor:pointer;">저장</button>
+      <button id="noti-disable-btn" style="flex:1; padding:12px; border-radius:10px; border:none; background:#e55; color:white; font-weight:600; cursor:pointer;">알림 끄기</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.day-label {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; border: 2px solid var(--border-light); cursor: pointer;
+    font-size: 0.9em; color: var(--text-secondary); user-select: none;
+    transition: background-color 0.15s, color 0.15s;
+}
+.day-label.selected {
+    background: var(--primary-color); color: white; border-color: var(--primary-color);
+}
+</style>
+
+<script>
+// [알림 기능 초기화 - Capacitor 환경에서만 실행]
+(function() {
+    const selectedDays = new Set([1, 2, 3, 4, 5]); // 기본값: 월~금
+
+    function initNotification() {
+        if (!NotificationManager.isAvailable()) return;
+
+        const notiBtn = document.getElementById('notification-btn');
+        if (notiBtn) notiBtn.style.display = 'block';
+
+        const modal = document.getElementById('notification-modal');
+        const saved = NotificationManager.loadSettings();
+        if (saved) {
+            document.getElementById('noti-breakfast-enable').checked = saved.breakfast.enabled;
+            document.getElementById('noti-breakfast-time').value = saved.breakfast.time;
+            document.getElementById('noti-lunch-enable').checked = saved.lunch.enabled;
+            document.getElementById('noti-lunch-time').value = saved.lunch.time;
+            document.getElementById('noti-dinner-enable').checked = saved.dinner.enabled;
+            document.getElementById('noti-dinner-time').value = saved.dinner.time;
+            selectedDays.clear();
+            (saved.days || []).forEach(d => selectedDays.add(d));
+        }
+
+        document.querySelectorAll('.day-label').forEach(el => {
+            const day = parseInt(el.id.replace('day-', ''));
+            if (selectedDays.has(day)) el.classList.add('selected');
+            el.addEventListener('click', () => {
+                if (selectedDays.has(day)) { selectedDays.delete(day); el.classList.remove('selected'); }
+                else { selectedDays.add(day); el.classList.add('selected'); }
+            });
+        });
+
+        notiBtn && notiBtn.addEventListener('click', () => {
+            modal.style.display = 'flex';
+        });
+
+        document.getElementById('noti-cancel-btn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        document.getElementById('noti-disable-btn').addEventListener('click', async () => {
+            await NotificationManager.cancelAll();
+            const s = NotificationManager.loadSettings();
+            if (s) { s.enabled = false; NotificationManager.saveSettings(s); }
+            modal.style.display = 'none';
+            alert('알림이 비활성화되었습니다.');
+        });
+
+        document.getElementById('noti-save-btn').addEventListener('click', async () => {
+            const granted = await NotificationManager.requestPermission();
+            if (!granted) { alert('알림 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.'); return; }
+
+            const settings = {
+                enabled: true,
+                breakfast: {
+                    enabled: document.getElementById('noti-breakfast-enable').checked,
+                    time: document.getElementById('noti-breakfast-time').value
+                },
+                lunch: {
+                    enabled: document.getElementById('noti-lunch-enable').checked,
+                    time: document.getElementById('noti-lunch-time').value
+                },
+                dinner: {
+                    enabled: document.getElementById('noti-dinner-enable').checked,
+                    time: document.getElementById('noti-dinner-time').value
+                },
+                days: Array.from(selectedDays)
+            };
+
+            NotificationManager.saveSettings(settings);
+
+            // [month_meals 데이터를 Jinja에서 JS로 전달]
+            const mealData = {{ month_meals | tojson | safe }};
+            const count = await NotificationManager.schedule(settings, mealData);
+
+            modal.style.display = 'none';
+            alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
+        });
+
+        // [앱 실행 시 자동 재스케줄링]
+        const mealData = {{ month_meals | tojson | safe }};
+        NotificationManager.autoSchedule(mealData);
+    }
+
+    // DOM 로드 후 실행
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNotification);
+    } else {
+        initNotification();
+    }
+})();
+</script>
+{% endif %}
 </body>
 </html>
