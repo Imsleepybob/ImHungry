@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.8">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.5">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -217,7 +217,7 @@
   </div>
   {% endif %}
 
-  <div class="manual-school-finder">
+  <div class="manual-school-finder form-field-animated" id="manualSchoolFinder">
     <div class="manual-finder-header" id="manualFinderToggle">
       <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
       <div class="manual-finder-icon" id="manualFinderIcon">▼</div>
@@ -416,7 +416,6 @@ function performSearch(query, region, immediate = false) {
     if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
     if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
     const execute = () => {
-        if (isComposing) return;
         const input = document.getElementById("school_name");
         const sel = document.getElementById("region");
         if (!input || !sel) return;
@@ -460,6 +459,7 @@ async function initFormAnimation() {
     const promptEl = document.getElementById('stepPrompt');
     const regionSelectWrapper = document.getElementById('regionSelectWrapper');
     const regionSelect = document.getElementById('region');
+    const manualFinder = document.querySelector('.manual-school-finder');
     if (!promptEl) return;
 
     // 지역이 이미 선택된 상태(쿠키·서버에서 넘어온 경우): 애니메이션 없이 즉시 표시
@@ -468,6 +468,7 @@ async function initFormAnimation() {
         promptEl.textContent = '학교를 검색하세요!';
         showElement(regionSelectWrapper);
         showSchoolRowAnimated();
+        if (manualFinder) manualFinder.classList.add('visible');
         return;
     }
 
@@ -487,6 +488,8 @@ async function initFormAnimation() {
         await delay(2800);
         await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
         showElement(regionSelectWrapper);
+        // [수정] 지역 선택 안내 문구와 동시에 표시
+        if (manualFinder) manualFinder.classList.add('visible');
     } else {
         // 재방문: 바로 지역 선택 안내
         promptEl.textContent = '지역을 선택해주세요.';
@@ -494,6 +497,8 @@ async function initFormAnimation() {
         promptEl.classList.remove('fade-in-start');
         await delay(400);
         showElement(regionSelectWrapper);
+        // [수정] 지역 선택 안내 문구와 동시에 표시
+        if (manualFinder) manualFinder.classList.add('visible');
     }
 }
 
@@ -618,10 +623,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const manualFinderContent = document.getElementById('manualFinderContent');
     const manualFinderIcon = document.getElementById('manualFinderIcon');
     if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
+        const manualFinderEl = document.getElementById('manualSchoolFinder');
         manualFinderToggle.addEventListener('click', function() {
             const expanded = manualFinderContent.classList.contains('show');
-            if (expanded) { manualFinderContent.classList.remove('show'); manualFinderIcon.classList.remove('expanded'); manualFinderIcon.textContent = '▼'; }
-            else { manualFinderContent.classList.add('show'); manualFinderIcon.classList.add('expanded'); manualFinderIcon.textContent = '▲'; }
+            if (expanded) {
+                manualFinderContent.classList.remove('show');
+                manualFinderIcon.classList.remove('expanded');
+                manualFinderIcon.textContent = '▼';
+                // [수정] 닫힐 때 max-height를 헤더 높이로 복원
+                if (manualFinderEl) manualFinderEl.style.maxHeight = '64px';
+            } else {
+                manualFinderContent.classList.add('show');
+                manualFinderIcon.classList.add('expanded');
+                manualFinderIcon.textContent = '▲';
+                // [수정] 열릴 때 max-height 제한 해제
+                if (manualFinderEl) manualFinderEl.style.maxHeight = 'none';
+            }
         });
     }
 
