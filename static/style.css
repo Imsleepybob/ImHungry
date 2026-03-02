@@ -162,6 +162,7 @@ body {
 /* [수정] manualSchoolFinder는 닫힌 상태(헤더만) 기준 max-height */
 #manualSchoolFinder.visible {
     max-height: 64px;
+    overflow: hidden;
 }
 
 .step-select, select {
