@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.5">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.0">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -92,7 +92,6 @@
     <button type="submit" class="submit-btn">검색</button>
   </form>
   {% else %}
-  {# [수정] Toss 스타일 UX: stepPrompt는 fade-in-start로 초기화, select와 schoolRow를 form-field-animated로 감싸 fade+translate 등장 처리 #}
   <form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form">
     <p class="step-prompt fade-in-start" id="stepPrompt"></p>
     <div id="regionSelectWrapper" class="form-field-animated">
