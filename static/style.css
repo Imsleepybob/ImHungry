@@ -159,6 +159,10 @@ body {
 #schoolRow.visible {
     max-height: 160px;
 }
+/* [수정] manualSchoolFinder는 닫힌 상태(헤더만) 기준 max-height */
+#manualSchoolFinder.visible {
+    max-height: 64px;
+}
 
 .step-select, select {
     width: 100%;
@@ -464,7 +468,7 @@ input[type="text"]:focus {
 .breadcrumb a { color: var(--link-color); text-decoration: none; }
 .breadcrumb a:hover { text-decoration: underline; color: var(--primary-hover); }
 
-/* 수동 학교 찾기 */
+/* [수정] manual-school-finder 초기 숨김 - 지역 선택 안내 문구와 동시에 fade-in */
 .manual-school-finder {
     max-width: 560px;
     margin: 16px auto 40px;
@@ -473,8 +477,14 @@ input[type="text"]:focus {
     overflow: hidden;
     background: var(--bg-container);
     box-shadow: var(--shadow-md);
-    /* [수정] search-form과 box-sizing 맞춤 */
     box-sizing: border-box;
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.manual-school-finder.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 .manual-finder-header {
     background: var(--accent-color);
