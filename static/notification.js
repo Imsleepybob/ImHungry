@@ -1,10 +1,24 @@
 const NotificationManager = {
 
+    isAppEnvironment() {
+        return navigator.userAgent.includes('ImHungryApp');
+    },
+
+    isAndroidBrowser() {
+        return /android/i.test(navigator.userAgent) && !this.isAppEnvironment();
+    },
+
+    isIOSBrowser() {
+        const ua = navigator.userAgent;
+        const isIOS = ['iPad Simulator','iPhone Simulator','iPod Simulator','iPad','iPhone','iPod'].includes(navigator.platform) ||
+            (ua.includes('Mac') && 'ontouchend' in document);
+        return isIOS && !this.isAppEnvironment();
+    },
+
     isAvailable() {
         return !!(window.Capacitor?.Plugins?.LocalNotifications);
     },
 
-    // [수정] Capacitor 브릿지 준비될 때까지 대기 (최대 5초)
     waitForCapacitor() {
         return new Promise((resolve) => {
             if (this.isAvailable()) { resolve(true); return; }
@@ -56,11 +70,9 @@ const NotificationManager = {
 
         const notifications = [];
         let id = 1;
-        // [수정] KST 기준 현재 시각
         const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
 
         for (let offset = 0; offset < 30; offset++) {
-            // [수정] KST 기준 날짜 계산
             const dateKST = new Date(nowKST.getTime());
             dateKST.setUTCDate(dateKST.getUTCDate() + offset);
 
@@ -82,19 +94,15 @@ const NotificationManager = {
                 if (!menu || menu === '급식 정보 없음') continue;
 
                 const [hours, minutes] = mealType.time.split(':').map(Number);
-
-                // [수정] 알림 시각을 KST 기준으로 로컬 Date 객체 생성
                 const localDate = new Date(
                     dateKST.getUTCFullYear(),
                     dateKST.getUTCMonth(),
                     dateKST.getUTCDate(),
                     hours, minutes, 0, 0
                 );
-
                 if (localDate <= new Date()) continue;
 
                 const preview = menu.split('\n').slice(0, 3).join(', ');
-
                 notifications.push({
                     id: id++,
                     title: `🍱 오늘의 ${mealType.label}`,
