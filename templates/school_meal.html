@@ -242,13 +242,12 @@
       </div>
     </div>
   </div>
-
   {% if school_name %}
+  <button id="notification-btn" class="share-btn">🔔 알림 설정</button>
+  
   <button id="share-btn" class="share-btn">🔗 공유하기</button>
-  <button id="notification-btn" class="share-btn" style="display:none;">🔔 알림 설정</button>
   {% endif %}
 </div>
-
 <div class="allergy-info">
   <div class="allergy-info-title">급식 알레르기 성분표</div>
   <div class="allergy-info-grid">
@@ -279,6 +278,17 @@
     <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
     <p>하단의 공유 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
     <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
+  </div>
+</div>
+
+<div id="android-app-guide" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(100%); background-color:rgba(0,0,0,0.85); border-radius:16px; padding:15px 20px; width:90%; max-width:400px; color:white; z-index:1000; opacity:0; transition:all 0.5s ease;">
+  <div style="text-align:center;">
+    <p style="color:white; margin-bottom:8px; font-size:15px; line-height:1.5;">📱 원하는 날짜, 시간에 급식 알림을 받고 싶으신가요?</p>
+    <p style="color:rgba(255,255,255,0.8); font-size:13px; margin-bottom:12px;">앱을 설치하면 급식 알림을 받을 수 있어요!</p>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <a href="/급식알리미.apk" style="flex:1; max-width:120px; padding:10px; background:var(--primary-color); color:white; border-radius:10px; text-decoration:none; text-align:center; font-weight:600; font-size:14px;">앱 다운로드</a>
+      <button id="dismiss-android-btn" style="flex:1; max-width:120px; padding:10px; background:rgba(255,255,255,0.15); color:white; border:none; border-radius:10px; cursor:pointer; font-size:14px;">괜찮아요</button>
+    </div>
   </div>
 </div>
 
@@ -323,7 +333,15 @@ function isIOS() {
     return ['iPad Simulator','iPhone Simulator','iPod Simulator','iPad','iPhone','iPod'].includes(navigator.platform) ||
         (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 }
-function isSafari() { return /^((?!chrome|android).)*safari/i.test(navigator.userAgent); }
+// [수정] CriOS(크롬), FxiOS(파이어폭스), EdgiOS(엣지) 등 iOS 비사파리 브라우저 제외
+function isSafari() {
+    const ua = navigator.userAgent;
+    return /Safari/i.test(ua) &&
+        !/CriOS/i.test(ua) &&
+        !/FxiOS/i.test(ua) &&
+        !/EdgiOS/i.test(ua) &&
+        !/OPiOS/i.test(ua);
+}
 function shouldShowGuide() { return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone; }
 function dismissIOSGuide() {
     const el = document.getElementById('ios-webapp-guide');
@@ -706,7 +724,16 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% if school_name and month_meals %}
-<!-- 알림 설정 모달 -->
+<!-- [수정] 환경별 알림 안내 바텀시트 -->
+<div id="noti-guide-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:3000; align-items:flex-end; justify-content:center;">
+  <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; text-align:center; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);">
+    <div style="width:40px; height:4px; background:var(--border-color); border-radius:2px; margin:0 auto 24px;"></div>
+    <div id="noti-guide-icon" style="font-size:48px; margin-bottom:16px;">🍗</div>
+    <p id="noti-guide-title" style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:0 0 8px; opacity:0; transform:translateY(18px); transition:opacity 0.35s ease, transform 0.35s ease;"></p>
+    <p id="noti-guide-desc" style="font-size:0.95rem; color:var(--text-secondary); margin:0 0 28px; line-height:1.6;"></p>
+    <div id="noti-guide-btns" style="display:flex; gap:10px;"></div>
+  </div>
+</div>
 <div id="notification-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
   <div style="background:var(--bg-container); border-radius:16px; padding:24px; max-width:360px; width:90%; max-height:80vh; overflow-y:auto;">
     <h3 style="margin:0 0 16px; color:var(--text-primary);">🔔 알림 설정</h3>
@@ -764,21 +791,89 @@ document.addEventListener('DOMContentLoaded', function() {
 .day-label.selected {
     background: var(--primary-color); color: white; border-color: var(--primary-color);
 }
+#noti-guide-modal.show { display: flex; }
+#noti-guide-sheet.show { transform: translateY(0); }
+#noti-guide-title.show { opacity: 1; transform: translateY(0); }
 </style>
 
-<script>
-// [알림 기능 초기화 - Capacitor 환경에서만 실행]
-(function() {
-    const selectedDays = new Set([1, 2, 3, 4, 5]); // 기본값: 월~금
+<script>(function() {
+    const selectedDays = new Set([1, 2, 3, 4, 5]);
+
+    // [수정] 환경별 안내 바텀시트 표시
+    function showNotiGuide(type) {
+        const modal = document.getElementById('noti-guide-modal');
+        const sheet = document.getElementById('noti-guide-sheet');
+        const titleEl = document.getElementById('noti-guide-title');
+        const descEl = document.getElementById('noti-guide-desc');
+        const btnsEl = document.getElementById('noti-guide-btns');
+
+        const configs = {
+            android: {
+                icon: '🍗',
+                title: '알림 기능은 앱에서만 사용이 가능해요!',
+                desc: '다운로드할까요?',
+                btns: `<a href="/급식알리미.apk" style="flex:1; padding:14px; background:var(--primary-color); color:white; border-radius:12px; text-decoration:none; text-align:center; font-weight:700; font-size:1rem;">네</a>
+                       <button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--bg-secondary); color:var(--text-primary); border:none; border-radius:12px; cursor:pointer; font-weight:600; font-size:1rem;">괜찮아요</button>`
+            },
+            ios: {
+                icon: '🍗',
+                title: '알림 기능은 안드로이드 앱에서만 가능해요!',
+                desc: 'iOS에서도 지원되도록 노력할게요.',
+                btns: `<button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--primary-color); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700; font-size:1rem;">확인</button>`
+            },
+            desktop: {
+                icon: '🍗',
+                title: '알림 기능은 모바일 앱 환경에서만 가능해요!',
+                desc: '모바일에서 이용해주세요!',
+                btns: `<button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--primary-color); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700; font-size:1rem;">확인</button>`
+            }
+        };
+
+        const cfg = configs[type];
+        document.getElementById('noti-guide-icon').textContent = cfg.icon;
+        titleEl.textContent = cfg.title;
+        titleEl.classList.remove('show');
+        descEl.textContent = cfg.desc;
+        btnsEl.innerHTML = cfg.btns;
+
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            sheet.classList.add('show');
+            setTimeout(() => titleEl.classList.add('show'), 200);
+        }));
+
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeNotiGuide(); }, { once: true });
+    }
+
+    window.closeNotiGuide = function() {
+        const modal = document.getElementById('noti-guide-modal');
+        const sheet = document.getElementById('noti-guide-sheet');
+        const titleEl = document.getElementById('noti-guide-title');
+        sheet.classList.remove('show');
+        titleEl.classList.remove('show');
+        setTimeout(() => { modal.style.display = 'none'; }, 400);
+    };
 
     async function initNotification() {
-        const ready = await NotificationManager.waitForCapacitor();
-        if (!ready) return;
-
         const notiBtn = document.getElementById('notification-btn');
-        if (notiBtn) notiBtn.style.display = 'block';
+        if (!notiBtn) return;
 
-        const modal = document.getElementById('notification-modal');
+        notiBtn.addEventListener('click', async () => {
+            if (NotificationManager.isAppEnvironment()) {
+                // [앱 환경] Capacitor 브릿지 대기 후 알림 모달 표시
+                const ready = await NotificationManager.waitForCapacitor();
+                if (!ready) return;
+                document.getElementById('notification-modal').style.display = 'flex';
+            } else if (NotificationManager.isAndroidBrowser()) {
+                showNotiGuide('android');
+            } else if (NotificationManager.isIOSBrowser()) {
+                showNotiGuide('ios');
+            } else {
+                showNotiGuide('desktop');
+            }
+        });
+
+        // 저장된 설정 복원 (앱 환경)
         const saved = NotificationManager.loadSettings();
         if (saved) {
             document.getElementById('noti-breakfast-enable').checked = saved.breakfast.enabled;
@@ -800,19 +895,15 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        notiBtn && notiBtn.addEventListener('click', () => {
-            modal.style.display = 'flex';
-        });
-
         document.getElementById('noti-cancel-btn').addEventListener('click', () => {
-            modal.style.display = 'none';
+            document.getElementById('notification-modal').style.display = 'none';
         });
 
         document.getElementById('noti-disable-btn').addEventListener('click', async () => {
             await NotificationManager.cancelAll();
             const s = NotificationManager.loadSettings();
             if (s) { s.enabled = false; NotificationManager.saveSettings(s); }
-            modal.style.display = 'none';
+            document.getElementById('notification-modal').style.display = 'none';
             alert('알림이 비활성화되었습니다.');
         });
 
@@ -822,37 +913,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const settings = {
                 enabled: true,
-                breakfast: {
-                    enabled: document.getElementById('noti-breakfast-enable').checked,
-                    time: document.getElementById('noti-breakfast-time').value
-                },
-                lunch: {
-                    enabled: document.getElementById('noti-lunch-enable').checked,
-                    time: document.getElementById('noti-lunch-time').value
-                },
-                dinner: {
-                    enabled: document.getElementById('noti-dinner-enable').checked,
-                    time: document.getElementById('noti-dinner-time').value
-                },
+                breakfast: { enabled: document.getElementById('noti-breakfast-enable').checked, time: document.getElementById('noti-breakfast-time').value },
+                lunch:     { enabled: document.getElementById('noti-lunch-enable').checked,     time: document.getElementById('noti-lunch-time').value },
+                dinner:    { enabled: document.getElementById('noti-dinner-enable').checked,    time: document.getElementById('noti-dinner-time').value },
                 days: Array.from(selectedDays)
             };
 
             NotificationManager.saveSettings(settings);
-
-            // [month_meals 데이터를 Jinja에서 JS로 전달]
             const mealData = {{ month_meals | tojson | safe }};
             const count = await NotificationManager.schedule(settings, mealData);
-
-            modal.style.display = 'none';
+            document.getElementById('notification-modal').style.display = 'none';
             alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
         });
 
-        // [앱 실행 시 자동 재스케줄링]
-        const mealData = {{ month_meals | tojson | safe }};
-        NotificationManager.autoSchedule(mealData);
+        // [앱 환경] 자동 재스케줄링
+        if (NotificationManager.isAppEnvironment()) {
+            const mealData = {{ month_meals | tojson | safe }};
+            NotificationManager.autoSchedule(mealData);
+        }
     }
 
-    // DOM 로드 후 실행
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initNotification);
     } else {
