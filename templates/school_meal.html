@@ -791,8 +791,12 @@ document.addEventListener('DOMContentLoaded', function() {
 .day-label.selected {
     background: var(--primary-color); color: white; border-color: var(--primary-color);
 }
+/* [수정] display 제어를 JS 인라인 대신 클래스로 처리 */
+#noti-guide-modal { display: none; }
 #noti-guide-modal.show { display: flex; }
+#noti-guide-sheet { transform: translateY(100%); }
 #noti-guide-sheet.show { transform: translateY(0); }
+#noti-guide-title { opacity: 0; transform: translateY(18px); transition: opacity 0.35s ease, transform 0.35s ease; }
 #noti-guide-title.show { opacity: 1; transform: translateY(0); }
 </style>
 
