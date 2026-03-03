@@ -599,6 +599,30 @@ input[type="text"]:focus {
     font-weight: 500;
     transition: background-color 0.2s ease;
     box-shadow: var(--shadow-sm);
+    width: fit-content;
+}
+
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+}
+.noti-guide-app-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.12);
+    animation: iconPulse 2s infinite;
+    margin-bottom: 16px;
+}
+
+#noti-guide-title, #noti-guide-desc {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+#noti-guide-title.show, #noti-guide-desc.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .error-message { background-color: #fee; color: #e55; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #e55; font-weight: 500; animation: fadeIn 0.4s ease; }
