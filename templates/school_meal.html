@@ -861,56 +861,66 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('click', (e) => { if (e.target === modal) closeNotiGuide(); }, { once: true });
     }
 
-    window.closeNotiGuide = function() {
-        const modal = document.getElementById('noti-guide-modal');
-        const sheet = document.getElementById('noti-guide-sheet');
-        const titleEl = document.getElementById('noti-guide-title');
-        const descEl = document.getElementById('noti-guide-desc');
-        sheet.classList.remove('show');
-        titleEl.classList.remove('show');
-        descEl.classList.remove('show');
-        document.body.style.overflow = '';
-        setTimeout(() => modal.classList.remove('show'), 400);
-    };
+window.closeNotiGuide = function() {
+    const modal = document.getElementById('noti-guide-modal');
+    const sheet = document.getElementById('noti-guide-sheet');
+    const titleEl = document.getElementById('noti-guide-title');
+    const descEl = document.getElementById('noti-guide-desc');
 
-    // [드래그로 모달 닫기]
-    (function initDragHandle() {
-        const handle = document.getElementById('noti-drag-handle');
-        const sheet = document.getElementById('noti-guide-sheet');
-        if (!handle || !sheet) return;
+    // [수정] 버튼으로 닫을 때 시트 슬라이드 다운 애니메이션
+    sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+    sheet.style.transform = 'translateY(100%)';
+    titleEl.classList.remove('show');
+    descEl.classList.remove('show');
+    document.body.style.overflow = '';
 
-        let startY = 0, currentY = 0, isDragging = false;
+    setTimeout(() => {
+        modal.classList.remove('show');
+        // [수정] 인라인 transform 완전 초기화 - 다음 열기 시 CSS 클래스가 정상 적용되도록
+        sheet.style.transform = '';
+        sheet.style.transition = '';
+    }, 400);
+};
 
-        function onDragStart(e) {
-            isDragging = true;
-            startY = e.touches ? e.touches[0].clientY : e.clientY;
-            sheet.style.transition = 'none';
+(function initDragHandle() {
+    const handle = document.getElementById('noti-drag-handle');
+    const sheet = document.getElementById('noti-guide-sheet');
+    if (!handle || !sheet) return;
+
+    let startY = 0, currentY = 0, isDragging = false;
+
+    function onDragStart(e) {
+        isDragging = true;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        sheet.style.transition = 'none';
+    }
+    function onDragMove(e) {
+        if (!isDragging) return;
+        currentY = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
+        if (currentY < 0) currentY = 0;
+        sheet.style.transform = `translateY(${currentY}px)`;
+    }
+    function onDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+
+        if (currentY > 80) {
+            // [수정] 드래그로 닫을 때도 closeNotiGuide 호출하여 상태 일관성 유지
+            closeNotiGuide();
+        } else {
+            sheet.style.transform = 'translateY(0)';
         }
-        function onDragMove(e) {
-            if (!isDragging) return;
-            currentY = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
-            if (currentY < 0) currentY = 0;
-            sheet.style.transform = `translateY(${currentY}px)`;
-        }
-        function onDragEnd() {
-            if (!isDragging) return;
-            isDragging = false;
-            sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-            if (currentY > 80) {
-                closeNotiGuide();
-            } else {
-                sheet.style.transform = 'translateY(0)';
-            }
-            currentY = 0;
-        }
+        currentY = 0;
+    }
 
-        handle.addEventListener('touchstart', onDragStart, { passive: true });
-        handle.addEventListener('touchmove', onDragMove, { passive: true });
-        handle.addEventListener('touchend', onDragEnd);
-        handle.addEventListener('mousedown', onDragStart);
-        document.addEventListener('mousemove', onDragMove);
-        document.addEventListener('mouseup', onDragEnd);
-    })();
+    handle.addEventListener('touchstart', onDragStart, { passive: true });
+    handle.addEventListener('touchmove', onDragMove, { passive: true });
+    handle.addEventListener('touchend', onDragEnd);
+    handle.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+})();
 
     async function initNotification() {
         const notiBtn = document.getElementById('notification-btn');
