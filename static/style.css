@@ -563,7 +563,7 @@ input[type="text"]:focus {
     position: absolute; top: 100%; left: 0; right: 0;
     background: var(--bg-container); border: 1px solid var(--border-light); border-top: none;
     border-radius: 0 0 8px 8px; max-height: 250px; overflow-y: auto; display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 1050;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 2000;
 }
 .autocomplete-item { padding: 13px 16px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: background-color 0.15s ease; font-size: 0.95em; background-color: var(--bg-container); color: var(--text-primary); }
 .autocomplete-item:last-child { border-bottom: none; }
