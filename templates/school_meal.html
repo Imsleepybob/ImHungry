@@ -724,12 +724,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% if school_name and month_meals %}
-<!-- [수정] 환경별 알림 안내 바텀시트 -->
-<div id="noti-guide-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:3000; align-items:flex-end; justify-content:center;">
-  <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; text-align:center; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);">
+<div id="noti-guide-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:3000; align-items:flex-end; justify-content:center;">
+  <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; text-align:center;">
     <div style="width:40px; height:4px; background:var(--border-color); border-radius:2px; margin:0 auto 24px;"></div>
     <div id="noti-guide-icon" style="font-size:48px; margin-bottom:16px;">🍗</div>
-    <p id="noti-guide-title" style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:0 0 8px; opacity:0; transform:translateY(18px); transition:opacity 0.35s ease, transform 0.35s ease;"></p>
+    <p id="noti-guide-title" style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:0 0 8px;"></p>
     <p id="noti-guide-desc" style="font-size:0.95rem; color:var(--text-secondary); margin:0 0 28px; line-height:1.6;"></p>
     <div id="noti-guide-btns" style="display:flex; gap:10px;"></div>
   </div>
