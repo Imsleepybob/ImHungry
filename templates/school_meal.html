@@ -854,8 +854,8 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.classList.add('show');
         requestAnimationFrame(() => requestAnimationFrame(() => {
             sheet.classList.add('show');
-            setTimeout(() => titleEl.classList.add('show'), 200);
-            setTimeout(() => descEl.classList.add('show'), 1200);
+            setTimeout(() => titleEl.classList.add('show'), 100);
+            setTimeout(() => descEl.classList.add('show'), 600);
         }));
 
         modal.addEventListener('click', (e) => { if (e.target === modal) closeNotiGuide(); }, { once: true });
