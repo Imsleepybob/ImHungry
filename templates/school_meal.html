@@ -431,6 +431,8 @@ function selectSchool(item) {
     const input = document.getElementById("school_name");
     if (input) input.value = item.dataset.name;
     hideAutocomplete();
+    // [수정] 학교 선택 햅틱 - MEDIUM
+    NotificationManager.triggerHaptic('impact', 'MEDIUM');
     const ld = document.getElementById('loading');
     if (ld) {
         startLoadingAnimation();
@@ -681,6 +683,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
         toggleNearbyBtn.addEventListener('click', function() {
+            // [수정] 주변학교 토글 햅틱
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = nearbyContainer.style.display === 'none';
             if (hidden) { nearbyContainer.style.display='block'; toggleNearbyBtn.textContent='▲ 주변 학교 급식 비교 접기'; toggleNearbyBtn.classList.add('active'); nearbyContainer.scrollIntoView({behavior:'smooth'}); }
             else { nearbyContainer.style.display='none'; toggleNearbyBtn.textContent='🏫 주변 학교 급식과 비교하기'; toggleNearbyBtn.classList.remove('active'); }
@@ -690,6 +694,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
+            // [수정] 공유 버튼 햅틱
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
             const schoolCode = getCookie('school_code');
             const schoolName = getCookie('school_name') || '학교';
             const shareUrl = `https://imsleepy.xyz/meal/${schoolCode}`;
@@ -721,6 +727,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
         toggleMonthBtn.addEventListener('click', function() {
+            // [수정] 월간 급식표 토글 햅틱
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = monthTable.style.display === 'none';
             monthTable.style.display = hidden ? 'block' : 'none';
             toggleMonthBtn.innerHTML = hidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
@@ -880,6 +888,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 window.closeNotiGuide = function() {
+    // [수정] 모달 닫기 햅틱
+    NotificationManager.triggerHaptic('impact', 'LIGHT');
     const modal = document.getElementById('noti-guide-modal');
     const sheet = document.getElementById('noti-guide-sheet');
     const titleEl = document.getElementById('noti-guide-title');
@@ -976,17 +986,23 @@ window.closeNotiGuide = function() {
             const day = parseInt(el.id.replace('day-', ''));
             if (selectedDays.has(day)) el.classList.add('selected');
             el.addEventListener('click', () => {
+                // [수정] 요일 선택 햅틱
+                NotificationManager.triggerHaptic('impact', 'LIGHT');
                 if (selectedDays.has(day)) { selectedDays.delete(day); el.classList.remove('selected'); }
                 else { selectedDays.add(day); el.classList.add('selected'); }
             });
         });
 
         document.getElementById('noti-cancel-btn').addEventListener('click', () => {
+            // [수정] 취소 햅틱
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
             document.getElementById('notification-modal').classList.remove('show');
             document.body.style.overflow = '';
         });
 
         document.getElementById('noti-disable-btn').addEventListener('click', async () => {
+            // [수정] 알림 끄기 햅틱
+            NotificationManager.triggerHaptic('notification', 'WARNING');
             await NotificationManager.cancelAll();
             const s = NotificationManager.loadSettings();
             if (s) { s.enabled = false; NotificationManager.saveSettings(s); }
@@ -997,7 +1013,11 @@ window.closeNotiGuide = function() {
 
         document.getElementById('noti-save-btn').addEventListener('click', async () => {
             const granted = await NotificationManager.requestPermission();
-            if (!granted) { alert('알림 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.'); return; }
+            if (!granted) {
+                // [수정] 권한 거부 햅틱
+                NotificationManager.triggerHaptic('notification', 'ERROR');
+                alert('알림 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.'); return;
+            }
 
             const settings = {
                 enabled: true,
@@ -1012,6 +1032,8 @@ window.closeNotiGuide = function() {
             const count = await NotificationManager.schedule(settings, mealData);
             document.getElementById('notification-modal').classList.remove('show');
             document.body.style.overflow = '';
+            // [수정] 저장 완료 햅틱
+            NotificationManager.triggerHaptic('notification', 'SUCCESS');
             alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
         });
 
