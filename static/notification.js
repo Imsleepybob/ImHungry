@@ -31,6 +31,17 @@ const NotificationManager = {
         });
     },
 
+    // [수정] 햅틱 피드백 - impact: 'LIGHT'|'MEDIUM'|'HEAVY', notification: 'SUCCESS'|'WARNING'|'ERROR'
+    triggerHaptic(type = 'impact', style = 'LIGHT') {
+        if (!this.isAppEnvironment()) return;
+        const haptics = window.Capacitor?.Plugins?.Haptics;
+        if (!haptics) return;
+        try {
+            if (type === 'impact') haptics.impact({ style });
+            else if (type === 'notification') haptics.notification({ type: style });
+        } catch (e) {}
+    },
+
     async requestPermission() {
         if (!this.isAvailable()) return false;
         const { LocalNotifications } = window.Capacitor.Plugins;
@@ -70,12 +81,14 @@ const NotificationManager = {
 
         const notifications = [];
         let id = 1;
+        // KST 기준 현재 날짜 계산: UTC+9 고정, getUTC* 메서드로 KST 날짜 추출
         const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
 
         for (let offset = 0; offset < 30; offset++) {
             const dateKST = new Date(nowKST.getTime());
             dateKST.setUTCDate(dateKST.getUTCDate() + offset);
 
+            // getUTCDay()가 KST 요일을 반환 (nowKST가 +9h shift된 상태이므로)
             const dayOfWeek = dateKST.getUTCDay();
             if (!settings.days.includes(dayOfWeek)) continue;
 
@@ -94,6 +107,8 @@ const NotificationManager = {
                 if (!menu || menu === '급식 정보 없음') continue;
 
                 const [hours, minutes] = mealType.time.split(':').map(Number);
+                // new Date(y, m, d, h, min): 기기 로컬 타임존 기준
+                // 기기가 KST(UTC+9) 설정이면 올바르게 동작
                 const localDate = new Date(
                     dateKST.getUTCFullYear(),
                     dateKST.getUTCMonth(),
