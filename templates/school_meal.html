@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.2">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.3">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -54,14 +54,20 @@
       <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
     </a>
   </div>
-  <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
-    <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-        <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
-    </svg>
-    <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-        <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" />
-    </svg>
-  </button>
+  <!-- [수정] 헤더 우측: 알림 버튼 + 테마 버튼 묶음 -->
+  <div style="display:flex; align-items:center; gap:4px;">
+    {% if school_name and month_meals %}
+    <button id="notification-btn" class="theme-toggle-btn" aria-label="알림 설정" style="font-size:20px; line-height:1;">🔔</button>
+    {% endif %}
+    <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
+      <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+          <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
+      </svg>
+      <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+          <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" />
+      </svg>
+    </button>
+  </div>
 </header>
 
 <div id="ad-mobile">
@@ -122,7 +128,8 @@
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
   </div>
 
-  <div id="loading" class="loading-container"><div class="spinner"></div><p>급식 정보를 가져오는 중...</p></div>
+  <!-- [수정] 로딩 텍스트: id 부여, Toss 스타일 fade 애니메이션용 -->
+  <div id="loading" class="loading-container"><div class="spinner"></div><p id="loading-text"></p></div>
 
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
 
@@ -209,6 +216,10 @@
       </div>
     </div>
     {% endif %}
+    <!-- [수정] 공유 버튼: meal-container 하단으로 이동, 주변학교 섹션과 인접 -->
+    <div style="text-align:center; margin:8px 0 20px;">
+      <button id="share-btn" class="share-btn">🔗 공유하기</button>
+    </div>
   </div>
   {% elif school_name and not week_meals %}
   <div class="meal-container">
@@ -242,12 +253,7 @@
       </div>
     </div>
   </div>
-{% if school_name %}
-<div style="display:flex; flex-direction:column; gap:8px; margin: 12px auto 30px; max-width:300px;">
-  <button id="share-btn" class="share-btn" style="margin:0;">🔗 공유하기</button>
-  <button id="notification-btn" class="share-btn" style="margin:0;">🔔 알림 설정</button>
-</div>
-{% endif %}
+
 <div class="allergy-info">
   <div class="allergy-info-title">급식 알레르기 성분표</div>
   <div class="allergy-info-grid">
@@ -333,7 +339,6 @@ function isIOS() {
     return ['iPad Simulator','iPhone Simulator','iPod Simulator','iPad','iPhone','iPod'].includes(navigator.platform) ||
         (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 }
-// [수정] CriOS(크롬), FxiOS(파이어폭스), EdgiOS(엣지) 등 iOS 비사파리 브라우저 제외
 function isSafari() {
     const ua = navigator.userAgent;
     return /Safari/i.test(ua) &&
@@ -352,8 +357,6 @@ function isValidSearchQuery(query) {
     return query && query.trim().length >= 1;
 }
 
-// [수정] 미완성 자모(단독 초성/모음)로 끝나는 경우 해당 문자를 제거한 완성형 반환
-// 예: '강ㄴ' → '강', '가ㅎ' → '가', 완성형이면 그대로 반환
 function trimIncompleteJamo(query) {
     if (!query) return query;
     const last = query.charCodeAt(query.length - 1);
@@ -422,12 +425,17 @@ function hideAutocomplete() {
 function updateSelection(items) {
     items.forEach((item, i) => item.classList.toggle('selected', i === selectedIndex));
 }
+
+// [수정] 학교 선택 시 로딩 애니메이션 시작
 function selectSchool(item) {
     const input = document.getElementById("school_name");
     if (input) input.value = item.dataset.name;
     hideAutocomplete();
     const ld = document.getElementById('loading');
-    if (ld) ld.style.display = 'flex';
+    if (ld) {
+        startLoadingAnimation();
+        ld.style.display = 'flex';
+    }
     window.location.href = `/meal/${item.dataset.code}`;
 }
 
@@ -439,7 +447,6 @@ function performSearch(query, region, immediate = false) {
         const sel = document.getElementById("region");
         if (!input || !sel) return;
         if (input.value.trim() !== query || sel.value !== region) return;
-        // [수정] 미완성 자모 제거 후 검색 - '강ㄴ' 상태에서 '강'으로 검색
         const cleanedQuery = trimIncompleteJamo(query);
         if (!isValidSearchQuery(cleanedQuery)) { hideAutocomplete(); return; }
         searchSchoolsAPI(cleanedQuery, region);
@@ -448,7 +455,31 @@ function performSearch(query, region, immediate = false) {
     else searchTimeout = setTimeout(execute, 300);
 }
 
-// ── [수정] Toss 스타일 UX 애니메이션 함수 ──────────────────────────────────
+// [수정] 로딩 텍스트 Toss 스타일 fade+translate 애니메이션
+function startLoadingAnimation() {
+    const textEl = document.getElementById('loading-text');
+    if (!textEl) return;
+    textEl.style.transition = 'none';
+    textEl.textContent = '급식 정보를 가져오고 있어요!';
+    textEl.style.opacity = '1';
+    textEl.style.transform = 'translateY(0)';
+    textEl.offsetHeight;
+    textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    setTimeout(() => {
+        textEl.style.opacity = '0';
+        textEl.style.transform = 'translateY(-18px)';
+        setTimeout(() => {
+            textEl.style.transition = 'none';
+            textEl.textContent = '잠시만 기다려주세요!';
+            textEl.style.opacity = '0';
+            textEl.style.transform = 'translateY(18px)';
+            textEl.offsetHeight;
+            textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            textEl.style.opacity = '1';
+            textEl.style.transform = 'translateY(0)';
+        }, 350);
+    }, 500);
+}
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -481,7 +512,6 @@ async function initFormAnimation() {
     const manualFinder = document.querySelector('.manual-school-finder');
     if (!promptEl) return;
 
-    // 지역이 이미 선택된 상태(쿠키·서버에서 넘어온 경우): 애니메이션 없이 즉시 표시
     if (regionSelect && regionSelect.value) {
         promptEl.classList.remove('fade-in-start');
         promptEl.textContent = '학교를 검색하세요!';
@@ -495,7 +525,6 @@ async function initFormAnimation() {
     localStorage.setItem('imhungry-visited', 'true');
 
     if (isFirstVisit) {
-        // 첫 방문: 소개 텍스트 시퀀스 실행
         promptEl.textContent = '안녕하세요!';
         promptEl.offsetHeight;
         promptEl.classList.remove('fade-in-start');
@@ -507,21 +536,16 @@ async function initFormAnimation() {
         await delay(2800);
         await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
         showElement(regionSelectWrapper);
-        // [수정] 지역 선택 안내 문구와 동시에 표시
         if (manualFinder) manualFinder.classList.add('visible');
     } else {
-        // 재방문: 바로 지역 선택 안내
         promptEl.textContent = '지역을 선택해주세요.';
         promptEl.offsetHeight;
         promptEl.classList.remove('fade-in-start');
         await delay(400);
         showElement(regionSelectWrapper);
-        // [수정] 지역 선택 안내 문구와 동시에 표시
         if (manualFinder) manualFinder.classList.add('visible');
     }
 }
-
-// ── [수정] 지역 선택 후 school row 전환 (fade+translate + prompt 텍스트 전환) ──
 
 async function showSchoolRow(promptEl, regionSelect) {
     if (!regionSelect || !regionSelect.value) return;
@@ -530,8 +554,6 @@ async function showSchoolRow(promptEl, regionSelect) {
     const schoolNameInput = document.getElementById('school_name');
     if (schoolNameInput) schoolNameInput.focus();
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.getElementById('themeToggleBtn');
@@ -577,7 +599,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingDiv = document.getElementById('loading');
     const promptEl = document.getElementById('stepPrompt');
 
-    // 쿠키에서 저장된 지역/학교 복원 (initFormAnimation 전에 실행)
     const savedSchool = getCookie('school_name');
     const savedRegion = getCookie('region_name');
     if (savedSchool && schoolNameInput) {
@@ -587,7 +608,6 @@ document.addEventListener('DOMContentLoaded', function() {
         regionSelect.value = savedRegion;
     }
 
-    // [수정] Toss 스타일 UX 초기화
     initFormAnimation();
 
     if (regionSelect) {
@@ -606,7 +626,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         schoolNameInput.addEventListener('compositionend', (e) => {
             isComposing = false;
-            // [수정] pending 타임아웃 취소 후 즉시 검색 (완성된 음절 기준으로 재검색)
             if (searchTimeout) { clearTimeout(searchTimeout); searchTimeout = null; }
             const query = trimIncompleteJamo(e.target.value.trim());
             const region = regionSelect.value;
@@ -614,7 +633,6 @@ document.addEventListener('DOMContentLoaded', function() {
             else hideAutocomplete();
         });
         schoolNameInput.addEventListener('input', function() {
-            // [수정] isComposing 가드 제거 - compositionend가 즉시 재검색하므로 debounce로 충분
             const query = this.value.trim();
             const region = regionSelect.value;
             if (!isValidSearchQuery(query) || !region) { hideAutocomplete(); return; }
@@ -649,13 +667,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 manualFinderContent.classList.remove('show');
                 manualFinderIcon.classList.remove('expanded');
                 manualFinderIcon.textContent = '▼';
-                // [수정] 닫힐 때 max-height를 헤더 높이로 복원
                 if (manualFinderEl) manualFinderEl.style.maxHeight = '64px';
             } else {
                 manualFinderContent.classList.add('show');
                 manualFinderIcon.classList.add('expanded');
                 manualFinderIcon.textContent = '▲';
-                // [수정] 열릴 때 max-height 제한 해제
                 if (manualFinderEl) manualFinderEl.style.maxHeight = 'none';
             }
         });
@@ -693,7 +709,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (regionForm) {
         regionForm.addEventListener('submit', function(e) {
             if (!regionSelect || !regionSelect.value) { e.preventDefault(); alert("지역을 선택해주세요."); if (regionSelect) regionSelect.focus(); return; }
-            if (loadingDiv) loadingDiv.style.display = 'flex';
+            // [수정] 폼 제출 시 로딩 애니메이션 시작
+            if (loadingDiv) {
+                startLoadingAnimation();
+                loadingDiv.style.display = 'flex';
+            }
         });
     }
 
@@ -726,7 +746,7 @@ document.addEventListener('DOMContentLoaded', function() {
 {% if school_name and month_meals %}
 <div id="noti-guide-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:3000; align-items:flex-end; justify-content:center;">
   <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; text-align:center; touch-action:none;">
-    <div id="noti-drag-handle" style="width:40px; height:4px; background:var(--border-color); border-radius:2px; margin:0 auto 24px; cursor:grab;"></div>
+    <div id="noti-drag-handle" style="width:40px; height:4px; background:var(--border-color); border-radius:2px; margin:0 auto 24px;"></div>
     <img id="noti-guide-icon" src="{{ url_for('static', filename='apple-touch-icon-114x114.png') }}" class="noti-guide-app-icon" alt="급식알리미">
     <p id="noti-guide-title" style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:0 0 8px;"></p>
     <p id="noti-guide-desc" style="font-size:0.95rem; color:var(--text-secondary); margin:0 0 28px; line-height:1.6;"></p>
@@ -865,7 +885,6 @@ window.closeNotiGuide = function() {
     const titleEl = document.getElementById('noti-guide-title');
     const descEl = document.getElementById('noti-guide-desc');
 
-    // [수정] 버튼으로 닫을 때 시트 슬라이드 다운 애니메이션
     sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
     sheet.style.transform = 'translateY(100%)';
     titleEl.classList.remove('show');
@@ -874,20 +893,23 @@ window.closeNotiGuide = function() {
 
     setTimeout(() => {
         modal.classList.remove('show');
-        // [수정] 인라인 transform 완전 초기화 - 다음 열기 시 CSS 클래스가 정상 적용되도록
+        // [수정] show 클래스 제거 - 재오픈 시 슬라이드업 애니메이션 재실행
+        sheet.classList.remove('show');
         sheet.style.transform = '';
         sheet.style.transition = '';
     }, 400);
 };
 
 (function initDragHandle() {
-    const handle = document.getElementById('noti-drag-handle');
     const sheet = document.getElementById('noti-guide-sheet');
-    if (!handle || !sheet) return;
+    if (!sheet) return;
 
     let startY = 0, currentY = 0, isDragging = false;
 
     function onDragStart(e) {
+        // [수정] 인터랙티브 요소에서 시작한 드래그 제외
+        const tag = e.target.tagName.toLowerCase();
+        if (['button', 'input', 'a', 'select', 'label', 'textarea'].includes(tag)) return;
         isDragging = true;
         startY = e.touches ? e.touches[0].clientY : e.clientY;
         sheet.style.transition = 'none';
@@ -902,9 +924,7 @@ window.closeNotiGuide = function() {
         if (!isDragging) return;
         isDragging = false;
         sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-
         if (currentY > 80) {
-            // [수정] 드래그로 닫을 때도 closeNotiGuide 호출하여 상태 일관성 유지
             closeNotiGuide();
         } else {
             sheet.style.transform = 'translateY(0)';
@@ -912,10 +932,11 @@ window.closeNotiGuide = function() {
         currentY = 0;
     }
 
-    handle.addEventListener('touchstart', onDragStart, { passive: true });
-    handle.addEventListener('touchmove', onDragMove, { passive: true });
-    handle.addEventListener('touchend', onDragEnd);
-    handle.addEventListener('mousedown', onDragStart);
+    // [수정] 드래그 영역: 핸들 대신 시트 상단 전체로 확장
+    sheet.addEventListener('touchstart', onDragStart, { passive: true });
+    sheet.addEventListener('touchmove', onDragMove, { passive: true });
+    sheet.addEventListener('touchend', onDragEnd);
+    sheet.addEventListener('mousedown', onDragStart);
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
 })();
