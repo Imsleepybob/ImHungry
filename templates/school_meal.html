@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
-<meta name="description" content="가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
+<meta name="description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트입니다. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
 <title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <meta property="og:type" content="website">
 <meta property="og:title" content="{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미">
-<meta property="og:description" content="가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!">
+<meta property="og:description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트입니다. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -116,7 +116,39 @@
       </div>
       <button type="submit" class="submit-btn" style="margin-top: 0;">검색</button>
     </div>
+    <!-- [수정] 서비스 소개 토글 섹션 -->
+    <div style="margin-top:18px; text-align:center;">
+      <button type="button" id="aboutToggleBtn" style="background:none; border:none; color:var(--text-muted); font-size:0.92rem; cursor:pointer; padding:4px 0;">급식알리미 자세히 알아보기 ▶</button>
+    </div>
   </form>
+
+  <div id="aboutSection" style="max-width:560px; margin:-8px auto 0; box-sizing:border-box; overflow:hidden; max-height:0; opacity:0; transition:max-height 0.45s ease, opacity 0.4s ease;">
+    <div style="background:var(--bg-container); border:1px solid var(--border-color); border-radius:0 0 16px 16px; padding:24px 22px; box-shadow:var(--shadow-md);">
+      <h1 style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin:0 0 12px;">급식알리미(ImHungry)란?</h1>
+      <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.75; margin:0 0 16px;">
+        급식알리미는 전국 초·중·고등학교의 급식 정보를 빠르고 간편하게 조회할 수 있는 서비스입니다.
+        학교 이름 한 번만 입력하면, 다음 방문부터는 접속 즉시 오늘의 급식을 바로 확인할 수 있습니다.
+      </p>
+      <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">주요 기능</h2>
+      <ul style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
+        <li>오늘 급식 · 이번 주 급식 · 월간 급식표 한눈에 보기</li>
+        <li>같은 지역 학교끼리 급식 비교하기</li>
+        <li>Android 앱으로 원하는 시간에 급식 알림 받기</li>
+        <li>다크모드 · 라이트모드 지원</li>
+        <li>지역별·학교급별 학교 목록 탐색</li>
+      </ul>
+      <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">이용 방법</h2>
+      <ol style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
+        <li>지역을 선택합니다.</li>
+        <li>학교 이름을 입력하면 자동완성 목록이 나타납니다.</li>
+        <li>학교를 선택하면 오늘의 급식 정보가 바로 표시됩니다.</li>
+        <li>이후 방문부터는 학교 검색 없이 바로 급식 정보를 확인할 수 있습니다.</li>
+      </ol>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+        급식 데이터는 교육부 NEIS(나이스) 공공 API를 통해 제공됩니다.
+      </p>
+    </div>
+  </div>
   {% endif %}
 
   <div id=bodyad-desktop>
@@ -135,7 +167,7 @@
 
   {% if school_name and week_meals %}
   <div class="meal-container">
-    <h2 class="school-title">{{ school_name }} 급식 정보</h2>
+    <h1 class="school-title">{{ school_name }} 급식 정보</h1>
     <div class="today-meal-card">
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
       <div class="today-meal-grid">
@@ -164,7 +196,7 @@
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
                 {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
                 {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
@@ -223,7 +255,7 @@
   </div>
   {% elif school_name and not week_meals %}
   <div class="meal-container">
-    <h2 class="school-title">{{ school_name }} 급식 정보</h2>
+    <h1 class="school-title">{{ school_name }} 급식 정보</h1>
     <div class="no-info">급식 정보가 없습니다.</div>
   </div>
   {% endif %}
@@ -749,6 +781,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (loadingDiv) loadingDiv.style.display = 'none';
+
+    // [수정] 서비스 소개 토글
+    const aboutToggleBtn = document.getElementById('aboutToggleBtn');
+    const aboutSection = document.getElementById('aboutSection');
+    if (aboutToggleBtn && aboutSection) {
+        let aboutOpen = false;
+        aboutToggleBtn.addEventListener('click', function() {
+            aboutOpen = !aboutOpen;
+            if (aboutOpen) {
+                aboutSection.style.maxHeight = aboutSection.scrollHeight + 'px';
+                aboutSection.style.opacity = '1';
+                aboutToggleBtn.textContent = '급식알리미 자세히 알아보기 ▼';
+                setTimeout(() => aboutSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+            } else {
+                aboutSection.style.maxHeight = '0';
+                aboutSection.style.opacity = '0';
+                aboutToggleBtn.textContent = '급식알리미 자세히 알아보기 ▶';
+            }
+        });
+    }
 
     setTimeout(() => {
         const bdd = document.getElementById('bodyad-desktop');
