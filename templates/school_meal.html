@@ -461,16 +461,23 @@ function performSearch(query, region, immediate = false) {
 function startLoadingAnimation() {
     const textEl = document.getElementById('loading-text');
     if (!textEl) return;
+
+    // 첫 번째 텍스트: 아래에서 올라오는 fade-in
     textEl.style.transition = 'none';
     textEl.textContent = '급식 정보를 가져오고 있어요!';
-    textEl.style.opacity = '1';
-    textEl.style.transform = 'translateY(0)';
+    textEl.style.opacity = '0';
+    textEl.style.transform = 'translateY(18px)';
     textEl.offsetHeight;
     textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+    textEl.style.opacity = '1';
+    textEl.style.transform = 'translateY(0)';
+
     setTimeout(() => {
+        // 첫 번째 텍스트 fade-out
         textEl.style.opacity = '0';
         textEl.style.transform = 'translateY(-18px)';
         setTimeout(() => {
+            // 두 번째 텍스트 fade-in
             textEl.style.transition = 'none';
             textEl.textContent = '잠시만 기다려주세요!';
             textEl.style.opacity = '0';
