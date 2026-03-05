@@ -117,8 +117,9 @@
       <button type="submit" class="submit-btn" style="margin-top: 0;">검색</button>
     </div>
     <!-- [수정] 서비스 소개 토글 섹션 -->
-    <div style="margin-top:18px; text-align:center;">
-      <button type="button" id="aboutToggleBtn" style="background:none; border:none; color:var(--text-muted); font-size:0.92rem; cursor:pointer; padding:4px 0;">급식알리미 자세히 알아보기 ▶</button>
+    <!-- [수정] 초기 숨김 - initFormAnimation에서 첫 방문 시 "학교만 한 번..." 이후 fade-in, 재방문 시 즉시 표시 -->
+    <div id="aboutToggleWrapper" style="margin-top:10px; text-align:center; opacity:0; transition:opacity 0.4s ease; pointer-events:none;">
+      <button type="button" id="aboutToggleBtn" style="background:none; border:none; color:var(--text-muted); font-size:0.92rem; cursor:pointer; padding:2px 0;">급식알리미 자세히 알아보기 ▶</button>
     </div>
   </form>
 
@@ -127,14 +128,14 @@
       <h1 style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin:0 0 12px;">급식알리미(ImHungry)란?</h1>
       <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.75; margin:0 0 16px;">
         급식알리미는 전국 초·중·고등학교의 급식 정보를 빠르고 간편하게 조회할 수 있는 서비스입니다.
-        학교 이름 한 번만 입력하면, 학교 정보가 저장되어 다음부터는 접속 즉시 오늘의 급식을 바로 확인할 수 있습니다.
+        학교 이름 한 번만 입력하면, 다음 방문부터는 접속 즉시 오늘의 급식을 바로 확인할 수 있습니다.
       </p>
       <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">주요 기능</h2>
       <ul style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
         <li>오늘 급식 · 이번 주 급식 · 월간 급식표 한눈에 보기</li>
         <li>같은 지역 학교끼리 급식 비교하기</li>
-        <li>Android 앱으로 원하는 시간에 급식 알림 받기(출시 예정)</li>
-        <li>다크모드 · 라이트 모드 지원</li>
+        <li>Android 앱으로 원하는 시간에 급식 알림 받기</li>
+        <li>다크모드 · 라이트모드 지원</li>
         <li>지역별·학교급별 학교 목록 탐색</li>
       </ul>
       <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">이용 방법</h2>
@@ -196,7 +197,7 @@
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
                 {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>점심</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
                 {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
@@ -540,6 +541,14 @@ function showElement(el) {
     el.classList.add('visible');
 }
 
+// [수정] 자세히 알아보기 버튼 fade-in
+function showAboutBtn() {
+    const wrapper = document.getElementById('aboutToggleWrapper');
+    if (!wrapper) return;
+    wrapper.style.opacity = '1';
+    wrapper.style.pointerEvents = 'auto';
+}
+
 function showSchoolRowAnimated() {
     const schoolRow = document.getElementById('schoolRow');
     if (!schoolRow) return;
@@ -559,6 +568,8 @@ async function initFormAnimation() {
         showElement(regionSelectWrapper);
         showSchoolRowAnimated();
         if (manualFinder) manualFinder.classList.add('visible');
+        // [수정] 지역 이미 선택된 상태 - 버튼 즉시 표시
+        showAboutBtn();
         return;
     }
 
@@ -574,6 +585,8 @@ async function initFormAnimation() {
         await fadePromptText(promptEl, '급식알리미에 오신 것을 환영합니다!');
         await delay(2200);
         await fadePromptText(promptEl, '학교만 한 번 입력하면 앞으로는 접속하자마자 오늘의 급식을 확인하실 수 있어요!');
+        // [수정] 이 문구가 나온 직후 버튼 표시
+        showAboutBtn();
         await delay(2800);
         await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
         showElement(regionSelectWrapper);
@@ -585,6 +598,8 @@ async function initFormAnimation() {
         await delay(400);
         showElement(regionSelectWrapper);
         if (manualFinder) manualFinder.classList.add('visible');
+        // [수정] 재방문 - regionSelectWrapper와 함께 표시
+        showAboutBtn();
     }
 }
 
