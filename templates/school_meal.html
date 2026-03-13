@@ -54,7 +54,6 @@
       <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
     </a>
   </div>
-  <!-- [수정] 헤더 우측: 알림 버튼 + 테마 버튼 묶음 -->
   <div style="display:flex; align-items:center; gap:4px;">
     {% if school_name and month_meals %}
     <button id="notification-btn" class="theme-toggle-btn" aria-label="알림 설정" style="font-size:20px; line-height:1;">🔔</button>
@@ -116,8 +115,6 @@
       </div>
       <button type="submit" class="submit-btn" style="margin-top: 0;">검색</button>
     </div>
-    <!-- [수정] 서비스 소개 토글 섹션 -->
-    <!-- [수정] 초기 숨김 - initFormAnimation에서 첫 방문 시 "학교만 한 번..." 이후 fade-in, 재방문 시 즉시 표시 -->
     <div id="aboutToggleWrapper" style="margin-top:10px; text-align:center; opacity:0; transition:opacity 0.4s ease; pointer-events:none;">
       <button type="button" id="aboutToggleBtn" style="background:none; border:none; color:var(--text-muted); font-size:0.92rem; cursor:pointer; padding:2px 0;">급식알리미 자세히 알아보기 ▶</button>
     </div>
@@ -161,7 +158,6 @@
     <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
   </div>
 
-  <!-- [수정] 로딩 텍스트: id 부여, Toss 스타일 fade 애니메이션용 -->
   <div id="loading" class="loading-container"><div class="spinner"></div><p id="loading-text"></p></div>
 
   {% if error_message %}<div class="error-message">{{ error_message }}</div>{% endif %}
@@ -249,7 +245,6 @@
       </div>
     </div>
     {% endif %}
-    <!-- [수정] 공유 버튼: meal-container 하단으로 이동, 주변학교 섹션과 인접 -->
     <div style="text-align:center; margin:8px 0 20px;">
       <button id="share-btn" class="share-btn">🔗 공유하기</button>
     </div>
@@ -358,6 +353,15 @@ let isComposing = false;
 let searchTimeout = null;
 let searchRequestId = 0;
 
+// [수정] 클라이언트 이벤트 트래킹
+function trackEvent(event, value) {
+    fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, value: String(value) })
+    }).catch(() => {});
+}
+
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -459,12 +463,12 @@ function updateSelection(items) {
     items.forEach((item, i) => item.classList.toggle('selected', i === selectedIndex));
 }
 
-// [수정] 학교 선택 시 로딩 애니메이션 시작
 function selectSchool(item) {
     const input = document.getElementById("school_name");
     if (input) input.value = item.dataset.name;
     hideAutocomplete();
-    // [수정] 학교 선택 햅틱 - MEDIUM
+    // [수정] 자동완성 클릭으로 검색한 경우 트래킹
+    trackEvent('search_method', 'autocomplete');
     NotificationManager.triggerHaptic('impact', 'MEDIUM');
     const ld = document.getElementById('loading');
     if (ld) {
@@ -490,12 +494,10 @@ function performSearch(query, region, immediate = false) {
     else searchTimeout = setTimeout(execute, 300);
 }
 
-// [수정] 로딩 텍스트 Toss 스타일 fade+translate 애니메이션
 function startLoadingAnimation() {
     const textEl = document.getElementById('loading-text');
     if (!textEl) return;
 
-    // 첫 번째 텍스트: 아래에서 올라오는 fade-in
     textEl.style.transition = 'none';
     textEl.textContent = '급식 정보를 가져오고 있어요!';
     textEl.style.opacity = '0';
@@ -506,11 +508,9 @@ function startLoadingAnimation() {
     textEl.style.transform = 'translateY(0)';
 
     setTimeout(() => {
-        // 첫 번째 텍스트 fade-out
         textEl.style.opacity = '0';
         textEl.style.transform = 'translateY(-18px)';
         setTimeout(() => {
-            // 두 번째 텍스트 fade-in
             textEl.style.transition = 'none';
             textEl.textContent = '잠시만 기다려주세요!';
             textEl.style.opacity = '0';
@@ -541,7 +541,6 @@ function showElement(el) {
     el.classList.add('visible');
 }
 
-// [수정] 자세히 알아보기 버튼 fade-in
 function showAboutBtn() {
     const wrapper = document.getElementById('aboutToggleWrapper');
     if (!wrapper) return;
@@ -568,7 +567,6 @@ async function initFormAnimation() {
         showElement(regionSelectWrapper);
         showSchoolRowAnimated();
         if (manualFinder) manualFinder.classList.add('visible');
-        // [수정] 지역 이미 선택된 상태 - 버튼 즉시 표시
         showAboutBtn();
         return;
     }
@@ -585,7 +583,6 @@ async function initFormAnimation() {
         await fadePromptText(promptEl, '급식알리미에 오신 것을 환영합니다!');
         await delay(2200);
         await fadePromptText(promptEl, '학교만 한 번 입력하면 앞으로는 접속하자마자 오늘의 급식을 확인하실 수 있어요!');
-        // [수정] 이 문구가 나온 직후 버튼 표시
         showAboutBtn();
         await delay(2800);
         await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
@@ -598,7 +595,6 @@ async function initFormAnimation() {
         await delay(400);
         showElement(regionSelectWrapper);
         if (manualFinder) manualFinder.classList.add('visible');
-        // [수정] 재방문 - regionSelectWrapper와 함께 표시
         showAboutBtn();
     }
 }
@@ -634,6 +630,8 @@ document.addEventListener('DOMContentLoaded', function() {
         options.forEach(o => o.addEventListener('click', () => {
             const theme = o.dataset.value;
             localStorage.setItem('theme', theme);
+            // [수정] 테마 변경 트래킹
+            trackEvent('theme', theme);
             if (theme === 'system') { if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
             else if (theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
             else document.documentElement.removeAttribute('data-theme');
@@ -737,7 +735,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
         toggleNearbyBtn.addEventListener('click', function() {
-            // [수정] 주변학교 토글 햅틱
+            // [수정] 주변 학교 비교 클릭 트래킹
+            trackEvent('btn_nearby', 'toggle');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = nearbyContainer.style.display === 'none';
             if (hidden) { nearbyContainer.style.display='block'; toggleNearbyBtn.textContent='▲ 주변 학교 급식 비교 접기'; toggleNearbyBtn.classList.add('active'); nearbyContainer.scrollIntoView({behavior:'smooth'}); }
@@ -748,7 +747,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
-            // [수정] 공유 버튼 햅틱
+            // [수정] 공유하기 클릭 트래킹
+            trackEvent('btn_share', 'click');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const schoolCode = getCookie('school_code');
             const schoolName = getCookie('school_name') || '학교';
@@ -769,7 +769,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (regionForm) {
         regionForm.addEventListener('submit', function(e) {
             if (!regionSelect || !regionSelect.value) { e.preventDefault(); alert("지역을 선택해주세요."); if (regionSelect) regionSelect.focus(); return; }
-            // [수정] 폼 제출 시 로딩 애니메이션 시작
+            // [수정] 직접 입력(엔터/제출)으로 검색한 경우 트래킹
+            trackEvent('search_method', 'manual');
             if (loadingDiv) {
                 startLoadingAnimation();
                 loadingDiv.style.display = 'flex';
@@ -781,7 +782,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
         toggleMonthBtn.addEventListener('click', function() {
-            // [수정] 월간 급식표 토글 햅틱
+            // [수정] 월간 급식표 클릭 트래킹
+            trackEvent('btn_month', 'toggle');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = monthTable.style.display === 'none';
             monthTable.style.display = hidden ? 'block' : 'none';
@@ -797,7 +799,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (loadingDiv) loadingDiv.style.display = 'none';
 
-    // [수정] 서비스 소개 토글
     const aboutToggleBtn = document.getElementById('aboutToggleBtn');
     const aboutSection = document.getElementById('aboutSection');
     if (aboutToggleBtn && aboutSection) {
@@ -961,75 +962,73 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('click', (e) => { if (e.target === modal) closeNotiGuide(); }, { once: true });
     }
 
-window.closeNotiGuide = function() {
-    // [수정] 모달 닫기 햅틱
-    NotificationManager.triggerHaptic('impact', 'LIGHT');
-    const modal = document.getElementById('noti-guide-modal');
-    const sheet = document.getElementById('noti-guide-sheet');
-    const titleEl = document.getElementById('noti-guide-title');
-    const descEl = document.getElementById('noti-guide-desc');
+    window.closeNotiGuide = function() {
+        NotificationManager.triggerHaptic('impact', 'LIGHT');
+        const modal = document.getElementById('noti-guide-modal');
+        const sheet = document.getElementById('noti-guide-sheet');
+        const titleEl = document.getElementById('noti-guide-title');
+        const descEl = document.getElementById('noti-guide-desc');
 
-    sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-    sheet.style.transform = 'translateY(100%)';
-    titleEl.classList.remove('show');
-    descEl.classList.remove('show');
-    document.body.style.overflow = '';
-
-    setTimeout(() => {
-        modal.classList.remove('show');
-        // [수정] show 클래스 제거 - 재오픈 시 슬라이드업 애니메이션 재실행
-        sheet.classList.remove('show');
-        sheet.style.transform = '';
-        sheet.style.transition = '';
-    }, 400);
-};
-
-(function initDragHandle() {
-    const sheet = document.getElementById('noti-guide-sheet');
-    if (!sheet) return;
-
-    let startY = 0, currentY = 0, isDragging = false;
-
-    function onDragStart(e) {
-        // [수정] 인터랙티브 요소에서 시작한 드래그 제외
-        const tag = e.target.tagName.toLowerCase();
-        if (['button', 'input', 'a', 'select', 'label', 'textarea'].includes(tag)) return;
-        isDragging = true;
-        startY = e.touches ? e.touches[0].clientY : e.clientY;
-        sheet.style.transition = 'none';
-    }
-    function onDragMove(e) {
-        if (!isDragging) return;
-        currentY = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
-        if (currentY < 0) currentY = 0;
-        sheet.style.transform = `translateY(${currentY}px)`;
-    }
-    function onDragEnd() {
-        if (!isDragging) return;
-        isDragging = false;
         sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
-        if (currentY > 80) {
-            closeNotiGuide();
-        } else {
-            sheet.style.transform = 'translateY(0)';
-        }
-        currentY = 0;
-    }
+        sheet.style.transform = 'translateY(100%)';
+        titleEl.classList.remove('show');
+        descEl.classList.remove('show');
+        document.body.style.overflow = '';
 
-    // [수정] 드래그 영역: 핸들 대신 시트 상단 전체로 확장
-    sheet.addEventListener('touchstart', onDragStart, { passive: true });
-    sheet.addEventListener('touchmove', onDragMove, { passive: true });
-    sheet.addEventListener('touchend', onDragEnd);
-    sheet.addEventListener('mousedown', onDragStart);
-    document.addEventListener('mousemove', onDragMove);
-    document.addEventListener('mouseup', onDragEnd);
-})();
+        setTimeout(() => {
+            modal.classList.remove('show');
+            sheet.classList.remove('show');
+            sheet.style.transform = '';
+            sheet.style.transition = '';
+        }, 400);
+    };
+
+    (function initDragHandle() {
+        const sheet = document.getElementById('noti-guide-sheet');
+        if (!sheet) return;
+
+        let startY = 0, currentY = 0, isDragging = false;
+
+        function onDragStart(e) {
+            const tag = e.target.tagName.toLowerCase();
+            if (['button', 'input', 'a', 'select', 'label', 'textarea'].includes(tag)) return;
+            isDragging = true;
+            startY = e.touches ? e.touches[0].clientY : e.clientY;
+            sheet.style.transition = 'none';
+        }
+        function onDragMove(e) {
+            if (!isDragging) return;
+            currentY = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
+            if (currentY < 0) currentY = 0;
+            sheet.style.transform = `translateY(${currentY}px)`;
+        }
+        function onDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+            if (currentY > 80) {
+                closeNotiGuide();
+            } else {
+                sheet.style.transform = 'translateY(0)';
+            }
+            currentY = 0;
+        }
+
+        sheet.addEventListener('touchstart', onDragStart, { passive: true });
+        sheet.addEventListener('touchmove', onDragMove, { passive: true });
+        sheet.addEventListener('touchend', onDragEnd);
+        sheet.addEventListener('mousedown', onDragStart);
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('mouseup', onDragEnd);
+    })();
 
     async function initNotification() {
         const notiBtn = document.getElementById('notification-btn');
         if (!notiBtn) return;
 
         notiBtn.addEventListener('click', async () => {
+            // [수정] 알림 버튼 클릭 트래킹
+            trackEvent('btn_notification', 'click');
             if (NotificationManager.isAppEnvironment()) {
                 const ready = await NotificationManager.waitForCapacitor();
                 if (!ready) return;
@@ -1060,7 +1059,6 @@ window.closeNotiGuide = function() {
             const day = parseInt(el.id.replace('day-', ''));
             if (selectedDays.has(day)) el.classList.add('selected');
             el.addEventListener('click', () => {
-                // [수정] 요일 선택 햅틱
                 NotificationManager.triggerHaptic('impact', 'LIGHT');
                 if (selectedDays.has(day)) { selectedDays.delete(day); el.classList.remove('selected'); }
                 else { selectedDays.add(day); el.classList.add('selected'); }
@@ -1068,14 +1066,12 @@ window.closeNotiGuide = function() {
         });
 
         document.getElementById('noti-cancel-btn').addEventListener('click', () => {
-            // [수정] 취소 햅틱
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             document.getElementById('notification-modal').classList.remove('show');
             document.body.style.overflow = '';
         });
 
         document.getElementById('noti-disable-btn').addEventListener('click', async () => {
-            // [수정] 알림 끄기 햅틱
             NotificationManager.triggerHaptic('notification', 'WARNING');
             await NotificationManager.cancelAll();
             const s = NotificationManager.loadSettings();
@@ -1088,7 +1084,6 @@ window.closeNotiGuide = function() {
         document.getElementById('noti-save-btn').addEventListener('click', async () => {
             const granted = await NotificationManager.requestPermission();
             if (!granted) {
-                // [수정] 권한 거부 햅틱
                 NotificationManager.triggerHaptic('notification', 'ERROR');
                 alert('알림 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.'); return;
             }
@@ -1106,7 +1101,6 @@ window.closeNotiGuide = function() {
             const count = await NotificationManager.schedule(settings, mealData);
             document.getElementById('notification-modal').classList.remove('show');
             document.body.style.overflow = '';
-            // [수정] 저장 완료 햅틱
             NotificationManager.triggerHaptic('notification', 'SUCCESS');
             alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
         });
