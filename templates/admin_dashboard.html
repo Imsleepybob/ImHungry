@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 대시보드 - 급식알리미</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function() {
+    const t = localStorage.getItem('theme') || 'system';
+    if (t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
+</script>
+<style>
+:root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface2: #f8f9fa;
+    --border: #e5e8ed;
+    --text: #1a1d23;
+    --text2: #5a6070;
+    --text3: #9aa0ae;
+    --primary: #4f7ef0;
+    --primary-light: rgba(79,126,240,0.12);
+    --green: #22c55e;
+    --green-light: rgba(34,197,94,0.12);
+    --orange: #f59e0b;
+    --orange-light: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-light: rgba(239,68,68,0.12);
+    --purple: #a855f7;
+    --purple-light: rgba(168,85,247,0.12);
+    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.09);
+}
+[data-theme="dark"] {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222633;
+    --border: #2a2f3d;
+    --text: #e8eaf0;
+    --text2: #a0a8be;
+    --text3: #606880;
+    --primary: #6b8ff5;
+    --primary-light: rgba(107,143,245,0.18);
+    --green: #34d470;
+    --green-light: rgba(52,212,112,0.14);
+    --orange: #fbbf24;
+    --orange-light: rgba(251,191,36,0.14);
+    --red: #f87171;
+    --red-light: rgba(248,113,113,0.14);
+    --purple: #c084fc;
+    --purple-light: rgba(192,132,252,0.14);
+    --shadow: 0 1px 4px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+}
+.topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.topbar-badge {
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.day-selector { display: flex; gap: 4px; }
+.day-btn {
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+}
+.day-btn:hover, .day-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.theme-btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 13px;
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    margin-top: 24px;
+}
+.section-title:first-child { margin-top: 0; }
+
+/* 카드 그리드 */
+.cards-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 4px; }
+.cards-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.cards-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+}
+.stat-card { display: flex; flex-direction: column; gap: 6px; }
+.stat-label { font-size: 12px; color: var(--text3); font-weight: 500; }
+.stat-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-sub { font-size: 12px; color: var(--text3); }
+.stat-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+.icon-blue { background: var(--primary-light); }
+.icon-green { background: var(--green-light); }
+.icon-orange { background: var(--orange-light); }
+.icon-red { background: var(--red-light); }
+.icon-purple { background: var(--purple-light); }
+.color-blue { color: var(--primary); }
+.color-green { color: var(--green); }
+.color-orange { color: var(--orange); }
+.color-red { color: var(--red); }
+.color-purple { color: var(--purple); }
+
+/* 차트 카드 */
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
+.chart-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.chart-wrap { position: relative; }
+.chart-wrap canvas { max-height: 220px; }
+.chart-wrap-tall canvas { max-height: 280px; }
+
+/* 테이블 */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+}
+.data-table th:first-child { border-radius: 6px 0 0 0; }
+.data-table th:last-child { border-radius: 0 6px 0 0; text-align: right; }
+.data-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+}
+.data-table td:last-child { text-align: right; color: var(--text2); }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--surface2); }
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    background: var(--surface2);
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+.rank-badge.top3 { background: var(--primary-light); color: var(--primary); }
+.path-text { font-family: 'SF Mono', 'Fira Mono', monospace; font-size: 12px; color: var(--text2); }
+.count-badge {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+}
+
+/* 이벤트 섹션 */
+.event-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.event-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.event-row:last-child { border-bottom: none; }
+.event-label { flex: 1; font-size: 13px; color: var(--text2); }
+.event-bar-wrap { flex: 2; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.event-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.event-count { font-size: 13px; font-weight: 600; color: var(--text); min-width: 36px; text-align: right; }
+.btn-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 4px;
+}
+.btn-stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.btn-stat-icon { font-size: 18px; }
+.btn-stat-info { flex: 1; }
+.btn-stat-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+.btn-stat-count { font-size: 20px; font-weight: 700; color: var(--text); }
+
+/* 캐시/보안 */
+.info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    font-size: 13px;
+}
+.info-item-label { color: var(--text2); }
+.info-item-value { font-weight: 600; color: var(--text); }
+.alert-item { border-left: 3px solid var(--red); }
+.alert-item .info-item-value { color: var(--red); }
+
+/* 빈 상태 */
+.empty-state { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
+
+@media (max-width: 1100px) {
+    .cards-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+    .cards-4, .cards-3, .cards-2 { grid-template-columns: 1fr; }
+    .event-grid { grid-template-columns: 1fr; }
+    .btn-row { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+    .container { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a href="/" style="color:var(--text2); text-decoration:none; font-size:18px;">←</a>
+    <span class="topbar-title">관리자 대시보드</span>
+    <span class="topbar-badge">최근 {{ stats.days }}일</span>
+  </div>
+  <div class="topbar-right">
+    <div class="day-selector">
+      <a href="?days=7" class="day-btn {% if stats.days == 7 %}active{% endif %}">7일</a>
+      <a href="?days=30" class="day-btn {% if stats.days == 30 %}active{% endif %}">30일</a>
+      <a href="?days=60" class="day-btn {% if stats.days == 60 %}active{% endif %}">60일</a>
+      <a href="?days=90" class="day-btn {% if stats.days == 90 %}active{% endif %}">90일</a>
+    </div>
+    <button class="theme-btn" onclick="toggleTheme()">🌓</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 개요 카드 -->
+  <div class="section-title">개요</div>
+  <div class="cards-4">
+    <div class="card stat-card">
+      <div class="stat-icon icon-blue">📊</div>
+      <div class="stat-label">총 요청 수</div>
+      <div class="stat-value color-blue">{{ "{:,}".format(stats.total_requests) }}</div>
+      <div class="stat-sub">오늘 {{ "{:,}".format(stats.today_requests) }}건</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon icon-green">👤</div>
+      <div class="stat-label">고유 IP</div>
+      <div class="stat-value color-green">{{ "{:,}".format(stats.unique_ips) }}</div>
+      <div class="stat-sub">일반 사용자 {{ "{:,}".format(stats.users) }}건</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon icon-orange">🤖</div>
+      <div class="stat-label">크롤러 요청</div>
+      <div class="stat-value color-orange">{{ "{:,}".format(stats.crawlers) }}</div>
+      {% set total_nz = stats.total_requests if stats.total_requests > 0 else 1 %}
+      <div class="stat-sub">전체의 {{ "%.1f"|format(stats.crawlers / total_nz * 100) }}%</div>
+    </div>
+    <div class="card stat-card">
+      <div class="stat-icon icon-red">🚫</div>
+      <div class="stat-label">차단된 네트워크</div>
+      <div class="stat-value color-red">{{ stats.security.blocked_networks }}</div>
+      <div class="stat-sub">임시차단 IP {{ stats.security.temp_blocked_ips }}개</div>
+    </div>
+  </div>
+
+  <!-- 일별 요청 추이 -->
+  <div class="section-title" style="margin-top:20px;">일별 요청 추이</div>
+  <div class="chart-card">
+    <div class="chart-title">날짜별 접속 수</div>
+    <div class="chart-wrap chart-wrap-tall">
+      <canvas id="dailyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 크롤러 vs 사용자 / 디바이스 / 브라우저 -->
+  <div class="section-title" style="margin-top:20px;">트래픽 분석</div>
+  <div class="cards-3">
+    <div class="chart-card">
+      <div class="chart-title">크롤러 vs 일반 사용자</div>
+      <div class="chart-wrap">
+        <canvas id="crawlerChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">디바이스 유형</div>
+      <div class="chart-wrap">
+        <canvas id="deviceChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">브라우저</div>
+      <div class="chart-wrap">
+        <canvas id="browserChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 인기 학교 & 경로 -->
+  <div class="section-title" style="margin-top:20px;">인기 학교 & 경로</div>
+  <div class="cards-2">
+    <div class="card">
+      <div class="chart-title">🏫 인기 학교 TOP 10</div>
+      {% if stats.top_schools %}
+      <table class="data-table">
+        <thead><tr><th>#</th><th>학교명</th><th>방문 수</th></tr></thead>
+        <tbody>
+        {% for name, count in stats.top_schools %}
+        <tr>
+          <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
+          <td>{{ name }}</td>
+          <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">데이터 없음</div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="chart-title">🔗 인기 경로 TOP 15</div>
+      {% if stats.top_paths %}
+      <table class="data-table">
+        <thead><tr><th>#</th><th>경로</th><th>횟수</th></tr></thead>
+        <tbody>
+        {% for path, count in stats.top_paths %}
+        <tr>
+          <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
+          <td class="path-text">{{ path }}</td>
+          <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">데이터 없음</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 레퍼러 & IP -->
+  <div class="section-title" style="margin-top:20px;">레퍼러 & IP</div>
+  <div class="cards-2">
+    <div class="card">
+      <div class="chart-title">🌐 상위 레퍼러 도메인</div>
+      {% if stats.top_referrers %}
+      <table class="data-table">
+        <thead><tr><th>#</th><th>도메인</th><th>횟수</th></tr></thead>
+        <tbody>
+        {% for domain, count in stats.top_referrers %}
+        <tr>
+          <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
+          <td>{{ domain }}</td>
+          <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">레퍼러 데이터 없음</div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="chart-title">📡 상위 접속 IP TOP 10</div>
+      {% if stats.top_ips %}
+      <table class="data-table">
+        <thead><tr><th>#</th><th>IP 주소</th><th>요청 수</th></tr></thead>
+        <tbody>
+        {% for ip, count in stats.top_ips %}
+        <tr>
+          <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
+          <td class="path-text">{{ ip }}</td>
+          <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">데이터 없음</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 상태 코드 분포 -->
+  <div class="section-title" style="margin-top:20px;">HTTP 상태 코드</div>
+  <div class="chart-card">
+    <div class="chart-title">상태 코드 분포</div>
+    <div class="chart-wrap">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 사용자 행동 이벤트 -->
+  <div class="section-title" style="margin-top:20px;">사용자 행동 이벤트</div>
+  <div class="event-grid">
+
+    <!-- 테마 선호도 -->
+    <div class="card">
+      <div class="chart-title">🎨 테마 선호도</div>
+      {% set theme_total = (stats.events.theme.values() | sum) %}
+      {% set theme_total_nz = theme_total if theme_total > 0 else 1 %}
+      {% if theme_total > 0 %}
+        {% for label, color, key in [('라이트 모드', '#f59e0b', 'light'), ('다크 모드', '#6b8ff5', 'dark'), ('시스템', '#22c55e', 'system')] %}
+        {% set val = stats.events.theme.get(key, 0) %}
+        <div class="event-row">
+          <div class="event-label">{{ label }}</div>
+          <div class="event-bar-wrap"><div class="event-bar" style="width:{{ (val / theme_total_nz * 100)|int }}%; background:{{ color }};"></div></div>
+          <div class="event-count">{{ val }}</div>
+        </div>
+        {% endfor %}
+        <div class="stat-sub" style="margin-top:8px; color:var(--text3);">총 {{ theme_total }}번 변경</div>
+      {% else %}
+        <div class="empty-state">이벤트 데이터 없음<br><small>events.log가 쌓이면 표시됩니다</small></div>
+      {% endif %}
+    </div>
+
+    <!-- 검색 방식 -->
+    <div class="card">
+      <div class="chart-title">🔍 검색 방식</div>
+      {% set sm_total = (stats.events.search_method.values() | sum) %}
+      {% set sm_total_nz = sm_total if sm_total > 0 else 1 %}
+      {% if sm_total > 0 %}
+        {% set ac_val = stats.events.search_method.get('autocomplete', 0) %}
+        {% set manual_val = stats.events.search_method.get('manual', 0) %}
+        <div class="event-row">
+          <div class="event-label">자동완성 클릭</div>
+          <div class="event-bar-wrap"><div class="event-bar" style="width:{{ (ac_val / sm_total_nz * 100)|int }}%; background:#22c55e;"></div></div>
+          <div class="event-count">{{ ac_val }}</div>
+        </div>
+        <div class="event-row">
+          <div class="event-label">직접 입력(엔터)</div>
+          <div class="event-bar-wrap"><div class="event-bar" style="width:{{ (manual_val / sm_total_nz * 100)|int }}%; background:#a855f7;"></div></div>
+          <div class="event-count">{{ manual_val }}</div>
+        </div>
+        <div class="stat-sub" style="margin-top:8px; color:var(--text3);">총 {{ sm_total }}번 검색</div>
+      {% else %}
+        <div class="empty-state">이벤트 데이터 없음</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- 버튼 클릭 통계 -->
+  <div class="card" style="margin-top:12px;">
+    <div class="chart-title">🖱️ 버튼 클릭 통계</div>
+    <div class="btn-row">
+      <div class="btn-stat">
+        <div class="btn-stat-icon">📅</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">월간 급식표 보기</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_month) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🏫</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">주변 학교와 비교</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_nearby) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🔗</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">공유하기</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_share) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🔔</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">알림 설정</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_notification) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 캐시 & 보안 현황 -->
+  <div class="section-title" style="margin-top:20px;">캐시 & 보안 현황</div>
+  <div class="cards-2">
+    <div class="card">
+      <div class="chart-title">💾 인메모리 캐시 현황</div>
+      <div class="info-grid">
+        {% for label, val in stats.cache_stats.items() %}
+        <div class="info-item">
+          <span class="info-item-label">{{ label }}</span>
+          <span class="info-item-value">{{ val }}건</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="chart-title">🔒 보안 현황</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-item-label">차단된 네트워크</span>
+          <span class="info-item-value">{{ stats.security.blocked_networks }}</span>
+        </div>
+        <div class="info-item {% if stats.security.temp_blocked_ips > 0 %}alert-item{% endif %}">
+          <span class="info-item-label">임시 차단 IP</span>
+          <span class="info-item-value">{{ stats.security.temp_blocked_ips }}</span>
+        </div>
+        <div class="info-item {% if stats.security.total_failed_attempts > 10 %}alert-item{% endif %}">
+          <span class="info-item-label">총 실패 시도</span>
+          <span class="info-item-value">{{ stats.security.total_failed_attempts }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; text-align:center; color:var(--text3); font-size:12px; padding-bottom:24px;">
+    데이터 기준: 최근 {{ stats.days }}일 / access.log + events.log 파싱 결과 /
+    <a href="/admin/dashboard" style="color:var(--primary); text-decoration:none;">새로고침</a>
+  </div>
+
+</div>
+
+<script>
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const textColor = () => isDark() ? '#a0a8be' : '#5a6070';
+const gridColor = () => isDark() ? '#2a2f3d' : '#e5e8ed';
+const surfaceColor = () => isDark() ? '#1a1d27' : '#ffffff';
+
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+Chart.defaults.font.size = 12;
+
+const PALETTE = ['#4f7ef0','#22c55e','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16'];
+
+function makeOpts(extra = {}) {
+    return {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { labels: { color: textColor(), boxWidth: 12, padding: 14 } },
+            tooltip: {
+                backgroundColor: surfaceColor(),
+                titleColor: isDark() ? '#e8eaf0' : '#1a1d23',
+                bodyColor: textColor(),
+                borderColor: gridColor(),
+                borderWidth: 1,
+            }
+        },
+        ...extra
+    };
+}
+
+// 일별 요청 추이
+const dailyData = {{ stats.requests_by_day | tojson }};
+new Chart(document.getElementById('dailyChart'), {
+    type: 'line',
+    data: {
+        labels: Object.keys(dailyData),
+        datasets: [{
+            label: '요청 수',
+            data: Object.values(dailyData),
+            borderColor: '#4f7ef0',
+            backgroundColor: 'rgba(79,126,240,0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: '#4f7ef0',
+        }]
+    },
+    options: makeOpts({
+        scales: {
+            x: { ticks: { color: textColor(), maxTicksLimit: 14 }, grid: { color: gridColor() } },
+            y: { ticks: { color: textColor() }, grid: { color: gridColor() }, beginAtZero: true }
+        },
+        plugins: { ...makeOpts().plugins, legend: { display: false } }
+    })
+});
+
+// 크롤러 vs 사용자
+new Chart(document.getElementById('crawlerChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['일반 사용자', '크롤러'],
+        datasets: [{ data: [{{ stats.users }}, {{ stats.crawlers }}], backgroundColor: ['#22c55e','#f59e0b'], borderWidth: 0 }]
+    },
+    options: makeOpts({ cutout: '60%' })
+});
+
+// 디바이스
+const deviceData = {{ stats.devices | tojson }};
+new Chart(document.getElementById('deviceChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(deviceData),
+        datasets: [{ data: Object.values(deviceData), backgroundColor: PALETTE, borderWidth: 0 }]
+    },
+    options: makeOpts({ cutout: '60%' })
+});
+
+// 브라우저
+const browserData = {{ stats.browsers | tojson }};
+new Chart(document.getElementById('browserChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(browserData),
+        datasets: [{ data: Object.values(browserData), backgroundColor: PALETTE, borderWidth: 0 }]
+    },
+    options: makeOpts({ cutout: '60%' })
+});
+
+// 상태 코드
+const statusData = {{ stats.status_codes | tojson }};
+const statusColors = Object.keys(statusData).map(k => {
+    const n = parseInt(k);
+    if (n < 300) return '#22c55e';
+    if (n < 400) return '#f59e0b';
+    if (n < 500) return '#ef4444';
+    return '#a855f7';
+});
+new Chart(document.getElementById('statusChart'), {
+    type: 'bar',
+    data: {
+        labels: Object.keys(statusData),
+        datasets: [{
+            label: '횟수',
+            data: Object.values(statusData),
+            backgroundColor: statusColors,
+            borderRadius: 6,
+        }]
+    },
+    options: makeOpts({
+        indexAxis: 'y',
+        scales: {
+            x: { ticks: { color: textColor() }, grid: { color: gridColor() }, beginAtZero: true },
+            y: { ticks: { color: textColor() }, grid: { display: false } }
+        },
+        plugins: { ...makeOpts().plugins, legend: { display: false } }
+    })
+});
+
+function toggleTheme() {
+    const isDarkNow = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDarkNow ? 'light' : 'dark';
+    localStorage.setItem('theme', next);
+    if (next === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+}
+</script>
+</body>
+</html>
