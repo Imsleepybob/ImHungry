@@ -452,14 +452,21 @@ body {
     </div>
     <div class="card">
       <div class="chart-title">📡 상위 접속 IP TOP 10</div>
-      {% if stats.top_ips %}
+      {% if stats.top_ips_enriched %}
       <table class="data-table">
-        <thead><tr><th>#</th><th>IP 주소</th><th>요청 수</th></tr></thead>
+        <thead><tr><th>#</th><th>IP 주소</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th></tr></thead>
         <tbody>
-        {% for ip, count in stats.top_ips %}
+        {% for ip, count, info in stats.top_ips_enriched %}
         <tr>
           <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
           <td class="path-text">{{ ip }}</td>
+          <td style="font-size:0.8rem; color:var(--text-secondary);">{{ info.org or '-' }}</td>
+          <td style="font-size:0.8rem; color:var(--text-secondary);">
+            {%- if info.city or info.region -%}
+              {{ info.city }}{% if info.city and info.region %}, {% endif %}{{ info.region }}
+            {%- else -%}-{%- endif -%}
+            {% if info.country %} ({{ info.country }}){% endif %}
+          </td>
           <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
         </tr>
         {% endfor %}
