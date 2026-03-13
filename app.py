@@ -573,6 +573,7 @@ def parse_logs_for_dashboard(days=30):
         'requests_by_day': defaultdict(int),
         'status_codes': defaultdict(int),
         'paths': defaultdict(int),
+        # [수정] school_visits, ips, referrers는 일반 사용자 트래픽만 집계
         'school_visits': defaultdict(int),
         'ips': defaultdict(int),
         'referrers': defaultdict(int),
@@ -582,6 +583,8 @@ def parse_logs_for_dashboard(days=30):
         'os_names': defaultdict(int),
         'browsers': defaultdict(int),
         'crawler_names': defaultdict(int),
+        # [수정] 봇 전용 IP 집계: {ip: {'total': int, 'paths': {path: count}, 'crawler_name': str}}
+        'bot_ips': defaultdict(lambda: {'total': 0, 'paths': defaultdict(int), 'crawler_name': 'Unknown'}),
     }
 
     # 신규 포맷: ... - Device: X - OS: X - Browser: X - Crawler: X - UA: ...
@@ -620,45 +623,49 @@ def parse_logs_for_dashboard(days=30):
                 stats['requests_by_day'][date_str] += 1
                 stats['status_codes'][status] += 1
                 stats['paths'][path] += 1
-                stats['ips'][ip] += 1
 
-                school_m = re.match(r'^/meal/(\w+)$', path)
-                if school_m:
-                    stats['school_visits'][school_m.group(1)] += 1
-
-                if referrer and referrer != 'N/A':
-                    ref_m = re.match(r'https?://([^/]+)', referrer)
-                    if ref_m:
-                        stats['referrers'][ref_m.group(1)] += 1
-
-                # 신규 포맷 (Crawler 필드 존재)
+                # 봇 여부 판별
+                is_bot = False
+                cname = 'Unknown'
                 if device:
                     is_crawler_entry = crawler_field is not None and crawler_field.strip() != 'N'
                     if is_crawler_entry:
-                        stats['crawlers'] += 1
-                        # "Googlebot (UA snippet)" → "Googlebot"
+                        is_bot = True
                         cname = crawler_field.split(' (')[0].strip()
-                        stats['crawler_names'][cname] += 1
                     elif device == 'Crawler':
-                        # 구 포맷 크롤러 (OS 필드 없던 시절)
-                        stats['crawlers'] += 1
-                        is_c, clabel, *_ = detect_client_type(ua)
+                        is_bot = True
+                        _, clabel, *_ = detect_client_type(ua)
                         cname = clabel.split(' (')[0].strip() if clabel else 'Unknown'
-                        stats['crawler_names'][cname] += 1
-                    else:
-                        stats['users'] += 1
+                else:
+                    is_crawler, crawler_label, *_ = detect_client_type(ua)
+                    if is_crawler:
+                        is_bot = True
+                        cname = crawler_label.split(' (')[0].strip()
+
+                if is_bot:
+                    stats['crawlers'] += 1
+                    stats['crawler_names'][cname] += 1
+                    # [수정] 봇 IP 별도 집계 (경로 포함)
+                    stats['bot_ips'][ip]['total'] += 1
+                    stats['bot_ips'][ip]['paths'][path] += 1
+                    stats['bot_ips'][ip]['crawler_name'] = cname
+                else:
+                    # [수정] 일반 사용자만 school_visits, ips, referrers에 반영
+                    stats['ips'][ip] += 1
+                    school_m = re.match(r'^/meal/(\w+)$', path)
+                    if school_m:
+                        stats['school_visits'][school_m.group(1)] += 1
+                    if referrer and referrer != 'N/A':
+                        ref_m = re.match(r'https?://([^/]+)', referrer)
+                        if ref_m:
+                            stats['referrers'][ref_m.group(1)] += 1
+                    stats['users'] += 1
+                    if device:
                         stats['devices'][device] += 1
                         stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
                         stats['browsers'][browser.strip() if browser else 'Other'] += 1
-                else:
-                    # 구 포맷 (Device 필드 자체 없음) → UA 재탐지
-                    is_crawler, crawler_label, det_device, det_os, det_browser = detect_client_type(ua)
-                    if is_crawler:
-                        stats['crawlers'] += 1
-                        cname = crawler_label.split(' (')[0].strip()
-                        stats['crawler_names'][cname] += 1
                     else:
-                        stats['users'] += 1
+                        _, _, det_device, det_os, det_browser = detect_client_type(ua)
                         stats['devices'][det_device] += 1
                         stats['os_names'][det_os] += 1
                         stats['browsers'][det_browser] += 1
@@ -720,6 +727,18 @@ def parse_logs_for_dashboard(days=30):
         'os_names': dict(sorted(stats['os_names'].items(), key=lambda x: x[1], reverse=True)),
         'browsers': dict(stats['browsers']),
         'top_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True)[:15],
+        # [수정] 봇 IP 전체 목록 (경로 포함, 요청수 내림차순)
+        'bot_ip_list': [
+            {
+                'ip': ip,
+                'total': data['total'],
+                'crawler_name': data['crawler_name'],
+                'top_paths': sorted(data['paths'].items(), key=lambda x: x[1], reverse=True)[:5],
+            }
+            for ip, data in sorted(
+                stats['bot_ips'].items(), key=lambda x: x[1]['total'], reverse=True
+            )
+        ],
         'events': {
             'theme': dict(event_stats['theme']),
             'search_method': dict(event_stats['search_method']),
@@ -1422,12 +1441,12 @@ def admin_dashboard():
 
     stats = parse_logs_for_dashboard(days)
 
-    # [수정] 상위 IP에 대해 IPInfo enrichment (캐시 우선)
-    enriched_ips = []
-    for ip, count in stats['top_ips']:
-        info = get_ip_info(ip)
-        enriched_ips.append((ip, count, info))
-    stats['top_ips_enriched'] = enriched_ips
+    # [수정] IPInfo enrichment는 봇 IP에만 적용 (상위 50개)
+    enriched_bot_ips = []
+    for entry in stats['bot_ip_list'][:50]:
+        info = get_ip_info(entry['ip'])
+        enriched_bot_ips.append({**entry, 'info': info})
+    stats['bot_ip_list_enriched'] = enriched_bot_ips
 
     return render_template('admin_dashboard.html', stats=stats)
 
