@@ -452,21 +452,14 @@ body {
     </div>
     <div class="card">
       <div class="chart-title">📡 상위 접속 IP TOP 10</div>
-      {% if stats.top_ips_enriched %}
+      {% if stats.top_ips %}
       <table class="data-table">
-        <thead><tr><th>#</th><th>IP 주소</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th></tr></thead>
+        <thead><tr><th>#</th><th>IP 주소</th><th>요청 수</th></tr></thead>
         <tbody>
-        {% for ip, count, info in stats.top_ips_enriched %}
+        {% for ip, count in stats.top_ips %}
         <tr>
           <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
           <td class="path-text">{{ ip }}</td>
-          <td style="font-size:0.8rem; color:var(--text-secondary);">{{ info.org or '-' }}</td>
-          <td style="font-size:0.8rem; color:var(--text-secondary);">
-            {%- if info.city or info.region -%}
-              {{ info.city }}{% if info.city and info.region %}, {% endif %}{{ info.region }}
-            {%- else -%}-{%- endif -%}
-            {% if info.country %} ({{ info.country }}){% endif %}
-          </td>
           <td><span class="count-badge">{{ "{:,}".format(count) }}</span></td>
         </tr>
         {% endfor %}
@@ -475,6 +468,81 @@ body {
       {% else %}
       <div class="empty-state">데이터 없음</div>
       {% endif %}
+    </div>
+  </div>
+
+  <!-- 봇 IP 랭킹 -->
+  <div class="section-title" style="margin-top:20px;">🤖 봇 IP 랭킹</div>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="chart-title" style="margin:0;">상위 봇 IP TOP 10 <span style="font-size:0.8rem; color:var(--text-muted);">(조직·위치 포함)</span></div>
+      <button onclick="openBotModal()" style="padding:6px 14px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer; font-size:0.85rem;">전체 목록 ({{ stats.bot_ip_list | length }}개) ⛶</button>
+    </div>
+    {% if stats.bot_ip_list_enriched %}
+    <div style="overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로</th></tr></thead>
+      <tbody>
+      {% for entry in stats.bot_ip_list_enriched[:10] %}
+      <tr>
+        <td><span class="rank-badge {% if loop.index <= 3 %}top3{% endif %}">{{ loop.index }}</span></td>
+        <td class="path-text">{{ entry.ip }}</td>
+        <td style="font-size:0.82rem;">{{ entry.crawler_name }}</td>
+        <td style="font-size:0.78rem; color:var(--text-secondary); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ entry.info.org or '-' }}</td>
+        <td style="font-size:0.78rem; color:var(--text-secondary);">
+          {%- if entry.info.city or entry.info.region -%}
+            {{ entry.info.city }}{% if entry.info.city and entry.info.region %}, {% endif %}{{ entry.info.region }}
+          {%- else -%}-{%- endif -%}
+          {% if entry.info.country %} ({{ entry.info.country }}){% endif %}
+        </td>
+        <td><span class="count-badge">{{ "{:,}".format(entry.total) }}</span></td>
+        <td style="font-size:0.78rem; color:var(--text-secondary);">
+          {% for p, c in entry.top_paths[:3] %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">봇 트래픽 없음</div>
+    {% endif %}
+  </div>
+
+  <!-- 봇 IP 전체 목록 모달 -->
+  <div id="botModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9000; align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto;">
+    <div style="background:var(--bg-container); border-radius:16px; width:100%; max-width:1000px; margin:auto; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="margin:0; color:var(--text-primary);">🤖 봇 IP 전체 목록 ({{ stats.bot_ip_list | length }}개)</h3>
+        <button onclick="closeBotModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted); line-height:1;">✕</button>
+      </div>
+      <div style="overflow-x:auto; max-height:70vh; overflow-y:auto;">
+      <table class="data-table">
+        <thead style="position:sticky; top:0; background:var(--bg-container); z-index:1;">
+          <tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로 (TOP 5)</th></tr>
+        </thead>
+        <tbody>
+        {% for entry in stats.bot_ip_list_enriched %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="path-text">{{ entry.ip }}</td>
+          <td style="font-size:0.82rem;">{{ entry.crawler_name }}</td>
+          <td style="font-size:0.78rem; color:var(--text-secondary);">{{ entry.info.org or '-' }}</td>
+          <td style="font-size:0.78rem; color:var(--text-secondary);">
+            {%- if entry.info.city or entry.info.region -%}
+              {{ entry.info.city }}{% if entry.info.city and entry.info.region %}, {% endif %}{{ entry.info.region }}
+            {%- else -%}-{%- endif -%}
+            {% if entry.info.country %} ({{ entry.info.country }}){% endif %}
+          </td>
+          <td><span class="count-badge">{{ "{:,}".format(entry.total) }}</span></td>
+          <td style="font-size:0.78rem; color:var(--text-secondary);">
+            {% for p, c in entry.top_paths %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
     </div>
   </div>
 
@@ -738,6 +806,20 @@ new Chart(document.getElementById('statusChart'), {
         },
         plugins: { ...makeOpts().plugins, legend: { display: false } }
     })
+});
+
+function openBotModal() {
+    const m = document.getElementById('botModal');
+    m.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeBotModal() {
+    const m = document.getElementById('botModal');
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+}
+document.getElementById('botModal').addEventListener('click', function(e) {
+    if (e.target === this) closeBotModal();
 });
 
 function toggleTheme() {
