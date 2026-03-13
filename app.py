@@ -83,8 +83,15 @@ SUSPICIOUS_PATTERNS = {
 # [수정] 크롤러 판별 + 이름 추출용 맵 (구체적인 것부터 순서 중요)
 CRAWLER_NAME_MAP = [
     ('googlebot',           'Googlebot'),
+    # [수정] UA 위장 구글 크롤러 (googlebot보다 먼저 올 필요 없음, googlebot이 없을 때 매칭)
+    ('googleother',         'GoogleOther'),
+    ('google-extended',     'Google-Extended'),
+    ('google-inspectiontool', 'Google Inspection'),
+    ('compatible; google',  'Google (disguised)'),
     ('bingbot',             'Bingbot'),
+    ('bingpreview',         'BingPreview'),
     ('yandexbot',           'YandexBot'),
+    ('yandex/',             'Yandex'),
     ('baiduspider',         'Baiduspider'),
     ('duckduckbot',         'DuckDuckBot'),
     ('applebot',            'Applebot'),
@@ -95,9 +102,14 @@ CRAWLER_NAME_MAP = [
     ('petalbot',            'PetalBot'),
     ('bytespider',          'ByteSpider'),
     ('facebookexternalhit', 'FacebookBot'),
+    ('facebookbot',         'FacebookBot'),
     ('twitterbot',          'TwitterBot'),
     ('linkedinbot',         'LinkedInBot'),
     ('slurp',               'Yahoo Slurp'),
+    ('naverbot',            'NaverBot'),
+    ('yeti/',               'Naver Yeti'),
+    ('kakaotalk-scrap',     'KakaoTalk Scraper'),
+    ('kakaostory',          'KakaoStory'),
     ('nikto',               'Nikto'),
     ('sqlmap',              'sqlmap'),
     ('masscan',             'masscan'),
@@ -115,6 +127,18 @@ CRAWLER_NAME_MAP = [
     ('scanner',             'Scanner'),
     ('scraper',             'Scraper'),
     ('bot',                 'Bot'),
+]
+
+# [수정] GeoIP 기반 봇 판별 - 한국 기업 크롤러 org 패턴
+KR_CORP_CRAWLER_PATTERNS = [
+    ('naver',    'NaverBot'),
+    ('kakao',    'KakaoBot'),
+    ('ncsoft',   'NCSoft Crawler'),
+    ('nexon',    'Nexon Crawler'),
+    ('krafton',  'Krafton Crawler'),
+    ('sk telecom', 'SKT Crawler'),
+    ('kt corp',  'KT Crawler'),
+    ('lg uplus', 'LGU+ Crawler'),
 ]
 
 
@@ -650,25 +674,51 @@ def parse_logs_for_dashboard(days=30):
                     stats['bot_ips'][ip]['paths'][path] += 1
                     stats['bot_ips'][ip]['crawler_name'] = cname
                 else:
-                    # [수정] 일반 사용자만 school_visits, ips, referrers에 반영
-                    stats['ips'][ip] += 1
-                    school_m = re.match(r'^/meal/(\w+)$', path)
-                    if school_m:
-                        stats['school_visits'][school_m.group(1)] += 1
-                    if referrer and referrer != 'N/A':
-                        ref_m = re.match(r'https?://([^/]+)', referrer)
-                        if ref_m:
-                            stats['referrers'][ref_m.group(1)] += 1
-                    stats['users'] += 1
-                    if device:
-                        stats['devices'][device] += 1
-                        stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
-                        stats['browsers'][browser.strip() if browser else 'Other'] += 1
+                    # [수정] GeoIP 2차 분류:
+                    # - 한국이 아닌 IP → 봇으로 재분류
+                    # - 한국 IP라도 알려진 기업 크롤러 org → 봇으로 재분류
+                    geo = get_ip_info(ip)
+                    country = geo.get('country', '')
+                    org_lower = geo.get('org', '').lower()
+
+                    geo_bot_name = None
+                    if country and country != 'KR':
+                        org_label = geo.get('org', country)
+                        geo_bot_name = f"Non-KR ({org_label})"
                     else:
-                        _, _, det_device, det_os, det_browser = detect_client_type(ua)
-                        stats['devices'][det_device] += 1
-                        stats['os_names'][det_os] += 1
-                        stats['browsers'][det_browser] += 1
+                        for pattern, label in KR_CORP_CRAWLER_PATTERNS:
+                            if pattern in org_lower:
+                                geo_bot_name = label
+                                break
+
+                    if geo_bot_name:
+                        is_bot = True
+                        cname = geo_bot_name
+                        stats['crawlers'] += 1
+                        stats['crawler_names'][cname] += 1
+                        stats['bot_ips'][ip]['total'] += 1
+                        stats['bot_ips'][ip]['paths'][path] += 1
+                        stats['bot_ips'][ip]['crawler_name'] = cname
+                    else:
+                        # 진짜 일반 사용자
+                        stats['ips'][ip] += 1
+                        school_m = re.match(r'^/meal/(\w+)$', path)
+                        if school_m:
+                            stats['school_visits'][school_m.group(1)] += 1
+                        if referrer and referrer != 'N/A':
+                            ref_m = re.match(r'https?://([^/]+)', referrer)
+                            if ref_m:
+                                stats['referrers'][ref_m.group(1)] += 1
+                        stats['users'] += 1
+                        if device:
+                            stats['devices'][device] += 1
+                            stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
+                            stats['browsers'][browser.strip() if browser else 'Other'] += 1
+                        else:
+                            _, _, det_device, det_os, det_browser = detect_client_type(ua)
+                            stats['devices'][det_device] += 1
+                            stats['os_names'][det_os] += 1
+                            stats['browsers'][det_browser] += 1
 
     # events.log 파싱
     event_stats = {
