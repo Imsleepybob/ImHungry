@@ -17,16 +17,19 @@ app = Flask(__name__)
 
 meal_cache = {}
 
-# --- 인메모리 학교 캐시 ---
-school_code_cache = {}       # school_code -> (timestamp, school_info)
-search_result_cache = {}     # (query, region_code) -> (timestamp, results)
-region_schools_cache = {}    # region_code -> (timestamp, schools_list)
+school_code_cache = {}
+search_result_cache = {}
+region_schools_cache = {}
 
-SCHOOL_CODE_CACHE_TTL = 86400    # 24시간
-SEARCH_CACHE_TTL = 3600          # 1시간
-REGION_SCHOOLS_CACHE_TTL = 86400 # 24시간
+SCHOOL_CODE_CACHE_TTL = 86400
+SEARCH_CACHE_TTL = 3600
+REGION_SCHOOLS_CACHE_TTL = 86400
 
-BLACKLIST_FILE = os.path.join(os.getcwd(), 'ip_blacklist.txt')
+# [수정] LOG_DIR: Render Persistent Disk 경로를 환경변수로 지정 가능
+# Render 대시보드 > Environment에서 LOG_DIR=/var/data 설정 후 Persistent Disk를 /var/data에 마운트
+LOG_DIR = os.environ.get('LOG_DIR', os.getcwd())
+
+BLACKLIST_FILE = os.path.join(LOG_DIR, 'ip_blacklist.txt')
 
 request_counts = defaultdict(deque)
 failed_attempts = defaultdict(int)
@@ -46,7 +49,7 @@ NO_LOG_PATHS = [
     'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
     '/logs/', '/stats', '/security/',
     '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
-    '/health'
+    '/health', '/api/track',
 ]
 
 SILENT_BLOCK_PATTERNS = [
@@ -74,6 +77,17 @@ SUSPICIOUS_PATTERNS = {
         r'exec\(', r'system\(', r'\.\./', r'etc/passwd'
     ]
 }
+
+# [수정] 크롤러 판별용 UA 패턴 목록 (detect_client_type에서 사용)
+CRAWLER_UA_PATTERNS = [
+    'bot', 'spider', 'crawler', 'scraper', 'scanner', 'curl', 'wget',
+    'python-requests', 'java/', 'go-http-client', 'nikto', 'sqlmap',
+    'masscan', 'nmap', 'axios', 'googlebot', 'bingbot', 'yandexbot',
+    'baiduspider', 'facebookexternalhit', 'twitterbot', 'linkedinbot',
+    'slurp', 'duckduckbot', 'applebot', 'semrushbot', 'ahrefsbot',
+    'mj12bot', 'amazonbot', 'petalbot', 'bytespider', 'zgrab',
+]
+
 
 def load_ip_blacklist():
     blacklist = []
@@ -250,7 +264,7 @@ def security_check():
 def setup_security_logging():
     security_logger = logging.getLogger('security')
     security_handler = RotatingFileHandler(
-        os.path.join(os.getcwd(), 'security.log'),
+        os.path.join(LOG_DIR, 'security.log'),
         maxBytes=10*1024*1024,
         backupCount=5,
         encoding='utf-8'
@@ -264,15 +278,21 @@ def setup_security_logging():
 
 setup_security_logging()
 
-ACCESS_LOG_PATH = os.path.join(os.getcwd(), 'access.log')
-APP_LOG_PATH = os.path.join(os.getcwd(), 'app.log')
-IP_BLOCK_LOG_PATH = os.path.join(os.getcwd(), 'ip_block.log')
-NAMUBOARD_LOG_PATH = os.path.join(os.getcwd(), 'namuboard.log')
+# [수정] 로그 경로: LOG_DIR 기반으로 변경
+ACCESS_LOG_PATH = os.path.join(LOG_DIR, 'access.log')
+APP_LOG_PATH = os.path.join(LOG_DIR, 'app.log')
+IP_BLOCK_LOG_PATH = os.path.join(LOG_DIR, 'ip_block.log')
+NAMUBOARD_LOG_PATH = os.path.join(LOG_DIR, 'namuboard.log')
+EVENTS_LOG_PATH = os.path.join(LOG_DIR, 'events.log')
+
 
 class AccessLogFormatter(logging.Formatter):
     def format(self, record):
         record.remote_addr = getattr(record, 'remote_addr', 'N/A')
         record.user_agent = getattr(record, 'user_agent', 'N/A')
+        # [수정] Device, Browser 필드 추가
+        record.device = getattr(record, 'device', 'N/A')
+        record.browser = getattr(record, 'browser', 'N/A')
         record.method = getattr(record, 'method', 'N/A')
         record.path = getattr(record, 'path', 'N/A')
         record.status = getattr(record, 'status', 'N/A')
@@ -310,8 +330,9 @@ def setup_logging():
         backupCount=5,
         encoding='utf-8'
     )
+    # [수정] Device, Browser 필드 추가
     access_formatter = AccessLogFormatter(
-        '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
+        '%(asctime)s - IP: %(remote_addr)s - Device: %(device)s - Browser: %(browser)s - UA: %(user_agent)s - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
     )
     access_handler.setFormatter(access_formatter)
     ip_handler = logging.FileHandler(IP_BLOCK_LOG_PATH, encoding='utf-8')
@@ -329,6 +350,20 @@ def setup_logging():
         '%(asctime)s - IP: %(remote_addr)s - UA: %(user_agent)s - Referrer: %(referrer)s'
     )
     namuboard_handler.setFormatter(namuboard_formatter)
+
+    # [수정] events 로거 추가 - JSON Lines 형식
+    events_handler = RotatingFileHandler(
+        EVENTS_LOG_PATH,
+        maxBytes=5*1024*1024,
+        backupCount=3,
+        encoding='utf-8'
+    )
+    events_handler.setFormatter(logging.Formatter('%(message)s'))
+    events_logger = logging.getLogger('events')
+    events_logger.setLevel(logging.INFO)
+    events_logger.addHandler(events_handler)
+    events_logger.propagate = False
+
     logger = logging.getLogger(__name__)
     logger.addHandler(app_handler)
     logger.addHandler(ip_handler)
@@ -346,6 +381,37 @@ def setup_logging():
 
 access_logger, namuboard_logger = setup_logging()
 
+
+# [수정] UA 기반 클라이언트 타입 감지 (크롤러 여부, 디바이스, 브라우저)
+def detect_client_type(raw_ua):
+    if not raw_ua:
+        return True, 'Unknown', 'Unknown'
+    ua_lower = raw_ua.lower()
+    if any(p in ua_lower for p in CRAWLER_UA_PATTERNS):
+        return True, 'Crawler', 'Crawler'
+    if 'ipad' in ua_lower or 'tablet' in ua_lower:
+        device = 'Tablet'
+    elif 'mobile' in ua_lower or 'android' in ua_lower or 'iphone' in ua_lower or 'ipod' in ua_lower:
+        device = 'Mobile'
+    else:
+        device = 'Desktop'
+    if 'edg/' in ua_lower or 'edgios' in ua_lower or 'edga/' in ua_lower:
+        browser = 'Edge'
+    elif 'samsungbrowser' in ua_lower:
+        browser = 'Samsung'
+    elif 'crios' in ua_lower or 'chrome' in ua_lower:
+        browser = 'Chrome'
+    elif 'fxios' in ua_lower or 'firefox' in ua_lower:
+        browser = 'Firefox'
+    elif 'opr/' in ua_lower or 'opera' in ua_lower:
+        browser = 'Opera'
+    elif 'safari' in ua_lower:
+        browser = 'Safari'
+    else:
+        browser = 'Other'
+    return False, device, browser
+
+
 def clean_user_agent(user_agent_string):
     if not user_agent_string:
         return 'Unknown'
@@ -356,9 +422,14 @@ def log_access_request(status_code=200):
     if request.method in ['GET', 'POST'] and status_code in [200, 206]:
         try:
             real_ip = get_client_ip()
+            raw_ua = request.headers.get('User-Agent', '')
+            # [수정] detect_client_type으로 디바이스/브라우저 추출
+            _, device, browser = detect_client_type(raw_ua)
             extra_info = {
                 'remote_addr': real_ip or 'Unknown',
-                'user_agent': clean_user_agent(request.headers.get('User-Agent', 'Unknown')),
+                'user_agent': clean_user_agent(raw_ua) or 'Unknown',
+                'device': device,
+                'browser': browser,
                 'method': request.method,
                 'path': request.path,
                 'status': status_code,
@@ -380,6 +451,164 @@ def log_namuboard_access_request():
     except Exception as e:
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
+
+# [수정] 대시보드용 로그 파싱 함수
+def parse_logs_for_dashboard(days=30):
+    today = datetime.now(KST).date()
+    cutoff = today - timedelta(days=days)
+
+    stats = {
+        'total_requests': 0,
+        'unique_ips': set(),
+        'today_requests': 0,
+        'requests_by_day': defaultdict(int),
+        'status_codes': defaultdict(int),
+        'paths': defaultdict(int),
+        'school_visits': defaultdict(int),
+        'ips': defaultdict(int),
+        'referrers': defaultdict(int),
+        'crawlers': 0,
+        'users': 0,
+        'devices': defaultdict(int),
+        'browsers': defaultdict(int),
+    }
+
+    # 신규 포맷: ... - Device: X - Browser: X - UA: ...
+    # 구 포맷:   ... - UA: ...
+    log_re = re.compile(
+        r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
+        r'IP: (\S+) - '
+        r'(?:Device: (\S+) - Browser: (\S+) - )?'
+        r'UA: (.*?) - '
+        r'Method: (\w+) - '
+        r'Path: (\S+) - '
+        r'Status: (\d+) - '
+        r'Referrer: (.*?)$'
+    )
+
+    if os.path.exists(ACCESS_LOG_PATH):
+        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                m = log_re.match(line.strip())
+                if not m:
+                    continue
+                date_str, ip, device, browser, ua, method, path, status, referrer = m.groups()
+                try:
+                    log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    if log_date < cutoff:
+                        continue
+                except Exception:
+                    continue
+
+                stats['total_requests'] += 1
+                stats['unique_ips'].add(ip)
+                if log_date == today:
+                    stats['today_requests'] += 1
+                stats['requests_by_day'][date_str] += 1
+                stats['status_codes'][status] += 1
+                stats['paths'][path] += 1
+                stats['ips'][ip] += 1
+
+                school_m = re.match(r'^/meal/(\w+)$', path)
+                if school_m:
+                    stats['school_visits'][school_m.group(1)] += 1
+
+                if referrer and referrer != 'N/A':
+                    ref_m = re.match(r'https?://([^/]+)', referrer)
+                    if ref_m:
+                        stats['referrers'][ref_m.group(1)] += 1
+
+                # 신규 포맷이면 Device/Browser 필드 사용, 구 포맷이면 UA로 재탐지
+                if device:
+                    if device == 'Crawler':
+                        stats['crawlers'] += 1
+                        continue
+                    stats['users'] += 1
+                    stats['devices'][device] += 1
+                    stats['browsers'][browser or 'Other'] += 1
+                else:
+                    is_crawler, det_device, det_browser = detect_client_type(ua)
+                    if is_crawler:
+                        stats['crawlers'] += 1
+                        continue
+                    stats['users'] += 1
+                    stats['devices'][det_device] += 1
+                    stats['browsers'][det_browser] += 1
+
+    # events.log 파싱
+    event_stats = {
+        'theme': defaultdict(int),
+        'search_method': defaultdict(int),
+        'btn_month': 0,
+        'btn_nearby': 0,
+        'btn_share': 0,
+        'btn_notification': 0,
+    }
+    if os.path.exists(EVENTS_LOG_PATH):
+        with open(EVENTS_LOG_PATH, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    event = data.get('event', '')
+                    value = data.get('value', '')
+                    if event == 'theme':
+                        event_stats['theme'][value] += 1
+                    elif event == 'search_method':
+                        event_stats['search_method'][value] += 1
+                    elif event in event_stats:
+                        event_stats[event] += 1
+                except Exception:
+                    continue
+
+    # school_code → 학교명 변환 (메모리 캐시에 있는 경우만)
+    school_names = {}
+    for code in list(stats['school_visits'].keys()):
+        cached = school_code_cache.get(code)
+        school_names[code] = cached[1]['school_name'] if cached else code
+
+    return {
+        'total_requests': stats['total_requests'],
+        'unique_ips': len(stats['unique_ips']),
+        'today_requests': stats['today_requests'],
+        'crawlers': stats['crawlers'],
+        'users': stats['users'],
+        'requests_by_day': dict(sorted(stats['requests_by_day'].items())[-14:]),
+        'status_codes': dict(sorted(stats['status_codes'].items())),
+        'top_paths': sorted(stats['paths'].items(), key=lambda x: x[1], reverse=True)[:15],
+        'top_schools': [
+            (school_names.get(c, c), v)
+            for c, v in sorted(stats['school_visits'].items(), key=lambda x: x[1], reverse=True)[:10]
+        ],
+        'top_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True)[:10],
+        'top_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True)[:10],
+        'devices': dict(stats['devices']),
+        'browsers': dict(stats['browsers']),
+        'events': {
+            'theme': dict(event_stats['theme']),
+            'search_method': dict(event_stats['search_method']),
+            'btn_month': event_stats['btn_month'],
+            'btn_nearby': event_stats['btn_nearby'],
+            'btn_share': event_stats['btn_share'],
+            'btn_notification': event_stats['btn_notification'],
+        },
+        'cache_stats': {
+            '급식 캐시': len(meal_cache),
+            '학교코드 캐시': len(school_code_cache),
+            '검색결과 캐시': len(search_result_cache),
+            '지역별학교 캐시': len(region_schools_cache),
+        },
+        'security': {
+            'blocked_networks': len(BLOCKED_NETWORKS),
+            'temp_blocked_ips': len(blocked_ips),
+            'total_failed_attempts': sum(failed_attempts.values()),
+        },
+        'days': days,
+    }
+
+
 API_KEY = "e309120a7d884eb7b725deaac507a5af"
 KST = timezone(timedelta(hours=9))
 regions = {
@@ -396,8 +625,6 @@ school_levels = {
     "특수학교": ["특수학교"],
     "각종학교": ["각종학교"]
 }
-
-# --- NEIS API 유틸 함수 ---
 
 def extract_district_from_address(address):
     if not address:
@@ -464,7 +691,6 @@ def _parse_school_row(row):
     }
 
 def get_school_from_neis(school_code):
-    """학교 코드로 NEIS API 조회 (캐싱 포함)"""
     cached = school_code_cache.get(school_code)
     if cached and time.time() - cached[0] < SCHOOL_CODE_CACHE_TTL:
         return cached[1]
@@ -489,7 +715,6 @@ def get_school_from_neis(school_code):
     return None
 
 def search_schools_neis(query, region_code, limit=10):
-    """학교명으로 NEIS API 검색 (캐싱 포함)"""
     cache_key = (query.lower(), region_code)
     cached = search_result_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
@@ -520,7 +745,6 @@ def search_schools_neis(query, region_code, limit=10):
         return []
 
 def _fetch_all_schools_for_region(region_code):
-    """지역 전체 학교 목록을 NEIS API에서 페이지네이션으로 조회"""
     url = "https://open.neis.go.kr/hub/schoolInfo"
     all_schools = []
     page = 1
@@ -551,7 +775,6 @@ def _fetch_all_schools_for_region(region_code):
     return all_schools
 
 def get_schools_by_region_cached(region_code, school_level=None):
-    """지역별 학교 목록 조회 - 첫 접근 시 lazy-load 후 캐싱"""
     cached = region_schools_cache.get(region_code)
     if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
         app.logger.info(f"Fetching all schools for region {region_code} from NEIS API")
@@ -565,7 +788,6 @@ def get_schools_by_region_cached(region_code, school_level=None):
     return schools
 
 def prefetch_region_schools_async(region_code):
-    """급식 페이지 로드 시 해당 지역 캐시를 백그라운드에서 미리 로드"""
     cached = region_schools_cache.get(region_code)
     if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
         thread = threading.Thread(
@@ -582,8 +804,6 @@ def _fetch_and_store_region(region_code):
         app.logger.info(f"Background prefetch complete for region {region_code}: {len(schools)} schools")
     except Exception as e:
         app.logger.error(f"Background prefetch failed for region {region_code}: {e}")
-
-# --- 급식 API ---
 
 def get_month_meals_from_api(school_code, region_code):
     today = datetime.now(KST)
@@ -628,7 +848,6 @@ def get_month_meals_from_api(school_code, region_code):
         return dict(meals)
 
 def get_nearby_schools(current_school_info):
-    """주변 학교 조회 - region_schools_cache가 있을 때만 동작"""
     try:
         region_code = current_school_info.get('region_code')
         current_district = current_school_info.get('district')
@@ -720,7 +939,6 @@ def index():
         if not region_code:
             return render_template('school_meal.html', error_message="유효하지 않은 지역입니다.", regions=regions)
 
-        # NEIS API로 학교 검색
         schools = search_schools_neis(school_name_input, region_code, limit=1)
 
         if schools:
@@ -756,7 +974,6 @@ def school_meal_view(school_code):
         app.logger.warning(f"School not found via NEIS API: {school_code}")
         return redirect(url_for('index', error_message="존재하지 않거나 유효하지 않은 학교 정보입니다. 다시 검색해주세요."))
 
-    # 이 지역 캐시가 없으면 백그라운드에서 미리 로드 (주변 학교 기능용)
     prefetch_region_schools_async(school_info['region_code'])
 
     month_meals_data = get_month_meals_from_api(school_code, school_info['region_code'])
@@ -861,6 +1078,28 @@ def get_today_meal(school_code):
     except Exception as e:
         app.logger.error(f"Error in get_today_meal API: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
+
+# [수정] 클라이언트 이벤트 트래킹 엔드포인트
+@app.route('/api/track', methods=['POST'])
+def track_event():
+    data = request.get_json(silent=True)
+    if not data:
+        return '', 204
+    event = data.get('event', '')
+    value = str(data.get('value', ''))[:50]
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification'}
+    if event not in allowed:
+        return '', 204
+    events_logger = logging.getLogger('events')
+    events_logger.info(json.dumps({
+        'ts': datetime.now(KST).isoformat(),
+        'ip': get_client_ip(),
+        'event': event,
+        'value': value
+    }, ensure_ascii=False))
+    return '', 204
+
 
 @app.route('/current_time')
 def current_time():
@@ -1010,6 +1249,21 @@ def view_namuboard_logs():
         return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
+
+
+# [수정] 시각화 대시보드 - 관리자 전용
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    client_ip = get_client_ip()
+    if not is_admin_ip(client_ip):
+        abort(403)
+    try:
+        days = max(1, min(int(request.args.get('days', 30)), 90))
+    except (ValueError, TypeError):
+        days = 30
+    stats = parse_logs_for_dashboard(days)
+    return render_template('admin_dashboard.html', stats=stats)
+
 
 @app.route('/stats')
 def view_stats():
@@ -1166,10 +1420,12 @@ def after_request_func(response):
     return response
 
 if __name__ == "__main__":
+    app.logger.info(f"LOG_DIR: {LOG_DIR}")
     app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
     app.logger.info(f"앱 로그 파일 경로: {APP_LOG_PATH}")
     app.logger.info(f"IP 차단 로그 파일 경로: {IP_BLOCK_LOG_PATH}")
     app.logger.info(f"NamuBoard Extension 로그 파일 경로: {NAMUBOARD_LOG_PATH}")
+    app.logger.info(f"이벤트 로그 파일 경로: {EVENTS_LOG_PATH}")
     app.logger.info(f"관리자 화이트리스트: {ADMIN_WHITELIST}")
 
     if not os.path.exists(BLACKLIST_FILE):
