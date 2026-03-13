@@ -49,7 +49,8 @@ NO_LOG_PATHS = [
     'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
     '/logs/', '/stats', '/security/',
     '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
-    '/health', '/api/track',
+    # [수정] /admin 하위 경로 및 이벤트 트래킹은 통계에서 제외
+    '/health', '/api/track', '/admin',
 ]
 
 SILENT_BLOCK_PATTERNS = [
@@ -78,14 +79,41 @@ SUSPICIOUS_PATTERNS = {
     ]
 }
 
-# [수정] 크롤러 판별용 UA 패턴 목록 (detect_client_type에서 사용)
-CRAWLER_UA_PATTERNS = [
-    'bot', 'spider', 'crawler', 'scraper', 'scanner', 'curl', 'wget',
-    'python-requests', 'java/', 'go-http-client', 'nikto', 'sqlmap',
-    'masscan', 'nmap', 'axios', 'googlebot', 'bingbot', 'yandexbot',
-    'baiduspider', 'facebookexternalhit', 'twitterbot', 'linkedinbot',
-    'slurp', 'duckduckbot', 'applebot', 'semrushbot', 'ahrefsbot',
-    'mj12bot', 'amazonbot', 'petalbot', 'bytespider', 'zgrab',
+# [수정] 크롤러 판별 + 이름 추출용 맵 (구체적인 것부터 순서 중요)
+CRAWLER_NAME_MAP = [
+    ('googlebot',           'Googlebot'),
+    ('bingbot',             'Bingbot'),
+    ('yandexbot',           'YandexBot'),
+    ('baiduspider',         'Baiduspider'),
+    ('duckduckbot',         'DuckDuckBot'),
+    ('applebot',            'Applebot'),
+    ('semrushbot',          'SEMrushBot'),
+    ('ahrefsbot',           'AhrefsBot'),
+    ('mj12bot',             'MJ12bot'),
+    ('amazonbot',           'AmazonBot'),
+    ('petalbot',            'PetalBot'),
+    ('bytespider',          'ByteSpider'),
+    ('facebookexternalhit', 'FacebookBot'),
+    ('twitterbot',          'TwitterBot'),
+    ('linkedinbot',         'LinkedInBot'),
+    ('slurp',               'Yahoo Slurp'),
+    ('nikto',               'Nikto'),
+    ('sqlmap',              'sqlmap'),
+    ('masscan',             'masscan'),
+    ('nmap',                'nmap'),
+    ('zgrab',               'ZGrab'),
+    ('python-requests',     'Python-requests'),
+    ('curl/',               'curl'),
+    ('wget/',               'wget'),
+    ('go-http-client',      'Go HTTP Client'),
+    ('java/',               'Java HTTP'),
+    ('axios/',              'Axios'),
+    ('scrapy',              'Scrapy'),
+    ('spider',              'Spider'),
+    ('crawler',             'Crawler'),
+    ('scanner',             'Scanner'),
+    ('scraper',             'Scraper'),
+    ('bot',                 'Bot'),
 ]
 
 
@@ -290,9 +318,11 @@ class AccessLogFormatter(logging.Formatter):
     def format(self, record):
         record.remote_addr = getattr(record, 'remote_addr', 'N/A')
         record.user_agent = getattr(record, 'user_agent', 'N/A')
-        # [수정] Device, Browser 필드 추가
+        # [수정] Device, OS, Browser, Crawler 필드 추가
         record.device = getattr(record, 'device', 'N/A')
+        record.os_name = getattr(record, 'os_name', 'N/A')
         record.browser = getattr(record, 'browser', 'N/A')
+        record.crawler = getattr(record, 'crawler', 'N/A')
         record.method = getattr(record, 'method', 'N/A')
         record.path = getattr(record, 'path', 'N/A')
         record.status = getattr(record, 'status', 'N/A')
@@ -330,9 +360,11 @@ def setup_logging():
         backupCount=5,
         encoding='utf-8'
     )
-    # [수정] Device, Browser 필드 추가
+    # [수정] OS, Crawler 필드 추가
     access_formatter = AccessLogFormatter(
-        '%(asctime)s - IP: %(remote_addr)s - Device: %(device)s - Browser: %(browser)s - UA: %(user_agent)s - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
+        '%(asctime)s - IP: %(remote_addr)s - Device: %(device)s - OS: %(os_name)s'
+        ' - Browser: %(browser)s - Crawler: %(crawler)s - UA: %(user_agent)s'
+        ' - Method: %(method)s - Path: %(path)s - Status: %(status)s - Referrer: %(referrer)s'
     )
     access_handler.setFormatter(access_formatter)
     ip_handler = logging.FileHandler(IP_BLOCK_LOG_PATH, encoding='utf-8')
@@ -382,24 +414,61 @@ def setup_logging():
 access_logger, namuboard_logger = setup_logging()
 
 
-# [수정] UA 기반 클라이언트 타입 감지 (크롤러 여부, 디바이스, 브라우저)
+# [수정] UA 분석: 반환값 (is_crawler, crawler_label, device, os_name, browser)
+# 크롤러인 경우 crawler_label = "Googlebot (Mozilla/5.0 (compatible; ...))" 형태
 def detect_client_type(raw_ua):
     if not raw_ua:
-        return True, 'Unknown', 'Unknown'
+        return True, 'Unknown Bot', 'Unknown', 'Unknown', 'Unknown'
+
     ua_lower = raw_ua.lower()
-    if any(p in ua_lower for p in CRAWLER_UA_PATTERNS):
-        return True, 'Crawler', 'Crawler'
+    # UA 앞 80자를 snippet으로 보존 (크롤러 식별에 활용)
+    ua_snippet = raw_ua[:80].strip()
+
+    # 크롤러 판별: 이름을 추출하고 UA snippet 병기
+    for pattern, name in CRAWLER_NAME_MAP:
+        if pattern in ua_lower:
+            return True, f"{name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
+
+    # OS 탐지
+    if 'windows nt' in ua_lower:
+        nt_ver_map = {'10.0': 'Windows 10/11', '6.3': 'Windows 8.1',
+                      '6.2': 'Windows 8', '6.1': 'Windows 7'}
+        m = re.search(r'windows nt ([\d.]+)', ua_lower)
+        ver = m.group(1) if m else ''
+        os_name = nt_ver_map.get(ver, f'Windows NT {ver}')
+    elif 'ipad' in ua_lower:
+        os_name = 'iPadOS'
+    elif 'iphone' in ua_lower or 'ipod' in ua_lower:
+        os_name = 'iOS'
+    elif 'android' in ua_lower:
+        m = re.search(r'android ([\d.]+)', ua_lower)
+        ver = m.group(1).rsplit('.', 1)[0] if m else ''
+        os_name = f'Android {ver}' if ver else 'Android'
+    elif 'mac os x' in ua_lower or 'macos' in ua_lower:
+        os_name = 'macOS'
+    elif 'cros' in ua_lower:
+        os_name = 'ChromeOS'
+    elif 'linux' in ua_lower:
+        os_name = 'Linux'
+    else:
+        os_name = 'Unknown OS'
+
+    # 디바이스 탐지
     if 'ipad' in ua_lower or 'tablet' in ua_lower:
         device = 'Tablet'
-    elif 'mobile' in ua_lower or 'android' in ua_lower or 'iphone' in ua_lower or 'ipod' in ua_lower:
+    elif any(k in ua_lower for k in ('mobile', 'android', 'iphone', 'ipod')):
         device = 'Mobile'
     else:
         device = 'Desktop'
+
+    # 브라우저 탐지 (순서 중요)
     if 'edg/' in ua_lower or 'edgios' in ua_lower or 'edga/' in ua_lower:
         browser = 'Edge'
     elif 'samsungbrowser' in ua_lower:
-        browser = 'Samsung'
-    elif 'crios' in ua_lower or 'chrome' in ua_lower:
+        browser = 'Samsung Browser'
+    elif 'crios' in ua_lower:
+        browser = 'Chrome (iOS)'
+    elif 'chrome' in ua_lower:
         browser = 'Chrome'
     elif 'fxios' in ua_lower or 'firefox' in ua_lower:
         browser = 'Firefox'
@@ -409,7 +478,8 @@ def detect_client_type(raw_ua):
         browser = 'Safari'
     else:
         browser = 'Other'
-    return False, device, browser
+
+    return False, '', device, os_name, browser
 
 
 def clean_user_agent(user_agent_string):
@@ -422,14 +492,19 @@ def log_access_request(status_code=200):
     if request.method in ['GET', 'POST'] and status_code in [200, 206]:
         try:
             real_ip = get_client_ip()
+            # [수정] 관리자 IP는 통계에서 제외
+            if is_admin_ip(real_ip):
+                return
             raw_ua = request.headers.get('User-Agent', '')
-            # [수정] detect_client_type으로 디바이스/브라우저 추출
-            _, device, browser = detect_client_type(raw_ua)
+            is_crawler, crawler_label, device, os_name, browser = detect_client_type(raw_ua)
             extra_info = {
                 'remote_addr': real_ip or 'Unknown',
                 'user_agent': clean_user_agent(raw_ua) or 'Unknown',
                 'device': device,
+                'os_name': os_name,
                 'browser': browser,
+                # 크롤러면 "Googlebot (UA...)" 형태, 일반 사용자면 'N'
+                'crawler': crawler_label if is_crawler else 'N',
                 'method': request.method,
                 'path': request.path,
                 'status': status_code,
@@ -470,15 +545,17 @@ def parse_logs_for_dashboard(days=30):
         'crawlers': 0,
         'users': 0,
         'devices': defaultdict(int),
+        'os_names': defaultdict(int),
         'browsers': defaultdict(int),
+        'crawler_names': defaultdict(int),
     }
 
-    # 신규 포맷: ... - Device: X - Browser: X - UA: ...
-    # 구 포맷:   ... - UA: ...
+    # 신규 포맷: ... - Device: X - OS: X - Browser: X - Crawler: X - UA: ...
+    # 구 포맷:   ... - Device: X - Browser: X - UA: ...  (OS/Crawler 필드 없음)
     log_re = re.compile(
         r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
         r'IP: (\S+) - '
-        r'(?:Device: (\S+) - Browser: (\S+) - )?'
+        r'(?:Device: (\S+) - (?:OS: (.*?) - )?Browser: ([^-]+?) - (?:Crawler: (.*?) - )?)?'
         r'UA: (.*?) - '
         r'Method: (\w+) - '
         r'Path: (\S+) - '
@@ -492,7 +569,9 @@ def parse_logs_for_dashboard(days=30):
                 m = log_re.match(line.strip())
                 if not m:
                     continue
-                date_str, ip, device, browser, ua, method, path, status, referrer = m.groups()
+                (date_str, ip, device, os_name, browser,
+                 crawler_field, ua, method, path, status, referrer) = m.groups()
+
                 try:
                     log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                     if log_date < cutoff:
@@ -518,22 +597,37 @@ def parse_logs_for_dashboard(days=30):
                     if ref_m:
                         stats['referrers'][ref_m.group(1)] += 1
 
-                # 신규 포맷이면 Device/Browser 필드 사용, 구 포맷이면 UA로 재탐지
+                # 신규 포맷 (Crawler 필드 존재)
                 if device:
-                    if device == 'Crawler':
+                    is_crawler_entry = crawler_field is not None and crawler_field.strip() != 'N'
+                    if is_crawler_entry:
                         stats['crawlers'] += 1
-                        continue
-                    stats['users'] += 1
-                    stats['devices'][device] += 1
-                    stats['browsers'][browser or 'Other'] += 1
+                        # "Googlebot (UA snippet)" → "Googlebot"
+                        cname = crawler_field.split(' (')[0].strip()
+                        stats['crawler_names'][cname] += 1
+                    elif device == 'Crawler':
+                        # 구 포맷 크롤러 (OS 필드 없던 시절)
+                        stats['crawlers'] += 1
+                        is_c, clabel, *_ = detect_client_type(ua)
+                        cname = clabel.split(' (')[0].strip() if clabel else 'Unknown'
+                        stats['crawler_names'][cname] += 1
+                    else:
+                        stats['users'] += 1
+                        stats['devices'][device] += 1
+                        stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
+                        stats['browsers'][browser.strip() if browser else 'Other'] += 1
                 else:
-                    is_crawler, det_device, det_browser = detect_client_type(ua)
+                    # 구 포맷 (Device 필드 자체 없음) → UA 재탐지
+                    is_crawler, crawler_label, det_device, det_os, det_browser = detect_client_type(ua)
                     if is_crawler:
                         stats['crawlers'] += 1
-                        continue
-                    stats['users'] += 1
-                    stats['devices'][det_device] += 1
-                    stats['browsers'][det_browser] += 1
+                        cname = crawler_label.split(' (')[0].strip()
+                        stats['crawler_names'][cname] += 1
+                    else:
+                        stats['users'] += 1
+                        stats['devices'][det_device] += 1
+                        stats['os_names'][det_os] += 1
+                        stats['browsers'][det_browser] += 1
 
     # events.log 파싱
     event_stats = {
@@ -585,7 +679,9 @@ def parse_logs_for_dashboard(days=30):
         'top_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True)[:10],
         'top_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True)[:10],
         'devices': dict(stats['devices']),
+        'os_names': dict(sorted(stats['os_names'].items(), key=lambda x: x[1], reverse=True)),
         'browsers': dict(stats['browsers']),
+        'top_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True)[:15],
         'events': {
             'theme': dict(event_stats['theme']),
             'search_method': dict(event_stats['search_method']),
