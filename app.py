@@ -12,6 +12,7 @@ import re
 import time
 import json
 import threading
+import hashlib
 
 app = Flask(__name__)
 
@@ -147,6 +148,14 @@ ADMIN_WHITELIST = [
     '210.94.23.150/32',
     '118.221.147.88/32',
 ]
+
+# [수정] 관리자 비밀번호 (화이트리스트 IP 외 접근 시 사용)
+ADMIN_PASSWORD_HASH = hashlib.sha256('tjtmdgus09'.encode()).hexdigest()
+
+# [수정] IPInfo 설정 - 무료 플랜 50,000 req/월, 대시보드 상위 IP에만 사용
+IPINFO_API_KEY = '34086a00a1518b'
+IP_INFO_CACHE = {}
+IP_INFO_CACHE_TTL = 86400
 
 def get_client_ip():
     if request.headers.getlist("X-Forwarded-For"):
@@ -485,8 +494,7 @@ def detect_client_type(raw_ua):
 def clean_user_agent(user_agent_string):
     if not user_agent_string:
         return 'Unknown'
-    cleaned_ua = re.sub(r'^(Mozilla/\d\.\d\s\(.*\)|AppleWebKit/\d+\.\d+\s\(.*\)|KHTML,\s*like\s*Gecko\s*|Chrome/\d+\.\d+\.\d+\.\d+\s*|Safari/\d+\.\d+\s*|Edge/\d+\.\d+\s*|Firefox/\d+\.\d+\s*)+', '', user_agent_string).strip()
-    return cleaned_ua[:200]
+    return user_agent_string[:200]
 
 def log_access_request(status_code=200):
     if request.method in ['GET', 'POST'] and status_code in [200, 206]:
@@ -525,6 +533,32 @@ def log_namuboard_access_request():
         namuboard_logger.info('NamuBoard Extension Access', extra=extra_info)
     except Exception as e:
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
+
+
+# [수정] IPInfo API - org(ASN), region, city, country 조회 (메모리 캐시 24h)
+def get_ip_info(ip):
+    cached = IP_INFO_CACHE.get(ip)
+    if cached and time.time() - cached[0] < IP_INFO_CACHE_TTL:
+        return cached[1]
+    try:
+        resp = requests.get(
+            f'https://ipinfo.io/{ip}?token={IPINFO_API_KEY}',
+            timeout=2
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            result = {
+                'org': data.get('org', ''),
+                'region': data.get('region', ''),
+                'country': data.get('country', ''),
+                'city': data.get('city', ''),
+            }
+            IP_INFO_CACHE[ip] = (time.time(), result)
+            return result
+    except Exception:
+        pass
+    IP_INFO_CACHE[ip] = (time.time(), {})
+    return {}
 
 
 # [수정] 대시보드용 로그 파싱 함수
@@ -657,11 +691,15 @@ def parse_logs_for_dashboard(days=30):
                 except Exception:
                     continue
 
-    # school_code → 학교명 변환 (메모리 캐시에 있는 경우만)
+    # school_code → 학교명 변환 (캐시 미스 시 NEIS API 호출)
     school_names = {}
     for code in list(stats['school_visits'].keys()):
         cached = school_code_cache.get(code)
-        school_names[code] = cached[1]['school_name'] if cached else code
+        if cached:
+            school_names[code] = cached[1]['school_name']
+        else:
+            info = get_school_from_neis(code)
+            school_names[code] = info['school_name'] if info else code
 
     return {
         'total_requests': stats['total_requests'],
@@ -1348,16 +1386,49 @@ def view_namuboard_logs():
 
 
 # [수정] 시각화 대시보드 - 관리자 전용
-@app.route('/admin/dashboard')
+@app.route('/admin/dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
     client_ip = get_client_ip()
+
+    # [수정] 화이트리스트 IP가 아니면 비밀번호 인증
     if not is_admin_ip(client_ip):
-        abort(403)
+        auth_cookie = request.cookies.get('admin_auth', '')
+        if auth_cookie != ADMIN_PASSWORD_HASH:
+            if request.method == 'POST':
+                pw = request.form.get('password', '')
+                if hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
+                    resp = make_response(redirect(url_for('admin_dashboard')))
+                    resp.set_cookie('admin_auth', ADMIN_PASSWORD_HASH,
+                                    max_age=3600 * 8, httponly=True, samesite='Lax')
+                    return resp
+                return (
+                    '<form method="POST">'
+                    '비밀번호: <input type="password" name="password">'
+                    '<button type="submit">확인</button>'
+                    '<p style="color:red">비밀번호가 틀렸습니다.</p>'
+                    '</form>'
+                ), 401
+            return (
+                '<form method="POST">'
+                '비밀번호: <input type="password" name="password">'
+                '<button type="submit">확인</button>'
+                '</form>'
+            )
+
     try:
         days = max(1, min(int(request.args.get('days', 30)), 90))
     except (ValueError, TypeError):
         days = 30
+
     stats = parse_logs_for_dashboard(days)
+
+    # [수정] 상위 IP에 대해 IPInfo enrichment (캐시 우선)
+    enriched_ips = []
+    for ip, count in stats['top_ips']:
+        info = get_ip_info(ip)
+        enriched_ips.append((ip, count, info))
+    stats['top_ips_enriched'] = enriched_ips
+
     return render_template('admin_dashboard.html', stats=stats)
 
 
