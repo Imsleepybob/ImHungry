@@ -286,6 +286,9 @@ def security_check():
     client_ip = get_client_ip()
     if is_admin_ip(client_ip):
         return
+    # [수정] /admin 경로는 라우트 자체에서 비밀번호 인증 처리
+    if request.path.startswith('/admin'):
+        return
     if should_silent_block(request.path):
         response = make_response('', 444)
         response.headers['Connection'] = 'close'
@@ -607,6 +610,9 @@ def parse_logs_for_dashboard(days=30):
         'os_names': defaultdict(int),
         'browsers': defaultdict(int),
         'crawler_names': defaultdict(int),
+        # [수정] 경로를 사용자/봇으로 분리
+        'user_paths': defaultdict(int),
+        'bot_paths': defaultdict(int),
         # [수정] 봇 전용 IP 집계: {ip: {'total': int, 'paths': {path: count}, 'crawler_name': str}}
         'bot_ips': defaultdict(lambda: {'total': 0, 'paths': defaultdict(int), 'crawler_name': 'Unknown'}),
     }
@@ -646,7 +652,6 @@ def parse_logs_for_dashboard(days=30):
                     stats['today_requests'] += 1
                 stats['requests_by_day'][date_str] += 1
                 stats['status_codes'][status] += 1
-                stats['paths'][path] += 1
 
                 # 봇 여부 판별
                 is_bot = False
@@ -673,6 +678,7 @@ def parse_logs_for_dashboard(days=30):
                     stats['bot_ips'][ip]['total'] += 1
                     stats['bot_ips'][ip]['paths'][path] += 1
                     stats['bot_ips'][ip]['crawler_name'] = cname
+                    stats['bot_paths'][path] += 1
                 else:
                     # [수정] GeoIP 2차 분류:
                     # - 한국이 아닌 IP → 봇으로 재분류
@@ -699,9 +705,11 @@ def parse_logs_for_dashboard(days=30):
                         stats['bot_ips'][ip]['total'] += 1
                         stats['bot_ips'][ip]['paths'][path] += 1
                         stats['bot_ips'][ip]['crawler_name'] = cname
+                        stats['bot_paths'][path] += 1
                     else:
                         # 진짜 일반 사용자
                         stats['ips'][ip] += 1
+                        stats['user_paths'][path] += 1
                         school_m = re.match(r'^/meal/(\w+)$', path)
                         if school_m:
                             stats['school_visits'][school_m.group(1)] += 1
@@ -766,18 +774,28 @@ def parse_logs_for_dashboard(days=30):
         'users': stats['users'],
         'requests_by_day': dict(sorted(stats['requests_by_day'].items())[-14:]),
         'status_codes': dict(sorted(stats['status_codes'].items())),
-        'top_paths': sorted(stats['paths'].items(), key=lambda x: x[1], reverse=True)[:15],
+        # [수정] 경로 사용자/봇 분리, 전체 목록도 함께 반환
+        'top_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
+        'all_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True),
+        'top_bot_paths': sorted(stats['bot_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
+        'all_bot_paths': sorted(stats['bot_paths'].items(), key=lambda x: x[1], reverse=True),
         'top_schools': [
             (school_names.get(c, c), v)
             for c, v in sorted(stats['school_visits'].items(), key=lambda x: x[1], reverse=True)[:10]
         ],
+        'all_schools': [
+            (school_names.get(c, c), v)
+            for c, v in sorted(stats['school_visits'].items(), key=lambda x: x[1], reverse=True)
+        ],
         'top_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True)[:10],
+        'all_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True),
         'top_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True)[:10],
+        'all_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True),
         'devices': dict(stats['devices']),
         'os_names': dict(sorted(stats['os_names'].items(), key=lambda x: x[1], reverse=True)),
         'browsers': dict(stats['browsers']),
         'top_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True)[:15],
-        # [수정] 봇 IP 전체 목록 (경로 포함, 요청수 내림차순)
+        'all_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True),
         'bot_ip_list': [
             {
                 'ip': ip,
@@ -1454,35 +1472,64 @@ def view_namuboard_logs():
         return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
 
 
-# [수정] 시각화 대시보드 - 관리자 전용
+def _admin_auth_check():
+    """관리자 인증 확인. 통과하면 None, 실패하면 Response 반환."""
+    client_ip = get_client_ip()
+    if is_admin_ip(client_ip):
+        return None
+    auth_cookie = request.cookies.get('admin_auth', '')
+    if auth_cookie == ADMIN_PASSWORD_HASH:
+        return None
+    if request.method == 'POST':
+        pw = request.form.get('password', '')
+        if hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
+            resp = make_response(redirect(request.url))
+            resp.set_cookie('admin_auth', ADMIN_PASSWORD_HASH,
+                            max_age=3600 * 8, httponly=True, samesite='Lax')
+            return resp
+        return make_response(
+            '<form method="POST">비밀번호: <input type="password" name="password">'
+            '<button type="submit">확인</button>'
+            '<p style="color:red">비밀번호가 틀렸습니다.</p></form>',
+            401
+        )
+    return make_response(
+        '<form method="POST">비밀번호: <input type="password" name="password">'
+        '<button type="submit">확인</button></form>'
+    )
+
+
+# [수정] /admin 인덱스 - 관리자 링크 목록
+@app.route('/admin', methods=['GET', 'POST'])
+def admin_index():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    return (
+        '<h2>관리자 메뉴</h2><ul>'
+        '<li><a href="/admin/dashboard">📊 대시보드</a></li>'
+        '<li><a href="/admin/dashboard?days=7">📊 대시보드 (최근 7일)</a></li>'
+        '<li><a href="/admin/dashboard?days=90">📊 대시보드 (최근 90일)</a></li>'
+        '<li><a href="/admin/clear/meal-cache" style="color:orange">[POST] 급식 캐시 초기화</a> '
+        '— <form style="display:inline" method="POST" action="/admin/clear/meal-cache">'
+        '<button type="submit">실행</button></form></li>'
+        '<li><a href="/admin/clear/school-cache" style="color:orange">[POST] 학교 캐시 초기화</a> '
+        '— <form style="display:inline" method="POST" action="/admin/clear/school-cache">'
+        '<button type="submit">실행</button></form></li>'
+        '<li><a href="/logs/access">📄 접속 로그</a></li>'
+        '<li><a href="/logs/app">📄 앱 로그</a></li>'
+        '<li><a href="/logs/namuboard">📄 NamuBoard 로그</a></li>'
+        '<li><a href="/security/status">🔒 보안 상태 (JSON)</a></li>'
+        '<li><a href="/stats">📈 간단 통계</a></li>'
+        '</ul>'
+    )
+
+
 @app.route('/admin/dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
-    client_ip = get_client_ip()
-
-    # [수정] 화이트리스트 IP가 아니면 비밀번호 인증
-    if not is_admin_ip(client_ip):
-        auth_cookie = request.cookies.get('admin_auth', '')
-        if auth_cookie != ADMIN_PASSWORD_HASH:
-            if request.method == 'POST':
-                pw = request.form.get('password', '')
-                if hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
-                    resp = make_response(redirect(url_for('admin_dashboard')))
-                    resp.set_cookie('admin_auth', ADMIN_PASSWORD_HASH,
-                                    max_age=3600 * 8, httponly=True, samesite='Lax')
-                    return resp
-                return (
-                    '<form method="POST">'
-                    '비밀번호: <input type="password" name="password">'
-                    '<button type="submit">확인</button>'
-                    '<p style="color:red">비밀번호가 틀렸습니다.</p>'
-                    '</form>'
-                ), 401
-            return (
-                '<form method="POST">'
-                '비밀번호: <input type="password" name="password">'
-                '<button type="submit">확인</button>'
-                '</form>'
-            )
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
 
     try:
         days = max(1, min(int(request.args.get('days', 30)), 90))
