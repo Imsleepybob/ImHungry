@@ -473,10 +473,10 @@ function selectSchool(item) {
         startLoadingAnimation();
         ld.style.display = 'flex';
     }
-    // [수정] iOS Safari의 즉시 JS 중단 방지를 위해 네비게이션 지연
+    // [수정] 첫 페인트 보장을 위해 50ms → 100ms로 증가
     setTimeout(() => {
         window.location.href = `/meal/${item.dataset.code}`;
-    }, 50);
+    }, 100);
 }
 
 function performSearch(query, region, immediate = false) {
@@ -499,35 +499,29 @@ function startLoadingAnimation() {
     const textEl = document.getElementById('loading-text');
     if (!textEl) return;
 
+    // [수정] 첫 텍스트는 rAF 없이 즉시 표시 (iOS Safari 네비게이션 시 rAF 미실행 방지)
     textEl.style.transition = 'none';
     textEl.textContent = '급식 정보를 가져오고 있어요!';
-    textEl.style.opacity = '0';
-    textEl.style.transform = 'translateY(18px)';
+    textEl.style.opacity = '1';
+    textEl.style.transform = 'translateY(0)';
 
-    // [수정] offsetHeight 대신 이중 rAF로 iOS Safari 트랜지션 트리거 보장
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    setTimeout(() => {
         textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-        textEl.style.opacity = '1';
-        textEl.style.transform = 'translateY(0)';
-
+        textEl.style.opacity = '0';
+        textEl.style.transform = 'translateY(-18px)';
         setTimeout(() => {
+            textEl.style.transition = 'none';
+            textEl.textContent = '잠시만 기다려주세요!';
             textEl.style.opacity = '0';
-            textEl.style.transform = 'translateY(-18px)';
-            setTimeout(() => {
-                textEl.style.transition = 'none';
-                textEl.textContent = '잠시만 기다려주세요!';
-                textEl.style.opacity = '0';
-                textEl.style.transform = 'translateY(18px)';
+            textEl.style.transform = 'translateY(18px)';
 
-                // [수정] 동일하게 이중 rAF 적용
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-                    textEl.style.opacity = '1';
-                    textEl.style.transform = 'translateY(0)';
-                }));
-            }, 350);
-        }, 500);
-    }));
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                textEl.style.opacity = '1';
+                textEl.style.transform = 'translateY(0)';
+            }));
+        }, 350);
+    }, 500);
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
