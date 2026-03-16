@@ -130,16 +130,14 @@ CRAWLER_NAME_MAP = [
     ('bot',                 'Bot'),
 ]
 
-# [수정] GeoIP 기반 봇 판별 - 한국 기업 크롤러 org 패턴
+# [수정] GeoIP 기반 봇 판별 - 한국 크롤러 기업 org 패턴
+# 통신사(SK Telecom, KT, LGU+)는 일반 사용자도 같은 ASN을 쓰므로 제외
 KR_CORP_CRAWLER_PATTERNS = [
     ('naver',    'NaverBot'),
     ('kakao',    'KakaoBot'),
     ('ncsoft',   'NCSoft Crawler'),
     ('nexon',    'Nexon Crawler'),
     ('krafton',  'Krafton Crawler'),
-    ('sk telecom', 'SKT Crawler'),
-    ('kt corp',  'KT Crawler'),
-    ('lg uplus', 'LGU+ Crawler'),
 ]
 
 
