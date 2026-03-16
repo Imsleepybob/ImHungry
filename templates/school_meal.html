@@ -353,7 +353,6 @@ let isComposing = false;
 let searchTimeout = null;
 let searchRequestId = 0;
 
-// [수정] 클라이언트 이벤트 트래킹
 function trackEvent(event, value) {
     fetch('/api/track', {
         method: 'POST',
@@ -467,7 +466,6 @@ function selectSchool(item) {
     const input = document.getElementById("school_name");
     if (input) input.value = item.dataset.name;
     hideAutocomplete();
-    // [수정] 자동완성 클릭으로 검색한 경우 트래킹
     trackEvent('search_method', 'autocomplete');
     NotificationManager.triggerHaptic('impact', 'MEDIUM');
     const ld = document.getElementById('loading');
@@ -475,7 +473,10 @@ function selectSchool(item) {
         startLoadingAnimation();
         ld.style.display = 'flex';
     }
-    window.location.href = `/meal/${item.dataset.code}`;
+    // [수정] iOS Safari의 즉시 JS 중단 방지를 위해 네비게이션 지연
+    setTimeout(() => {
+        window.location.href = `/meal/${item.dataset.code}`;
+    }, 50);
 }
 
 function performSearch(query, region, immediate = false) {
@@ -502,25 +503,31 @@ function startLoadingAnimation() {
     textEl.textContent = '급식 정보를 가져오고 있어요!';
     textEl.style.opacity = '0';
     textEl.style.transform = 'translateY(18px)';
-    textEl.offsetHeight;
-    textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-    textEl.style.opacity = '1';
-    textEl.style.transform = 'translateY(0)';
 
-    setTimeout(() => {
-        textEl.style.opacity = '0';
-        textEl.style.transform = 'translateY(-18px)';
+    // [수정] offsetHeight 대신 이중 rAF로 iOS Safari 트랜지션 트리거 보장
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+        textEl.style.opacity = '1';
+        textEl.style.transform = 'translateY(0)';
+
         setTimeout(() => {
-            textEl.style.transition = 'none';
-            textEl.textContent = '잠시만 기다려주세요!';
             textEl.style.opacity = '0';
-            textEl.style.transform = 'translateY(18px)';
-            textEl.offsetHeight;
-            textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-            textEl.style.opacity = '1';
-            textEl.style.transform = 'translateY(0)';
-        }, 350);
-    }, 500);
+            textEl.style.transform = 'translateY(-18px)';
+            setTimeout(() => {
+                textEl.style.transition = 'none';
+                textEl.textContent = '잠시만 기다려주세요!';
+                textEl.style.opacity = '0';
+                textEl.style.transform = 'translateY(18px)';
+
+                // [수정] 동일하게 이중 rAF 적용
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    textEl.style.opacity = '1';
+                    textEl.style.transform = 'translateY(0)';
+                }));
+            }, 350);
+        }, 500);
+    }));
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -630,7 +637,6 @@ document.addEventListener('DOMContentLoaded', function() {
         options.forEach(o => o.addEventListener('click', () => {
             const theme = o.dataset.value;
             localStorage.setItem('theme', theme);
-            // [수정] 테마 변경 트래킹
             trackEvent('theme', theme);
             if (theme === 'system') { if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
             else if (theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
@@ -735,7 +741,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
         toggleNearbyBtn.addEventListener('click', function() {
-            // [수정] 주변 학교 비교 클릭 트래킹
             trackEvent('btn_nearby', 'toggle');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = nearbyContainer.style.display === 'none';
@@ -747,7 +752,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', async () => {
-            // [수정] 공유하기 클릭 트래킹
             trackEvent('btn_share', 'click');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const schoolCode = getCookie('school_code');
@@ -769,7 +773,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (regionForm) {
         regionForm.addEventListener('submit', function(e) {
             if (!regionSelect || !regionSelect.value) { e.preventDefault(); alert("지역을 선택해주세요."); if (regionSelect) regionSelect.focus(); return; }
-            // [수정] 직접 입력(엔터/제출)으로 검색한 경우 트래킹
             trackEvent('search_method', 'manual');
             if (loadingDiv) {
                 startLoadingAnimation();
@@ -782,7 +785,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const monthTable = document.getElementById('monthTable');
     if (toggleMonthBtn && monthTable) {
         toggleMonthBtn.addEventListener('click', function() {
-            // [수정] 월간 급식표 클릭 트래킹
             trackEvent('btn_month', 'toggle');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const hidden = monthTable.style.display === 'none';
