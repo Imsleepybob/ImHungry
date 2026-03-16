@@ -13,6 +13,7 @@ import time
 import json
 import threading
 import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
@@ -180,6 +181,33 @@ ADMIN_PASSWORD_HASH = hashlib.sha256('tjtmdgus09'.encode()).hexdigest()
 IPINFO_API_KEY = '34086a00a1518b'
 IP_INFO_CACHE = {}
 IP_INFO_CACHE_TTL = 86400
+# [수정] IPInfo 캐시 파일 경로 - 프로세스 재시작 후에도 캐시 유지
+IPINFO_CACHE_FILE = os.path.join(LOG_DIR, 'ipinfo_cache.json')
+
+def _load_ipinfo_cache():
+    """앱 시작 시 파일 캐시를 메모리로 로드."""
+    if not os.path.exists(IPINFO_CACHE_FILE):
+        return
+    try:
+        with open(IPINFO_CACHE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        now = time.time()
+        for ip, (ts, info) in data.items():
+            if now - ts < IP_INFO_CACHE_TTL:
+                IP_INFO_CACHE[ip] = (ts, info)
+        app.logger.info(f"IPInfo 캐시 로드: {len(IP_INFO_CACHE)}개 항목")
+    except Exception as e:
+        app.logger.warning(f"IPInfo 캐시 파일 로드 실패: {e}")
+
+def _save_ipinfo_cache():
+    """현재 메모리 캐시를 파일로 저장."""
+    try:
+        now = time.time()
+        valid = {ip: v for ip, v in IP_INFO_CACHE.items() if now - v[0] < IP_INFO_CACHE_TTL}
+        with open(IPINFO_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(valid, f, ensure_ascii=False)
+    except Exception as e:
+        app.logger.warning(f"IPInfo 캐시 파일 저장 실패: {e}")
 
 def get_client_ip():
     if request.headers.getlist("X-Forwarded-For"):
@@ -448,6 +476,8 @@ def setup_logging():
     return access_logger, namuboard_logger
 
 access_logger, namuboard_logger = setup_logging()
+# [수정] 앱 시작 시 IPInfo 파일 캐시 로드 (재시작 후에도 캐시 유지)
+_load_ipinfo_cache()
 
 
 # [수정] UA 분석: 반환값 (is_crawler, crawler_label, device, os_name, browser)
@@ -562,7 +592,8 @@ def log_namuboard_access_request():
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
 
-# [수정] IPInfo API - org(ASN), region, city, country 조회 (메모리 캐시 24h)
+# [수정] IPInfo API - org(ASN), region, city, country 조회
+# 메모리 캐시(24h) + 파일 영속화. 신규 IP만 API 호출
 def get_ip_info(ip):
     cached = IP_INFO_CACHE.get(ip)
     if cached and time.time() - cached[0] < IP_INFO_CACHE_TTL:
@@ -570,7 +601,7 @@ def get_ip_info(ip):
     try:
         resp = requests.get(
             f'https://ipinfo.io/{ip}?token={IPINFO_API_KEY}',
-            timeout=2
+            timeout=3
         )
         if resp.status_code == 200:
             data = resp.json()
@@ -581,6 +612,7 @@ def get_ip_info(ip):
                 'city': data.get('city', ''),
             }
             IP_INFO_CACHE[ip] = (time.time(), result)
+            _save_ipinfo_cache()
             return result
     except Exception:
         pass
@@ -630,6 +662,11 @@ def parse_logs_for_dashboard(days=30):
         r'Referrer: (.*?)$'
     )
 
+    # [수정] 1st pass: 로그 파싱 + UA 기반 봇 1차 판별
+    # GeoIP 판별이 필요한 행은 pending_geo에 따로 모음
+    parsed_rows = []   # (date_str, ip, device, os_name, browser, is_bot, cname, path, status, referrer)
+    pending_geo_ips = set()  # 캐시 미스인 GeoIP 조회 필요 IP
+
     if os.path.exists(ACCESS_LOG_PATH):
         with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
             for line in f:
@@ -653,80 +690,102 @@ def parse_logs_for_dashboard(days=30):
                 stats['requests_by_day'][date_str] += 1
                 stats['status_codes'][status] += 1
 
-                # 봇 여부 판별
+                # UA 1차 봇 판별
                 is_bot = False
                 cname = 'Unknown'
-                if device:
+
+                # [수정] 빈 UA는 즉시 크롤러
+                ua_stripped = ua.strip() if ua else ''
+                if not ua_stripped or ua_stripped == 'Unknown' or len(ua_stripped) < 10:
+                    is_bot = True
+                    cname = 'Empty UA'
+                elif device:
                     is_crawler_entry = crawler_field is not None and crawler_field.strip() != 'N'
                     if is_crawler_entry:
                         is_bot = True
                         cname = crawler_field.split(' (')[0].strip()
                     elif device == 'Crawler':
                         is_bot = True
-                        _, clabel, *_ = detect_client_type(ua)
+                        _, clabel, *_ = detect_client_type(ua_stripped)
                         cname = clabel.split(' (')[0].strip() if clabel else 'Unknown'
                 else:
-                    is_crawler, crawler_label, *_ = detect_client_type(ua)
+                    is_crawler, crawler_label, *_ = detect_client_type(ua_stripped)
                     if is_crawler:
                         is_bot = True
                         cname = crawler_label.split(' (')[0].strip()
 
-                if is_bot:
-                    stats['crawlers'] += 1
-                    stats['crawler_names'][cname] += 1
-                    # [수정] 봇 IP 별도 집계 (경로 포함)
-                    stats['bot_ips'][ip]['total'] += 1
-                    stats['bot_ips'][ip]['paths'][path] += 1
-                    stats['bot_ips'][ip]['crawler_name'] = cname
-                    stats['bot_paths'][path] += 1
+                # UA 통과 IP는 GeoIP 2차 판별 필요
+                if not is_bot:
+                    cached = IP_INFO_CACHE.get(ip)
+                    if not cached or time.time() - cached[0] >= IP_INFO_CACHE_TTL:
+                        pending_geo_ips.add(ip)
+
+                parsed_rows.append((
+                    date_str, ip, device, os_name, browser,
+                    is_bot, cname, path, status, referrer, ua_stripped
+                ))
+
+    # [수정] 캐시 미스 IP를 ThreadPoolExecutor로 병렬 선조회
+    if pending_geo_ips:
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = {pool.submit(get_ip_info, ip): ip for ip in pending_geo_ips}
+            for future in as_completed(futures):
+                future.result()  # 캐시에 저장됨, 결과는 사용하지 않음
+
+    # 2nd pass: GeoIP 결과로 최종 분류
+    for (date_str, ip, device, os_name, browser,
+         is_bot, cname, path, status, referrer, ua) in parsed_rows:
+
+        if is_bot:
+            stats['crawlers'] += 1
+            stats['crawler_names'][cname] += 1
+            stats['bot_ips'][ip]['total'] += 1
+            stats['bot_ips'][ip]['paths'][path] += 1
+            stats['bot_ips'][ip]['crawler_name'] = cname
+            stats['bot_paths'][path] += 1
+        else:
+            # [수정] GeoIP 2차 분류
+            geo = IP_INFO_CACHE.get(ip, (0, {}))[1]
+            country = geo.get('country', '')
+            org_lower = geo.get('org', '').lower()
+
+            geo_bot_name = None
+            if country and country != 'KR':
+                geo_bot_name = f"Non-KR ({geo.get('org', country)})"
+            else:
+                for pattern, label in KR_CORP_CRAWLER_PATTERNS:
+                    if pattern in org_lower:
+                        geo_bot_name = label
+                        break
+
+            if geo_bot_name:
+                stats['crawlers'] += 1
+                stats['crawler_names'][geo_bot_name] += 1
+                stats['bot_ips'][ip]['total'] += 1
+                stats['bot_ips'][ip]['paths'][path] += 1
+                stats['bot_ips'][ip]['crawler_name'] = geo_bot_name
+                stats['bot_paths'][path] += 1
+            else:
+                # 진짜 일반 사용자
+                stats['ips'][ip] += 1
+                stats['user_paths'][path] += 1
+                school_m = re.match(r'^/meal/(\w+)$', path)
+                if school_m:
+                    stats['school_visits'][school_m.group(1)] += 1
+                if referrer and referrer != 'N/A':
+                    ref_m = re.match(r'https?://([^/]+)', referrer)
+                    if ref_m:
+                        stats['referrers'][ref_m.group(1)] += 1
+                stats['users'] += 1
+                if device:
+                    stats['devices'][device] += 1
+                    stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
+                    stats['browsers'][browser.strip() if browser else 'Other'] += 1
                 else:
-                    # [수정] GeoIP 2차 분류:
-                    # - 한국이 아닌 IP → 봇으로 재분류
-                    # - 한국 IP라도 알려진 기업 크롤러 org → 봇으로 재분류
-                    geo = get_ip_info(ip)
-                    country = geo.get('country', '')
-                    org_lower = geo.get('org', '').lower()
-
-                    geo_bot_name = None
-                    if country and country != 'KR':
-                        org_label = geo.get('org', country)
-                        geo_bot_name = f"Non-KR ({org_label})"
-                    else:
-                        for pattern, label in KR_CORP_CRAWLER_PATTERNS:
-                            if pattern in org_lower:
-                                geo_bot_name = label
-                                break
-
-                    if geo_bot_name:
-                        is_bot = True
-                        cname = geo_bot_name
-                        stats['crawlers'] += 1
-                        stats['crawler_names'][cname] += 1
-                        stats['bot_ips'][ip]['total'] += 1
-                        stats['bot_ips'][ip]['paths'][path] += 1
-                        stats['bot_ips'][ip]['crawler_name'] = cname
-                        stats['bot_paths'][path] += 1
-                    else:
-                        # 진짜 일반 사용자
-                        stats['ips'][ip] += 1
-                        stats['user_paths'][path] += 1
-                        school_m = re.match(r'^/meal/(\w+)$', path)
-                        if school_m:
-                            stats['school_visits'][school_m.group(1)] += 1
-                        if referrer and referrer != 'N/A':
-                            ref_m = re.match(r'https?://([^/]+)', referrer)
-                            if ref_m:
-                                stats['referrers'][ref_m.group(1)] += 1
-                        stats['users'] += 1
-                        if device:
-                            stats['devices'][device] += 1
-                            stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
-                            stats['browsers'][browser.strip() if browser else 'Other'] += 1
-                        else:
-                            _, _, det_device, det_os, det_browser = detect_client_type(ua)
-                            stats['devices'][det_device] += 1
-                            stats['os_names'][det_os] += 1
-                            stats['browsers'][det_browser] += 1
+                    _, _, det_device, det_os, det_browser = detect_client_type(ua)
+                    stats['devices'][det_device] += 1
+                    stats['os_names'][det_os] += 1
+                    stats['browsers'][det_browser] += 1
 
     # events.log 파싱
     event_stats = {
@@ -1538,10 +1597,23 @@ def admin_dashboard():
 
     stats = parse_logs_for_dashboard(days)
 
-    # [수정] IPInfo enrichment는 봇 IP에만 적용 (상위 50개)
+    # [수정] bot_ip_list 상위 50개 IPInfo enrichment - 병렬 처리
+    # parse_logs에서 이미 선조회했으므로 대부분 캐시 히트, 누락분만 병렬 보완
+    top_bots = stats['bot_ip_list'][:50]
+    missing_ips = [
+        e['ip'] for e in top_bots
+        if e['ip'] not in IP_INFO_CACHE
+        or time.time() - IP_INFO_CACHE[e['ip']][0] >= IP_INFO_CACHE_TTL
+    ]
+    if missing_ips:
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            futures = {pool.submit(get_ip_info, ip): ip for ip in missing_ips}
+            for f in as_completed(futures):
+                f.result()
+
     enriched_bot_ips = []
-    for entry in stats['bot_ip_list'][:50]:
-        info = get_ip_info(entry['ip'])
+    for entry in top_bots:
+        info = IP_INFO_CACHE.get(entry['ip'], (0, {}))[1]
         enriched_bot_ips.append({**entry, 'info': info})
     stats['bot_ip_list_enriched'] = enriched_bot_ips
 
