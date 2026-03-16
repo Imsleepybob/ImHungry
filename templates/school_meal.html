@@ -473,10 +473,10 @@ function selectSchool(item) {
         startLoadingAnimation();
         ld.style.display = 'flex';
     }
-    // [수정] 첫 페인트 보장을 위해 50ms → 100ms로 증가
+    // [수정] 두 번째 텍스트 완전 표시 시점(850ms) 이후 네비게이션으로 iOS 타이머 중단 방지
     setTimeout(() => {
         window.location.href = `/meal/${item.dataset.code}`;
-    }, 100);
+    }, 900);
 }
 
 function performSearch(query, region, immediate = false) {
@@ -499,29 +499,34 @@ function startLoadingAnimation() {
     const textEl = document.getElementById('loading-text');
     if (!textEl) return;
 
-    // [수정] 첫 텍스트는 rAF 없이 즉시 표시 (iOS Safari 네비게이션 시 rAF 미실행 방지)
     textEl.style.transition = 'none';
     textEl.textContent = '급식 정보를 가져오고 있어요!';
-    textEl.style.opacity = '1';
-    textEl.style.transform = 'translateY(0)';
+    textEl.style.opacity = '0';
+    textEl.style.transform = 'translateY(18px)';
 
-    setTimeout(() => {
+    // [수정] rAF 이중 적용 복원 + 네비게이션을 900ms로 지연시켜 모든 타이머가 먼저 실행되도록 보장
+    requestAnimationFrame(() => requestAnimationFrame(() => {
         textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-        textEl.style.opacity = '0';
-        textEl.style.transform = 'translateY(-18px)';
-        setTimeout(() => {
-            textEl.style.transition = 'none';
-            textEl.textContent = '잠시만 기다려주세요!';
-            textEl.style.opacity = '0';
-            textEl.style.transform = 'translateY(18px)';
+        textEl.style.opacity = '1';
+        textEl.style.transform = 'translateY(0)';
 
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
-                textEl.style.opacity = '1';
-                textEl.style.transform = 'translateY(0)';
-            }));
-        }, 350);
-    }, 500);
+        setTimeout(() => {
+            textEl.style.opacity = '0';
+            textEl.style.transform = 'translateY(-18px)';
+            setTimeout(() => {
+                textEl.style.transition = 'none';
+                textEl.textContent = '잠시만 기다려주세요!';
+                textEl.style.opacity = '0';
+                textEl.style.transform = 'translateY(18px)';
+
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    textEl.style.opacity = '1';
+                    textEl.style.transform = 'translateY(0)';
+                }));
+            }, 350);
+        }, 500);
+    }));
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
