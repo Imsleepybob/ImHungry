@@ -1792,9 +1792,6 @@ _error_info = {
     422: ('Unprocessable Entity', '요청을 처리할 수 없습니다.'),
     423: ('Locked', '요청한 리소스가 잠겨 있습니다.'),
     424: ('Failed Dependency', '이전 요청의 실패로 인해 처리할 수 없습니다.'),
-    426: ('Upgrade Required', '프로토콜 업그레이드가 필요합니다.'),
-    428: ('Precondition Required', '사전 조건이 필요합니다.'),
-    429: ('Too Many Requests', '요청 횟수가 허용 한도를 초과하였습니다.'),
     431: ('Request Header Fields Too Large', '요청 헤더의 크기가 너무 큽니다.'),
     451: ('Unavailable For Legal Reasons', '법적 사유로 접근이 제한되었습니다.'),
     500: ('서버 내부 오류', '서버에서 예기치 않은 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
@@ -1863,15 +1860,6 @@ def error_423(e): return _render_error(423)
 
 @app.errorhandler(424)
 def error_424(e): return _render_error(424)
-
-@app.errorhandler(426)
-def error_426(e): return _render_error(426)
-
-@app.errorhandler(428)
-def error_428(e): return _render_error(428)
-
-@app.errorhandler(429)
-def error_429(e): return _render_error(429)
 
 @app.errorhandler(431)
 def error_431(e): return _render_error(431)
