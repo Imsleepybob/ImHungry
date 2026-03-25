@@ -1817,20 +1817,80 @@ def _render_error(code):
                            error_title=title,
                            error_description=desc), code
 
-@app.errorhandler(400)
-def error_400(e): return _render_error(400)
+@app.errorhandler(401)
+def error_401(e): return _render_error(401)
 
-@app.errorhandler(403)
-def error_403(e): return _render_error(403)
+@app.errorhandler(402)
+def error_402(e): return _render_error(402)
 
-@app.errorhandler(404)
-def error_404(e): return _render_error(404)
+@app.errorhandler(406)
+def error_406(e): return _render_error(406)
 
-@app.errorhandler(405)
-def error_405(e): return _render_error(405)
+@app.errorhandler(407)
+def error_407(e): return _render_error(407)
 
-@app.errorhandler(500)
-def error_500(e): return _render_error(500)
+@app.errorhandler(408)
+def error_408(e): return _render_error(408)
+
+@app.errorhandler(409)
+def error_409(e): return _render_error(409)
+
+@app.errorhandler(410)
+def error_410(e): return _render_error(410)
+
+@app.errorhandler(411)
+def error_411(e): return _render_error(411)
+
+@app.errorhandler(412)
+def error_412(e): return _render_error(412)
+
+@app.errorhandler(413)
+def error_413(e): return _render_error(413)
+
+@app.errorhandler(414)
+def error_414(e): return _render_error(414)
+
+@app.errorhandler(415)
+def error_415(e): return _render_error(415)
+
+@app.errorhandler(416)
+def error_416(e): return _render_error(416)
+
+@app.errorhandler(417)
+def error_417(e): return _render_error(417)
+
+@app.errorhandler(418)
+def error_418(e): return _render_error(418)
+
+@app.errorhandler(421)
+def error_421(e): return _render_error(421)
+
+@app.errorhandler(422)
+def error_422(e): return _render_error(422)
+
+@app.errorhandler(423)
+def error_423(e): return _render_error(423)
+
+@app.errorhandler(424)
+def error_424(e): return _render_error(424)
+
+@app.errorhandler(425)
+def error_425(e): return _render_error(425)
+
+@app.errorhandler(426)
+def error_426(e): return _render_error(426)
+
+@app.errorhandler(428)
+def error_428(e): return _render_error(428)
+
+@app.errorhandler(429)
+def error_429(e): return _render_error(429)
+
+@app.errorhandler(431)
+def error_431(e): return _render_error(431)
+
+@app.errorhandler(451)
+def error_451(e): return _render_error(451)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
