@@ -1779,7 +1779,6 @@ _error_info = {
     404: ('Not Found', '요청하신 페이지가 존재하지 않습니다.'),
     405: ('Method Not Allowed', '이 페이지는 해당 요청 방식을 지원하지 않습니다.'),
     406: ('Not Acceptable', '요청한 형식으로는 리소스를 제공할 수 없습니다.'),
-    407: ('Proxy Authentication Required', '프록시 인증이 필요합니다.'),
     408: ('Request Timeout', '요청 시간이 초과되었습니다.'),
     409: ('Conflict', '요청이 서버의 현재 상태와 충돌합니다.'),
     410: ('Gone', '요청한 리소스는 더 이상 사용할 수 없습니다.'),
@@ -1808,14 +1807,23 @@ def _render_error(code):
                            error_title=title,
                            error_description=desc), code
 
+@app.errorhandler(400)
+def error_401(e): return _render_error(400)
+
 @app.errorhandler(401)
 def error_401(e): return _render_error(401)
 
+@app.errorhandler(403)
+def error_401(e): return _render_error(403)
+
+@app.errorhandler(404)
+def error_401(e): return _render_error(404)
+
+@app.errorhandler(405)
+def error_401(e): return _render_error(405)
+
 @app.errorhandler(406)
 def error_406(e): return _render_error(406)
-
-@app.errorhandler(407)
-def error_407(e): return _render_error(407)
 
 @app.errorhandler(408)
 def error_408(e): return _render_error(408)
