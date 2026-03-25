@@ -70,12 +70,11 @@
 </header>
 
 <div id="ad-mobile">
+  <!-- [수정] ba.min.js 개별 script 태그 제거 → body 최하단에서 단일 로드로 통합 -->
   <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
-  <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 <div id="ad-desktop">
   <ins class="kakao_ad_area" data-ad-unit="DAN-I2BhGwRuogHXusUi" data-ad-width="728" data-ad-height="90"></ins>
-  <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </div>
 
 <div class="container">
@@ -147,16 +146,15 @@
       </p>
     </div>
   </div>
-  {% endif %}
 
-  <div id=bodyad-desktop>
+  <!-- [수정] 초기 페이지 광고: 학교 미선택 상태에서도 노출 -->
+  <div id="bodyad-desktop">
     <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
-    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
   </div>
-  <div id=bodyad-mobile>
+  <div id="bodyad-mobile">
     <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
-    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
   </div>
+  {% endif %}
 
   <div id="loading" class="loading-container"><div class="spinner"></div><p id="loading-text"></p></div>
 
@@ -182,6 +180,15 @@
         </div>
       </div>
     </div>
+
+    <!-- [수정] CTR 최적화: 오늘 급식 카드와 주간 급식표 사이에 광고 배치 -->
+    <div id="bodyad-desktop">
+      <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
+    </div>
+    <div id="bodyad-mobile">
+      <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
+    </div>
+
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
@@ -473,7 +480,6 @@ function selectSchool(item) {
         startLoadingAnimation();
         ld.style.display = 'flex';
     }
-    // [수정] 두 번째 텍스트 완전 표시 시점(850ms) 이후 네비게이션으로 iOS 타이머 중단 방지
     setTimeout(() => {
         window.location.href = `/meal/${item.dataset.code}`;
     }, 900);
@@ -504,7 +510,6 @@ function startLoadingAnimation() {
     textEl.style.opacity = '0';
     textEl.style.transform = 'translateY(18px)';
 
-    // [수정] rAF 이중 적용 복원 + 네비게이션을 900ms로 지연시켜 모든 타이머가 먼저 실행되도록 보장
     requestAnimationFrame(() => requestAnimationFrame(() => {
         textEl.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
         textEl.style.opacity = '1';
@@ -818,13 +823,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    setTimeout(() => {
-        const bdd = document.getElementById('bodyad-desktop');
-        const bdm = document.getElementById('bodyad-mobile');
-        if (bdd) bdd.classList.add('show-ad');
-        if (bdm) bdm.classList.add('show-ad');
-    }, 1500);
 });
 </script>
 {% if school_name and month_meals %}
@@ -1028,7 +1026,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!notiBtn) return;
 
         notiBtn.addEventListener('click', async () => {
-            // [수정] 알림 버튼 클릭 트래킹
             trackEvent('btn_notification', 'click');
             if (NotificationManager.isAppEnvironment()) {
                 const ready = await NotificationManager.waitForCapacitor();
@@ -1120,5 +1117,8 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 {% endif %}
+
+<!-- [수정] ba.min.js 단일 로드: display:none 상태에서 초기화되지 않는 버그 방지를 위해 body 최하단에서 1회만 로드 -->
+<script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </body>
 </html>
