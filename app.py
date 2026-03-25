@@ -1772,6 +1772,66 @@ def after_request_func(response):
 
     return response
 
+_error_info = {
+    400: ('Bad Request', '요청하신 URL을 이 서버에서 찾을 수 없습니다.'),
+    401: ('Unauthorized', '인증되지 않았습니다.'),
+    402: ('Payment Required', '해당 리소스에 접근하려면 결제가 필요합니다.'),
+    403: ('Forbidden', '이 페이지에 접근할 권한이 없습니다.'),
+    404: ('Not Found', '요청하신 페이지가 존재하지 않습니다.'),
+    405: ('Method Not Allowed', '이 페이지는 해당 요청 방식을 지원하지 않습니다.'),
+    406: ('Not Acceptable', '요청한 형식으로는 리소스를 제공할 수 없습니다.'),
+    407: ('Proxy Authentication Required', '프록시 인증이 필요합니다.'),
+    408: ('Request Timeout', '요청 시간이 초과되었습니다.'),
+    409: ('Conflict', '요청이 서버의 현재 상태와 충돌합니다.'),
+    410: ('Gone', '요청한 리소스는 더 이상 사용할 수 없습니다.'),
+    411: ('Length Required', 'Content-Length 헤더가 필요합니다.'),
+    412: ('Precondition Failed', '요청의 사전 조건이 충족되지 않았습니다.'),
+    413: ('Payload Too Large', '요청 데이터의 크기가 허용 범위를 초과합니다.'),
+    414: ('URI Too Long', '요청한 URI의 길이가 너무 깁니다.'),
+    415: ('Unsupported Media Type', '지원되지 않는 미디어 타입입니다.'),
+    416: ('Range Not Satisfiable', '요청한 범위를 처리할 수 없습니다.'),
+    417: ('Expectation Failed', '요청의 Expect 헤더를 충족할 수 없습니다.'),
+    418: ("I'm a teapot", '요청을 처리할 수 없습니다.'),
+    421: ('Misdirected Request', '잘못된 대상 서버로 요청이 전달되었습니다.'),
+    422: ('Unprocessable Entity', '요청을 처리할 수 없습니다.'),
+    423: ('Locked', '요청한 리소스가 잠겨 있습니다.'),
+    424: ('Failed Dependency', '이전 요청의 실패로 인해 처리할 수 없습니다.'),
+    425: ('Too Early', '요청을 처리하기에는 너무 이른 상태입니다.'),
+    426: ('Upgrade Required', '프로토콜 업그레이드가 필요합니다.'),
+    428: ('Precondition Required', '사전 조건이 필요합니다.'),
+    429: ('Too Many Requests', '요청 횟수가 허용 한도를 초과하였습니다.'),
+    431: ('Request Header Fields Too Large', '요청 헤더의 크기가 너무 큽니다.'),
+    451: ('Unavailable For Legal Reasons', '법적 사유로 접근이 제한되었습니다.'),
+    500: ('서버 내부 오류', '서버에서 예기치 않은 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'),
+    444: ('No Response', '서버가 응답을 반환하지 않았습니다.'),
+    495: ('SSL Certificate Error', 'SSL 인증서 오류가 발생하였습니다.'),
+    496: ('SSL Certificate Required', 'SSL 인증서가 필요합니다.'),
+    497: ('HTTP Request Sent to HTTPS Port', 'HTTPS 포트로 HTTP 요청이 전송되었습니다.'),
+    499: ('Client Closed Request', '클라이언트가 요청을 중단하였습니다.')
+}
+
+def _render_error(code):
+    title, desc = _error_info.get(code, ('오류', '알 수 없는 오류가 발생했습니다.'))
+    return render_template('error.html',
+                           error_code=code,
+                           error_title=title,
+                           error_description=desc), code
+
+@app.errorhandler(400)
+def error_400(e): return _render_error(400)
+
+@app.errorhandler(403)
+def error_403(e): return _render_error(403)
+
+@app.errorhandler(404)
+def error_404(e): return _render_error(404)
+
+@app.errorhandler(405)
+def error_405(e): return _render_error(405)
+
+@app.errorhandler(500)
+def error_500(e): return _render_error(500)
+
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
     app.logger.info(f"접속 로그 파일 경로: {ACCESS_LOG_PATH}")
