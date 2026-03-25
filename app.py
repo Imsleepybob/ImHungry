@@ -1775,7 +1775,6 @@ def after_request_func(response):
 _error_info = {
     400: ('Bad Request', '요청하신 URL을 이 서버에서 찾을 수 없습니다.'),
     401: ('Unauthorized', '인증되지 않았습니다.'),
-    402: ('Payment Required', '해당 리소스에 접근하려면 결제가 필요합니다.'),
     403: ('Forbidden', '이 페이지에 접근할 권한이 없습니다.'),
     404: ('Not Found', '요청하신 페이지가 존재하지 않습니다.'),
     405: ('Method Not Allowed', '이 페이지는 해당 요청 방식을 지원하지 않습니다.'),
@@ -1791,23 +1790,15 @@ _error_info = {
     415: ('Unsupported Media Type', '지원되지 않는 미디어 타입입니다.'),
     416: ('Range Not Satisfiable', '요청한 범위를 처리할 수 없습니다.'),
     417: ('Expectation Failed', '요청의 Expect 헤더를 충족할 수 없습니다.'),
-    418: ("I'm a teapot", '요청을 처리할 수 없습니다.'),
-    421: ('Misdirected Request', '잘못된 대상 서버로 요청이 전달되었습니다.'),
     422: ('Unprocessable Entity', '요청을 처리할 수 없습니다.'),
     423: ('Locked', '요청한 리소스가 잠겨 있습니다.'),
     424: ('Failed Dependency', '이전 요청의 실패로 인해 처리할 수 없습니다.'),
-    425: ('Too Early', '요청을 처리하기에는 너무 이른 상태입니다.'),
     426: ('Upgrade Required', '프로토콜 업그레이드가 필요합니다.'),
     428: ('Precondition Required', '사전 조건이 필요합니다.'),
     429: ('Too Many Requests', '요청 횟수가 허용 한도를 초과하였습니다.'),
     431: ('Request Header Fields Too Large', '요청 헤더의 크기가 너무 큽니다.'),
     451: ('Unavailable For Legal Reasons', '법적 사유로 접근이 제한되었습니다.'),
-    500: ('서버 내부 오류', '서버에서 예기치 않은 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.'),
-    444: ('No Response', '서버가 응답을 반환하지 않았습니다.'),
-    495: ('SSL Certificate Error', 'SSL 인증서 오류가 발생하였습니다.'),
-    496: ('SSL Certificate Required', 'SSL 인증서가 필요합니다.'),
-    497: ('HTTP Request Sent to HTTPS Port', 'HTTPS 포트로 HTTP 요청이 전송되었습니다.'),
-    499: ('Client Closed Request', '클라이언트가 요청을 중단하였습니다.')
+    500: ('서버 내부 오류', '서버에서 예기치 않은 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.')
 }
 
 def _render_error(code):
@@ -1819,9 +1810,6 @@ def _render_error(code):
 
 @app.errorhandler(401)
 def error_401(e): return _render_error(401)
-
-@app.errorhandler(402)
-def error_402(e): return _render_error(402)
 
 @app.errorhandler(406)
 def error_406(e): return _render_error(406)
@@ -1859,12 +1847,6 @@ def error_416(e): return _render_error(416)
 @app.errorhandler(417)
 def error_417(e): return _render_error(417)
 
-@app.errorhandler(418)
-def error_418(e): return _render_error(418)
-
-@app.errorhandler(421)
-def error_421(e): return _render_error(421)
-
 @app.errorhandler(422)
 def error_422(e): return _render_error(422)
 
@@ -1873,9 +1855,6 @@ def error_423(e): return _render_error(423)
 
 @app.errorhandler(424)
 def error_424(e): return _render_error(424)
-
-@app.errorhandler(425)
-def error_425(e): return _render_error(425)
 
 @app.errorhandler(426)
 def error_426(e): return _render_error(426)
@@ -1891,6 +1870,9 @@ def error_431(e): return _render_error(431)
 
 @app.errorhandler(451)
 def error_451(e): return _render_error(451)
+
+@app.errorhandler(500)
+def error_451(e): return _render_error(500)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
