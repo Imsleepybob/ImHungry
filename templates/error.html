@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ error_code }} {{ error_badge }} - 급식알리미</title>
+<link rel="icon" href="https://file.imsleepy.xyz/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.3">
+<style>
+.error-page {
+    min-height: calc(100vh - 57px - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+.error-box {
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+    background: var(--bg-container);
+    border-radius: 20px;
+    padding: 48px 40px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    animation: fadeInUp 0.45s ease;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.error-code {
+    font-size: 6rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--primary-color);
+    letter-spacing: -2px;
+    position: relative;
+    padding-bottom: 16px;
+    animation: pulse 2s infinite;
+}
+.error-code::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background-color: var(--primary-color);
+    border-radius: 3px;
+}
+.status-badge {
+    display: inline-block;
+    background: rgba(250, 164, 26, 0.15);
+    color: var(--accent-color);
+    border: 1px solid rgba(250, 164, 26, 0.3);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin: 20px 0 16px;
+}
+.error-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 12px;
+}
+.error-desc {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0 0 32px;
+}
+.error-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.btn-primary {
+    display: inline-block;
+    padding: 12px 24px;
+    background: var(--primary-color);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary {
+    display: inline-block;
+    padding: 12px 24px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.btn-secondary:hover { background: var(--border-color); }
+@media (max-width: 480px) {
+    .error-box { padding: 36px 24px; }
+    .error-code { font-size: 4.5rem; }
+    .error-actions { flex-direction: column; align-items: center; }
+    .btn-primary, .btn-secondary { width: 100%; max-width: 260px; text-align: center; }
+}
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">
+    <a href="/"><img src="https://file.imsleepy.xyz/favicon.svg" alt="급식알리미" style="height:28px;"></a>
+  </div>
+</header>
+
+<div class="error-page">
+  <div class="error-box">
+    <div class="error-code">{{ error_code }}</div>
+    <div class="status-badge">{{ error_badge }}</div>
+    <h1 class="error-title">{{ error_title }}</h1>
+    <p class="error-desc">{{ error_description }}</p>
+    <div class="error-actions">
+      <button class="btn-primary" onclick="location.reload()">↻ 새로고침</button>
+      <a href="https://status.imsleepy.xyz" class="btn-secondary" target="_blank" rel="noopener noreferrer">서비스 상태 확인</a>
+    </div>
+  </div>
+</div>
+
+<footer class="main-footer">
+  <div class="footer-content">
+    <div class="footer-links">
+      <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">서비스 상태</a>
+      <a href="https://about.imsleepy.xyz/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+      <a href="https://about.imsleepy.xyz/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>
+    </div>
+    <p>&copy; 2025 ImHungry. All rights reserved.</p>
+  </div>
+</footer>
+</body>
+</html>
