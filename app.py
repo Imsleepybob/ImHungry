@@ -6,6 +6,7 @@ import requests
 import logging
 from logging.handlers import RotatingFileHandler
 import ipaddress
+import bisect
 from urllib.parse import quote, unquote
 import os
 import re
@@ -16,6 +17,7 @@ import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
 
 meal_cache = {}
 
@@ -27,8 +29,6 @@ SCHOOL_CODE_CACHE_TTL = 86400
 SEARCH_CACHE_TTL = 3600
 REGION_SCHOOLS_CACHE_TTL = 86400
 
-# [수정] LOG_DIR: Render Persistent Disk 경로를 환경변수로 지정 가능
-# Render 대시보드 > Environment에서 LOG_DIR=/var/data 설정 후 Persistent Disk를 /var/data에 마운트
 LOG_DIR = os.environ.get('LOG_DIR', os.getcwd())
 
 BLACKLIST_FILE = os.path.join(LOG_DIR, 'ip_blacklist.txt')
@@ -51,7 +51,6 @@ NO_LOG_PATHS = [
     'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
     '/logs/', '/stats', '/security/',
     '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
-    # [수정] /admin 하위 경로 및 이벤트 트래킹은 통계에서 제외
     '/health', '/api/track', '/admin',
 ]
 
@@ -81,10 +80,8 @@ SUSPICIOUS_PATTERNS = {
     ]
 }
 
-# [수정] 크롤러 판별 + 이름 추출용 맵 (구체적인 것부터 순서 중요)
 CRAWLER_NAME_MAP = [
     ('googlebot',           'Googlebot'),
-    # [수정] UA 위장 구글 크롤러 (googlebot보다 먼저 올 필요 없음, googlebot이 없을 때 매칭)
     ('googleother',         'GoogleOther'),
     ('google-extended',     'Google-Extended'),
     ('google-inspectiontool', 'Google Inspection'),
@@ -130,8 +127,6 @@ CRAWLER_NAME_MAP = [
     ('bot',                 'Bot'),
 ]
 
-# [수정] GeoIP 기반 봇 판별 - 한국 크롤러 기업 org 패턴
-# 통신사(SK Telecom, KT, LGU+)는 일반 사용자도 같은 ASN을 쓰므로 제외
 KR_CORP_CRAWLER_PATTERNS = [
     ('naver',    'NaverBot'),
     ('kakao',    'KakaoBot'),
@@ -165,21 +160,43 @@ def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
     except Exception as e:
         app.logger.error(f"Error saving to blacklist: {e}")
 
-BLOCKED_NETWORKS = load_ip_blacklist()
+def _build_blocked_index(networks):
+    ranges = {4: [], 6: []}
+    for cidr in networks:
+        net = ipaddress.ip_network(cidr, strict=False)
+        ranges[net.version].append((int(net.network_address), int(net.broadcast_address)))
+    index = {}
+    for version, items in ranges.items():
+        items.sort()
+        merged = []
+        for start, end in items:
+            if merged and start <= merged[-1][1] + 1:
+                if end > merged[-1][1]:
+                    merged[-1][1] = end
+            else:
+                merged.append([start, end])
+        index[version] = ([m[0] for m in merged], [m[1] for m in merged])
+    return index
 
-ADMIN_WHITELIST = [
-    '210.94.23.150/32',
-    '118.221.147.88/32',
-]
+BLOCKED_NETWORKS = []
+BLOCKED_INDEX = {4: ([], []), 6: ([], [])}
 
-# [수정] 관리자 비밀번호 (화이트리스트 IP 외 접근 시 사용)
-ADMIN_PASSWORD_HASH = hashlib.sha256('tjtmdgus09'.encode()).hexdigest()
+def refresh_blacklist():
+    global BLOCKED_NETWORKS, BLOCKED_INDEX
+    networks = load_ip_blacklist()
+    index = _build_blocked_index(networks)
+    BLOCKED_NETWORKS = networks
+    BLOCKED_INDEX = index
 
-# [수정] IPInfo 설정 - 무료 플랜 50,000 req/월, 대시보드 상위 IP에만 사용
-IPINFO_API_KEY = '34086a00a1518b'
+refresh_blacklist()
+
+ADMIN_WHITELIST = [ip.strip() for ip in os.environ.get('ADMIN_WHITELIST', '').split(',') if ip.strip()]
+
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
+
+IPINFO_API_KEY = os.environ.get('IPINFO_API_KEY', '')
 IP_INFO_CACHE = {}
 IP_INFO_CACHE_TTL = 86400
-# [수정] IPInfo 캐시 파일 경로 - 프로세스 재시작 후에도 캐시 유지
 IPINFO_CACHE_FILE = os.path.join(LOG_DIR, 'ipinfo_cache.json')
 
 def _load_ipinfo_cache():
@@ -228,16 +245,15 @@ def should_silent_block(path):
 def is_ip_blocked(ip_address):
     try:
         client_ip = ipaddress.ip_address(ip_address)
-        if ip_address in blocked_ips:
-            return True
-        for blocked_network in BLOCKED_NETWORKS:
-            network = ipaddress.ip_network(blocked_network, strict=False)
-            if client_ip in network:
-                return True
-        return False
     except ValueError:
         app.logger.error(f"Invalid IP address detected: {ip_address}")
         return True
+    if ip_address in blocked_ips:
+        return True
+    starts, ends = BLOCKED_INDEX.get(client_ip.version, ([], []))
+    ip_int = int(client_ip)
+    i = bisect.bisect_right(starts, ip_int) - 1
+    return i >= 0 and ip_int <= ends[i]
 
 def is_admin_ip(ip_address):
     try:
@@ -306,13 +322,13 @@ def auto_block_ip(ip, reason, duration=None):
     failed_attempts[ip] += 1
     if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
         save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
+        refresh_blacklist()
 
 @app.before_request
 def security_check():
     client_ip = get_client_ip()
     if is_admin_ip(client_ip):
         return
-    # [수정] /admin 경로는 라우트 자체에서 비밀번호 인증 처리
     if request.path.startswith('/admin'):
         return
     if should_silent_block(request.path):
@@ -368,7 +384,6 @@ def setup_security_logging():
 
 setup_security_logging()
 
-# [수정] 로그 경로: LOG_DIR 기반으로 변경
 ACCESS_LOG_PATH = os.path.join(LOG_DIR, 'access.log')
 APP_LOG_PATH = os.path.join(LOG_DIR, 'app.log')
 IP_BLOCK_LOG_PATH = os.path.join(LOG_DIR, 'ip_block.log')
@@ -380,7 +395,6 @@ class AccessLogFormatter(logging.Formatter):
     def format(self, record):
         record.remote_addr = getattr(record, 'remote_addr', 'N/A')
         record.user_agent = getattr(record, 'user_agent', 'N/A')
-        # [수정] Device, OS, Browser, Crawler 필드 추가
         record.device = getattr(record, 'device', 'N/A')
         record.os_name = getattr(record, 'os_name', 'N/A')
         record.browser = getattr(record, 'browser', 'N/A')
@@ -422,7 +436,6 @@ def setup_logging():
         backupCount=5,
         encoding='utf-8'
     )
-    # [수정] OS, Crawler 필드 추가
     access_formatter = AccessLogFormatter(
         '%(asctime)s - IP: %(remote_addr)s - Device: %(device)s - OS: %(os_name)s'
         ' - Browser: %(browser)s - Crawler: %(crawler)s - UA: %(user_agent)s'
@@ -445,7 +458,6 @@ def setup_logging():
     )
     namuboard_handler.setFormatter(namuboard_formatter)
 
-    # [수정] events 로거 추가 - JSON Lines 형식
     events_handler = RotatingFileHandler(
         EVENTS_LOG_PATH,
         maxBytes=5*1024*1024,
@@ -474,26 +486,20 @@ def setup_logging():
     return access_logger, namuboard_logger
 
 access_logger, namuboard_logger = setup_logging()
-# [수정] 앱 시작 시 IPInfo 파일 캐시 로드 (재시작 후에도 캐시 유지)
 _load_ipinfo_cache()
 
 
-# [수정] UA 분석: 반환값 (is_crawler, crawler_label, device, os_name, browser)
-# 크롤러인 경우 crawler_label = "Googlebot (Mozilla/5.0 (compatible; ...))" 형태
 def detect_client_type(raw_ua):
     if not raw_ua:
         return True, 'Unknown Bot', 'Unknown', 'Unknown', 'Unknown'
 
     ua_lower = raw_ua.lower()
-    # UA 앞 80자를 snippet으로 보존 (크롤러 식별에 활용)
     ua_snippet = raw_ua[:80].strip()
 
-    # 크롤러 판별: 이름을 추출하고 UA snippet 병기
     for pattern, name in CRAWLER_NAME_MAP:
         if pattern in ua_lower:
             return True, f"{name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
 
-    # OS 탐지
     if 'windows nt' in ua_lower:
         nt_ver_map = {'10.0': 'Windows 10/11', '6.3': 'Windows 8.1',
                       '6.2': 'Windows 8', '6.1': 'Windows 7'}
@@ -517,7 +523,6 @@ def detect_client_type(raw_ua):
     else:
         os_name = 'Unknown OS'
 
-    # 디바이스 탐지
     if 'ipad' in ua_lower or 'tablet' in ua_lower:
         device = 'Tablet'
     elif any(k in ua_lower for k in ('mobile', 'android', 'iphone', 'ipod')):
@@ -525,7 +530,6 @@ def detect_client_type(raw_ua):
     else:
         device = 'Desktop'
 
-    # 브라우저 탐지 (순서 중요)
     if 'edg/' in ua_lower or 'edgios' in ua_lower or 'edga/' in ua_lower:
         browser = 'Edge'
     elif 'samsungbrowser' in ua_lower:
@@ -555,7 +559,6 @@ def log_access_request(status_code=200):
     if request.method in ['GET', 'POST'] and status_code in [200, 206]:
         try:
             real_ip = get_client_ip()
-            # [수정] 관리자 IP는 통계에서 제외
             if is_admin_ip(real_ip):
                 return
             raw_ua = request.headers.get('User-Agent', '')
@@ -566,7 +569,6 @@ def log_access_request(status_code=200):
                 'device': device,
                 'os_name': os_name,
                 'browser': browser,
-                # 크롤러면 "Googlebot (UA...)" 형태, 일반 사용자면 'N'
                 'crawler': crawler_label if is_crawler else 'N',
                 'method': request.method,
                 'path': request.path,
@@ -590,8 +592,6 @@ def log_namuboard_access_request():
         app.logger.error(f"NamuBoard Extension 로그 기록 중 오류 발생: {e}")
 
 
-# [수정] IPInfo API - org(ASN), region, city, country 조회
-# 메모리 캐시(24h) + 파일 영속화. 신규 IP만 API 호출
 def get_ip_info(ip):
     cached = IP_INFO_CACHE.get(ip)
     if cached and time.time() - cached[0] < IP_INFO_CACHE_TTL:
@@ -618,7 +618,6 @@ def get_ip_info(ip):
     return {}
 
 
-# [수정] 대시보드용 로그 파싱 함수
 def parse_logs_for_dashboard(days=30):
     today = datetime.now(KST).date()
     cutoff = today - timedelta(days=days)
@@ -630,7 +629,6 @@ def parse_logs_for_dashboard(days=30):
         'requests_by_day': defaultdict(int),
         'status_codes': defaultdict(int),
         'paths': defaultdict(int),
-        # [수정] school_visits, ips, referrers는 일반 사용자 트래픽만 집계
         'school_visits': defaultdict(int),
         'ips': defaultdict(int),
         'referrers': defaultdict(int),
@@ -640,15 +638,11 @@ def parse_logs_for_dashboard(days=30):
         'os_names': defaultdict(int),
         'browsers': defaultdict(int),
         'crawler_names': defaultdict(int),
-        # [수정] 경로를 사용자/봇으로 분리
         'user_paths': defaultdict(int),
         'bot_paths': defaultdict(int),
-        # [수정] 봇 전용 IP 집계: {ip: {'total': int, 'paths': {path: count}, 'crawler_name': str}}
         'bot_ips': defaultdict(lambda: {'total': 0, 'paths': defaultdict(int), 'crawler_name': 'Unknown'}),
     }
 
-    # 신규 포맷: ... - Device: X - OS: X - Browser: X - Crawler: X - UA: ...
-    # 구 포맷:   ... - Device: X - Browser: X - UA: ...  (OS/Crawler 필드 없음)
     log_re = re.compile(
         r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
         r'IP: (\S+) - '
@@ -660,10 +654,8 @@ def parse_logs_for_dashboard(days=30):
         r'Referrer: (.*?)$'
     )
 
-    # [수정] 1st pass: 로그 파싱 + UA 기반 봇 1차 판별
-    # GeoIP 판별이 필요한 행은 pending_geo에 따로 모음
-    parsed_rows = []   # (date_str, ip, device, os_name, browser, is_bot, cname, path, status, referrer)
-    pending_geo_ips = set()  # 캐시 미스인 GeoIP 조회 필요 IP
+    parsed_rows = []
+    pending_geo_ips = set()
 
     if os.path.exists(ACCESS_LOG_PATH):
         with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
@@ -688,11 +680,9 @@ def parse_logs_for_dashboard(days=30):
                 stats['requests_by_day'][date_str] += 1
                 stats['status_codes'][status] += 1
 
-                # UA 1차 봇 판별
                 is_bot = False
                 cname = 'Unknown'
 
-                # [수정] 빈 UA는 즉시 크롤러
                 ua_stripped = ua.strip() if ua else ''
                 if not ua_stripped or ua_stripped == 'Unknown' or len(ua_stripped) < 10:
                     is_bot = True
@@ -712,7 +702,6 @@ def parse_logs_for_dashboard(days=30):
                         is_bot = True
                         cname = crawler_label.split(' (')[0].strip()
 
-                # UA 통과 IP는 GeoIP 2차 판별 필요
                 if not is_bot:
                     cached = IP_INFO_CACHE.get(ip)
                     if not cached or time.time() - cached[0] >= IP_INFO_CACHE_TTL:
@@ -723,14 +712,12 @@ def parse_logs_for_dashboard(days=30):
                     is_bot, cname, path, status, referrer, ua_stripped
                 ))
 
-    # [수정] 캐시 미스 IP를 ThreadPoolExecutor로 병렬 선조회
     if pending_geo_ips:
         with ThreadPoolExecutor(max_workers=20) as pool:
             futures = {pool.submit(get_ip_info, ip): ip for ip in pending_geo_ips}
             for future in as_completed(futures):
-                future.result()  # 캐시에 저장됨, 결과는 사용하지 않음
+                future.result()
 
-    # 2nd pass: GeoIP 결과로 최종 분류
     for (date_str, ip, device, os_name, browser,
          is_bot, cname, path, status, referrer, ua) in parsed_rows:
 
@@ -742,7 +729,6 @@ def parse_logs_for_dashboard(days=30):
             stats['bot_ips'][ip]['crawler_name'] = cname
             stats['bot_paths'][path] += 1
         else:
-            # [수정] GeoIP 2차 분류
             geo = IP_INFO_CACHE.get(ip, (0, {}))[1]
             country = geo.get('country', '')
             org_lower = geo.get('org', '').lower()
@@ -764,7 +750,6 @@ def parse_logs_for_dashboard(days=30):
                 stats['bot_ips'][ip]['crawler_name'] = geo_bot_name
                 stats['bot_paths'][path] += 1
             else:
-                # 진짜 일반 사용자
                 stats['ips'][ip] += 1
                 stats['user_paths'][path] += 1
                 school_m = re.match(r'^/meal/(\w+)$', path)
@@ -785,7 +770,6 @@ def parse_logs_for_dashboard(days=30):
                     stats['os_names'][det_os] += 1
                     stats['browsers'][det_browser] += 1
 
-    # events.log 파싱
     event_stats = {
         'theme': defaultdict(int),
         'search_method': defaultdict(int),
@@ -813,7 +797,6 @@ def parse_logs_for_dashboard(days=30):
                 except Exception:
                     continue
 
-    # school_code → 학교명 변환 (캐시 미스 시 NEIS API 호출)
     school_names = {}
     for code in list(stats['school_visits'].keys()):
         cached = school_code_cache.get(code)
@@ -831,7 +814,6 @@ def parse_logs_for_dashboard(days=30):
         'users': stats['users'],
         'requests_by_day': dict(sorted(stats['requests_by_day'].items())[-14:]),
         'status_codes': dict(sorted(stats['status_codes'].items())),
-        # [수정] 경로 사용자/봇 분리, 전체 목록도 함께 반환
         'top_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
         'all_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True),
         'top_bot_paths': sorted(stats['bot_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
@@ -992,11 +974,34 @@ def get_school_from_neis(school_code):
         app.logger.error(f"Error fetching school from NEIS API (code={school_code}): {e}")
     return None
 
+def _search_region_cache(query, region_code, limit):
+    cached = region_schools_cache.get(region_code)
+    if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
+        prefetch_region_schools_async(region_code)
+        return None
+    q = query.lower()
+    results = []
+    for school in cached[1]:
+        if q in school["school_name"].lower():
+            results.append({
+                "school_code": school["school_code"],
+                "school_name": school["school_name"],
+                "region_code": school["region_code"],
+                "address": school.get("address", "")
+            })
+            if len(results) >= limit:
+                break
+    return results or None
+
 def search_schools_neis(query, region_code, limit=10):
     cache_key = (query.lower(), region_code)
     cached = search_result_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
         return cached[1]
+
+    local_results = _search_region_cache(query, region_code, limit)
+    if local_results is not None:
+        return local_results
 
     url = "https://open.neis.go.kr/hub/schoolInfo"
     params = {
@@ -1065,23 +1070,35 @@ def get_schools_by_region_cached(region_code, school_level=None):
         return [s for s in schools if s.get("school_level") == school_level]
     return schools
 
+_region_prefetch_lock = threading.Lock()
+_region_prefetch_running = set()
+_region_prefetch_last = {}
+
 def prefetch_region_schools_async(region_code):
     cached = region_schools_cache.get(region_code)
-    if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
-        thread = threading.Thread(
-            target=_fetch_and_store_region,
-            args=(region_code,),
-            daemon=True
-        )
-        thread.start()
+    if cached and time.time() - cached[0] <= REGION_SCHOOLS_CACHE_TTL:
+        return
+    with _region_prefetch_lock:
+        if region_code in _region_prefetch_running:
+            return
+        if time.time() - _region_prefetch_last.get(region_code, 0) < 60:
+            return
+        _region_prefetch_running.add(region_code)
+        _region_prefetch_last[region_code] = time.time()
+    thread = threading.Thread(target=_fetch_and_store_region, args=(region_code,), daemon=True)
+    thread.start()
 
 def _fetch_and_store_region(region_code):
     try:
         schools = _fetch_all_schools_for_region(region_code)
-        region_schools_cache[region_code] = (time.time(), schools)
-        app.logger.info(f"Background prefetch complete for region {region_code}: {len(schools)} schools")
+        if schools:
+            region_schools_cache[region_code] = (time.time(), schools)
+            app.logger.info(f"Background prefetch complete for region {region_code}: {len(schools)} schools")
     except Exception as e:
         app.logger.error(f"Background prefetch failed for region {region_code}: {e}")
+    finally:
+        with _region_prefetch_lock:
+            _region_prefetch_running.discard(region_code)
 
 def get_month_meals_from_api(school_code, region_code):
     today = datetime.now(KST)
@@ -1358,7 +1375,6 @@ def get_today_meal(school_code):
         return jsonify({"error": "Internal server error"}), 500
 
 
-# [수정] 클라이언트 이벤트 트래킹 엔드포인트
 @app.route('/api/track', methods=['POST'])
 def track_event():
     data = request.get_json(silent=True)
@@ -1483,12 +1499,11 @@ def serve_tampermonkey_script():
         app.logger.error(f"Error serving script: {e}")
         return "서버 오류.", 500
 
-@app.route('/logs/access')
+@app.route('/logs/access', methods=['GET', 'POST'])
 def view_access_logs():
-    client_ip = get_client_ip()
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
     try:
         if os.path.exists(ACCESS_LOG_PATH):
             with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
@@ -1498,12 +1513,11 @@ def view_access_logs():
     except Exception as e:
         return f'접속 로그 파일 읽기 오류: {e}'
 
-@app.route('/logs/app')
+@app.route('/logs/app', methods=['GET', 'POST'])
 def view_app_logs():
-    client_ip = get_client_ip()
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
     try:
         if os.path.exists(APP_LOG_PATH):
             with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
@@ -1513,12 +1527,11 @@ def view_app_logs():
     except Exception as e:
         return f'앱 로그 파일 읽기 오류: {e}'
 
-@app.route('/logs/namuboard')
+@app.route('/logs/namuboard', methods=['GET', 'POST'])
 def view_namuboard_logs():
-    client_ip = get_client_ip()
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_LOG_VIEW') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to namuboard logs from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
     try:
         if os.path.exists(NAMUBOARD_LOG_PATH):
             with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
@@ -1535,11 +1548,11 @@ def _admin_auth_check():
     if is_admin_ip(client_ip):
         return None
     auth_cookie = request.cookies.get('admin_auth', '')
-    if auth_cookie == ADMIN_PASSWORD_HASH:
+    if ADMIN_PASSWORD_HASH and auth_cookie == ADMIN_PASSWORD_HASH:
         return None
     if request.method == 'POST':
         pw = request.form.get('password', '')
-        if hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
+        if ADMIN_PASSWORD_HASH and hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
             resp = make_response(redirect(request.url))
             resp.set_cookie('admin_auth', ADMIN_PASSWORD_HASH,
                             max_age=3600 * 8, httponly=True, samesite='Lax')
@@ -1556,7 +1569,6 @@ def _admin_auth_check():
     )
 
 
-# [수정] /admin 인덱스 - 관리자 링크 목록
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_index():
     auth = _admin_auth_check()
@@ -1595,8 +1607,6 @@ def admin_dashboard():
 
     stats = parse_logs_for_dashboard(days)
 
-    # [수정] bot_ip_list 상위 50개 IPInfo enrichment - 병렬 처리
-    # parse_logs에서 이미 선조회했으므로 대부분 캐시 히트, 누락분만 병렬 보완
     top_bots = stats['bot_ip_list'][:50]
     missing_ips = [
         e['ip'] for e in top_bots
@@ -1683,11 +1693,11 @@ def view_stats():
     except Exception as e:
         return f'통계 생성 오류: {e}'
 
-@app.route('/security/status')
+@app.route('/security/status', methods=['GET', 'POST'])
 def security_status():
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
     status = {
         'blocked_networks_count': len(BLOCKED_NETWORKS),
         'temporarily_blocked_ips': len(blocked_ips),
@@ -1703,9 +1713,9 @@ def health():
 
 @app.route('/admin/clear/meal-cache', methods=['POST'])
 def admin_clear_meal_cache():
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
 
     global meal_cache
     cache_size = len(meal_cache)
@@ -1718,9 +1728,9 @@ def admin_clear_meal_cache():
 
 @app.route('/admin/clear/school-cache', methods=['POST'])
 def admin_clear_school_cache():
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
 
     global school_code_cache, search_result_cache, region_schools_cache
     counts = (len(school_code_cache), len(search_result_cache), len(region_schools_cache))
@@ -1735,9 +1745,9 @@ def admin_clear_school_cache():
 
 @app.route('/security/blacklist/add', methods=['POST'])
 def add_to_blacklist():
-    client_ip = get_client_ip()
-    if not is_admin_ip(client_ip):
-        abort(403)
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
 
     data = request.get_json()
     ip_or_cidr = data.get('ip_or_cidr')
@@ -1749,8 +1759,7 @@ def add_to_blacklist():
     try:
         ipaddress.ip_network(ip_or_cidr, strict=False)
         save_to_blacklist(ip_or_cidr, reason)
-        global BLOCKED_NETWORKS
-        BLOCKED_NETWORKS = load_ip_blacklist()
+        refresh_blacklist()
         return jsonify({'success': True, 'message': f'Added {ip_or_cidr} to blacklist'})
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
@@ -1869,6 +1878,16 @@ def error_451(e): return _render_error(451)
 
 @app.errorhandler(500)
 def error_451(e): return _render_error(500)
+
+def _warm_region_caches():
+    for region_code in list(regions.values()):
+        cached = region_schools_cache.get(region_code)
+        if cached and time.time() - cached[0] <= REGION_SCHOOLS_CACHE_TTL:
+            continue
+        _fetch_and_store_region(region_code)
+        time.sleep(1)
+
+threading.Thread(target=_warm_region_caches, daemon=True).start()
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
