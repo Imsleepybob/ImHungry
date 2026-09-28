@@ -192,7 +192,7 @@ refresh_blacklist()
 
 ADMIN_WHITELIST = [ip.strip() for ip in os.environ.get('ADMIN_WHITELIST', '').split(',') if ip.strip()]
 
-ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"\'').strip().lower()
 
 IPINFO_API_KEY = os.environ.get('IPINFO_API_KEY', '')
 IP_INFO_CACHE = {}
