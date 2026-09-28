@@ -10,3 +10,8 @@ venv
 .git
 .gitignore
 .DS_Store
+
+*.log
+ipinfo_cache.json
+netlify
+netlify.toml
