@@ -191,6 +191,30 @@ def refresh_blacklist():
 
 refresh_blacklist()
 
+def add_network_to_blacklist_memory(cidr):
+    global BLOCKED_NETWORKS, BLOCKED_INDEX
+    net = ipaddress.ip_network(cidr, strict=False)
+    version = net.version
+    start, end = int(net.network_address), int(net.broadcast_address)
+    starts, ends = BLOCKED_INDEX[version]
+    starts = list(starts)
+    ends = list(ends)
+    i = bisect.bisect_left(starts, start)
+    if i > 0 and start <= ends[i - 1] + 1:
+        i -= 1
+        start = starts[i]
+        end = max(end, ends[i])
+        del starts[i]
+        del ends[i]
+    while i < len(starts) and end >= starts[i] - 1:
+        end = max(end, ends[i])
+        del starts[i]
+        del ends[i]
+    starts.insert(i, start)
+    ends.insert(i, end)
+    BLOCKED_INDEX[version] = (starts, ends)
+    BLOCKED_NETWORKS.append(cidr)
+
 ADMIN_WHITELIST = [ip.strip() for ip in os.environ.get('ADMIN_WHITELIST', '').split(',') if ip.strip()]
 
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
@@ -383,7 +407,7 @@ def auto_block_ip(ip, reason, duration=None):
     failed_attempts[ip] += 1
     if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
         save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
-        refresh_blacklist()
+        add_network_to_blacklist_memory(f"{ip}/32")
         schedule_github_sync()
 
 @app.before_request
@@ -665,11 +689,18 @@ def get_ip_info(ip):
         )
         if resp.status_code == 200:
             data = resp.json()
+            asn_obj = data.get('asn') or {}
+            asn_id = asn_obj.get('asn', '')
+            if not asn_id:
+                m = re.match(r'(AS\d+)', data.get('org', ''))
+                asn_id = m.group(1) if m else ''
             result = {
                 'org': data.get('org', ''),
                 'region': data.get('region', ''),
                 'country': data.get('country', ''),
                 'city': data.get('city', ''),
+                'asn': asn_id,
+                'route': asn_obj.get('route', ''),
             }
             IP_INFO_CACHE[ip] = (time.time(), result)
             _save_ipinfo_cache()
@@ -678,6 +709,34 @@ def get_ip_info(ip):
         pass
     IP_INFO_CACHE[ip] = (time.time(), {})
     return {}
+
+ASN_INFO_CACHE = {}
+ASN_INFO_CACHE_TTL = 86400 * 7
+
+def get_asn_prefixes(asn_id):
+    if not asn_id:
+        return None
+    cached = ASN_INFO_CACHE.get(asn_id)
+    if cached and time.time() - cached[0] < ASN_INFO_CACHE_TTL:
+        return cached[1]
+    try:
+        resp = requests.get(
+            f'https://ipinfo.io/{asn_id}?token={IPINFO_API_KEY}',
+            headers={'Accept': 'application/json'},
+            timeout=5
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            prefixes = [p['netblock'] for p in data.get('prefixes', []) if p.get('netblock')]
+            prefixes6 = [p['netblock'] for p in data.get('prefixes6', []) if p.get('netblock')]
+            result = {'name': data.get('name', ''), 'prefixes': prefixes, 'prefixes6': prefixes6}
+            ASN_INFO_CACHE[asn_id] = (time.time(), result)
+            return result
+        ASN_INFO_CACHE[asn_id] = (time.time(), None)
+        return None
+    except Exception as e:
+        app.logger.error(f"ASN 조회 실패 ({asn_id}): {e}")
+        return None
 
 
 def parse_logs_for_dashboard(days=30):
@@ -1820,7 +1879,7 @@ def add_to_blacklist():
     try:
         ipaddress.ip_network(ip_or_cidr, strict=False)
         save_to_blacklist(ip_or_cidr, reason)
-        refresh_blacklist()
+        add_network_to_blacklist_memory(ip_or_cidr)
         synced, sync_error = sync_blacklist_to_github()
         return jsonify({
             'success': True,
@@ -1846,7 +1905,7 @@ def admin_blocklist():
         try:
             ipaddress.ip_network(cidr_input, strict=False)
             save_to_blacklist(cidr_input, reason)
-            refresh_blacklist()
+            add_network_to_blacklist_memory(cidr_input)
             synced, sync_error = sync_blacklist_to_github()
             if synced:
                 message = f'{cidr_input} 차단 완료 (GitHub 동기화됨)'
@@ -1871,6 +1930,74 @@ def admin_blocklist():
         total_networks=len(BLOCKED_NETWORKS),
         github_configured=github_sync_configured(),
     )
+
+@app.route('/admin/blocklist/asn-lookup')
+def admin_blocklist_asn_lookup():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+
+    ip = request.args.get('ip', '').strip()
+    try:
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return jsonify({'error': '올바른 IP 주소가 아닙니다.'}), 400
+
+    if not IPINFO_API_KEY:
+        return jsonify({'error': 'IPINFO_API_KEY가 설정되어 있지 않습니다.'}), 400
+
+    info = get_ip_info(ip)
+    if not info:
+        return jsonify({'error': 'IPinfo에서 이 IP에 대한 정보를 가져오지 못했습니다.'}), 404
+
+    asn_id = info.get('asn', '')
+    route = info.get('route', '')
+    asn_data = get_asn_prefixes(asn_id) if asn_id else None
+
+    return jsonify({
+        'ip': ip,
+        'org': info.get('org', ''),
+        'asn': asn_id,
+        'route': route,
+        'asn_name': asn_data['name'] if asn_data else None,
+        'prefixes': asn_data['prefixes'] if asn_data else None,
+        'prefixes6': asn_data['prefixes6'] if asn_data else None,
+        'asn_lookup_available': asn_data is not None,
+    })
+
+@app.route('/admin/blocklist/bulk-add', methods=['POST'])
+def admin_blocklist_bulk_add():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+
+    data = request.get_json(silent=True) or {}
+    cidrs = data.get('cidrs', [])
+    reason = (data.get('reason') or '').strip() or 'Bulk addition (ASN/route, admin page)'
+
+    added = []
+    invalid = []
+    for cidr in cidrs:
+        cidr = str(cidr).strip()
+        try:
+            ipaddress.ip_network(cidr, strict=False)
+        except ValueError:
+            invalid.append(cidr)
+            continue
+        save_to_blacklist(cidr, reason)
+        add_network_to_blacklist_memory(cidr)
+        added.append(cidr)
+
+    synced, sync_error = (False, None)
+    if added:
+        synced, sync_error = sync_blacklist_to_github()
+
+    return jsonify({
+        'added_count': len(added),
+        'invalid': invalid,
+        'github_synced': synced,
+        'github_error': sync_error,
+    })
 
 @app.after_request
 def after_request_func(response):
