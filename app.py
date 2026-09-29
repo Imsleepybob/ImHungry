@@ -1857,9 +1857,11 @@ def admin_blocklist():
         except ValueError as e:
             error = f'잘못된 IP/CIDR 형식입니다: {e}'
 
-    with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
-        recent_lines = [l.rstrip('\n') for l in f if l.strip() and not l.strip().startswith('#')][-30:]
-    recent_lines.reverse()
+    recent_lines = []
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+            recent_lines = [l.rstrip('\n') for l in f if l.strip() and not l.strip().startswith('#')][-30:]
+        recent_lines.reverse()
 
     return render_template(
         'admin_blocklist.html',
