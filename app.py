@@ -14,6 +14,7 @@ import time
 import json
 import threading
 import hashlib
+import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -192,6 +193,66 @@ refresh_blacklist()
 
 ADMIN_WHITELIST = [ip.strip() for ip in os.environ.get('ADMIN_WHITELIST', '').split(',') if ip.strip()]
 
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+GITHUB_REPO = os.environ.get('GITHUB_REPO', '')
+GITHUB_BRANCH = os.environ.get('GITHUB_BRANCH', 'main')
+GITHUB_BLACKLIST_PATH = os.environ.get('GITHUB_BLACKLIST_PATH', 'ip_blacklist.txt')
+GITHUB_SYNC_DEBOUNCE = 60
+
+_github_sync_lock = threading.Lock()
+_github_sync_pending = False
+
+def github_sync_configured():
+    return bool(GITHUB_TOKEN and GITHUB_REPO)
+
+def sync_blacklist_to_github():
+    if not github_sync_configured():
+        return False, "GITHUB_TOKEN / GITHUB_REPO 환경변수가 설정되지 않았습니다."
+    api_url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_BLACKLIST_PATH}"
+    headers = {
+        'Authorization': f'Bearer {GITHUB_TOKEN}',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+    }
+    try:
+        get_resp = requests.get(api_url, headers=headers, params={'ref': GITHUB_BRANCH}, timeout=10)
+        sha = get_resp.json().get('sha') if get_resp.status_code == 200 else None
+        with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+            content = f.read()
+        payload = {
+            'message': f"chore: ip_blacklist.txt 자동 갱신 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
+            'content': base64.b64encode(content.encode('utf-8')).decode('ascii'),
+            'branch': GITHUB_BRANCH,
+        }
+        if sha:
+            payload['sha'] = sha
+        put_resp = requests.put(api_url, headers=headers, json=payload, timeout=10)
+        if put_resp.status_code in (200, 201):
+            app.logger.info("ip_blacklist.txt GitHub 동기화 완료")
+            return True, None
+        app.logger.error(f"GitHub 동기화 실패: {put_resp.status_code} {put_resp.text[:300]}")
+        return False, f"GitHub API 오류 ({put_resp.status_code})"
+    except Exception as e:
+        app.logger.error(f"GitHub 동기화 예외: {e}")
+        return False, str(e)
+
+def _github_sync_worker():
+    time.sleep(GITHUB_SYNC_DEBOUNCE)
+    global _github_sync_pending
+    with _github_sync_lock:
+        _github_sync_pending = False
+    sync_blacklist_to_github()
+
+def schedule_github_sync():
+    if not github_sync_configured():
+        return
+    global _github_sync_pending
+    with _github_sync_lock:
+        if _github_sync_pending:
+            return
+        _github_sync_pending = True
+    threading.Thread(target=_github_sync_worker, daemon=True).start()
+
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"\'').strip().lower()
 
 IPINFO_API_KEY = os.environ.get('IPINFO_API_KEY', '')
@@ -323,6 +384,7 @@ def auto_block_ip(ip, reason, duration=None):
     if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
         save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
         refresh_blacklist()
+        schedule_github_sync()
 
 @app.before_request
 def security_check():
@@ -1628,12 +1690,11 @@ def admin_dashboard():
     return render_template('admin_dashboard.html', stats=stats)
 
 
-@app.route('/stats')
+@app.route('/stats', methods=['GET', 'POST'])
 def view_stats():
-    client_ip = get_client_ip()
-    if not (is_admin_ip(client_ip) or (app.debug and os.environ.get('ENABLE_STATS') == 'true')):
-        app.logger.warning(f"Unauthorized access attempt to stats from IP: {client_ip}")
-        return "접근 권한이 없습니다.", 403
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
     try:
         if not os.path.exists(ACCESS_LOG_PATH):
             return '접속 로그 파일이 없습니다.'
@@ -1760,9 +1821,54 @@ def add_to_blacklist():
         ipaddress.ip_network(ip_or_cidr, strict=False)
         save_to_blacklist(ip_or_cidr, reason)
         refresh_blacklist()
-        return jsonify({'success': True, 'message': f'Added {ip_or_cidr} to blacklist'})
+        synced, sync_error = sync_blacklist_to_github()
+        return jsonify({
+            'success': True,
+            'message': f'Added {ip_or_cidr} to blacklist',
+            'github_synced': synced,
+            'github_error': sync_error,
+        })
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
+
+@app.route('/admin/blocklist', methods=['GET', 'POST'])
+def admin_blocklist():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+
+    message = None
+    error = None
+
+    if request.method == 'POST':
+        cidr_input = request.form.get('cidr', '').strip()
+        reason = request.form.get('reason', '').strip() or 'Manual addition (admin page)'
+        try:
+            ipaddress.ip_network(cidr_input, strict=False)
+            save_to_blacklist(cidr_input, reason)
+            refresh_blacklist()
+            synced, sync_error = sync_blacklist_to_github()
+            if synced:
+                message = f'{cidr_input} 차단 완료 (GitHub 동기화됨)'
+            elif sync_error:
+                message = f'{cidr_input} 차단 완료 (로컬만 적용, GitHub 동기화 실패: {sync_error})'
+            else:
+                message = f'{cidr_input} 차단 완료'
+        except ValueError as e:
+            error = f'잘못된 IP/CIDR 형식입니다: {e}'
+
+    with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+        recent_lines = [l.rstrip('\n') for l in f if l.strip() and not l.strip().startswith('#')][-30:]
+    recent_lines.reverse()
+
+    return render_template(
+        'admin_blocklist.html',
+        message=message,
+        error=error,
+        recent_lines=recent_lines,
+        total_networks=len(BLOCKED_NETWORKS),
+        github_configured=github_sync_configured(),
+    )
 
 @app.after_request
 def after_request_func(response):
