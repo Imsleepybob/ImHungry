@@ -366,6 +366,7 @@ body {
       <a href="?days=60" class="day-btn {% if stats.days == 60 %}active{% endif %}">60일</a>
       <a href="?days=90" class="day-btn {% if stats.days == 90 %}active{% endif %}">90일</a>
     </div>
+    <a href="/admin/blocklist" class="day-btn">🚫 IP 차단 관리</a>
     <button class="theme-btn" onclick="toggleTheme()">🌓</button>
   </div>
 </div>
@@ -593,7 +594,7 @@ body {
     {% if stats.bot_ip_list_enriched %}
     <div style="overflow-x:auto;">
     <table class="data-table">
-      <thead><tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로</th></tr></thead>
+      <thead><tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로</th><th>차단</th></tr></thead>
       <tbody>
       {% for entry in stats.bot_ip_list_enriched[:10] %}
       <tr>
@@ -611,6 +612,13 @@ body {
         <td style="font-size:0.78rem; color:var(--text2);">
           {% for p, c in entry.top_paths[:3] %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}
         </td>
+        <td>
+          <form method="POST" action="/admin/blocklist" style="margin:0;" onsubmit="return confirm('{{ entry.ip }} 을(를) 차단할까요?');">
+            <input type="hidden" name="cidr" value="{{ entry.ip }}/32">
+            <input type="hidden" name="reason" value="관리자 대시보드에서 수동 차단">
+            <button type="submit" style="background:var(--red); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.76rem; cursor:pointer;">차단</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
       </tbody>
@@ -619,43 +627,6 @@ body {
     {% else %}
     <div class="empty-state">봇 트래픽 없음</div>
     {% endif %}
-  </div>
-
-  <!-- 봇 IP 전체 목록 모달 -->
-  <div id="botModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9000; align-items:flex-start; justify-content:center; padding:24px; overflow-y:auto;">
-    <div style="background:var(--bg-container); border-radius:16px; width:100%; max-width:1000px; margin:auto; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h3 style="margin:0; color:var(--text-primary);">🤖 봇 IP 전체 목록 ({{ stats.bot_ip_list | length }}개)</h3>
-        <button onclick="closeBotModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted); line-height:1;">✕</button>
-      </div>
-      <div style="overflow-x:auto; max-height:70vh; overflow-y:auto;">
-      <table class="data-table">
-        <thead style="position:sticky; top:0; background:var(--bg-container); z-index:1;">
-          <tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로 (TOP 5)</th></tr>
-        </thead>
-        <tbody>
-        {% for entry in stats.bot_ip_list_enriched %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td class="path-text">{{ entry.ip }}</td>
-          <td style="font-size:0.82rem;">{{ entry.crawler_name }}</td>
-          <td style="font-size:0.78rem; color:var(--text-secondary);">{{ entry.info.org or '-' }}</td>
-          <td style="font-size:0.78rem; color:var(--text-secondary);">
-            {%- if entry.info.city or entry.info.region -%}
-              {{ entry.info.city }}{% if entry.info.city and entry.info.region %}, {% endif %}{{ entry.info.region }}
-            {%- else -%}-{%- endif -%}
-            {% if entry.info.country %} ({{ entry.info.country }}){% endif %}
-          </td>
-          <td><span class="count-badge">{{ "{:,}".format(entry.total) }}</span></td>
-          <td style="font-size:0.78rem; color:var(--text-secondary);">
-            {% for p, c in entry.top_paths %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}
-          </td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      </div>
-    </div>
   </div>
 
   <!-- 상태 코드 분포 -->
@@ -1054,7 +1025,7 @@ function toggleTheme() {
     </div>
     <div class="modal-body" style="overflow-x:auto;">
       <table class="data-table">
-        <thead><tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로 (TOP 5)</th></tr></thead>
+        <thead><tr><th>#</th><th>IP 주소</th><th>봇 종류</th><th>조직 (ASN)</th><th>위치</th><th>요청 수</th><th>주요 접속 경로 (TOP 5)</th><th>차단</th></tr></thead>
         <tbody>
         {% for entry in stats.bot_ip_list_enriched %}
         <tr>
@@ -1065,6 +1036,13 @@ function toggleTheme() {
           <td style="font-size:0.78rem; color:var(--text2);">{%- if entry.info.city or entry.info.region -%}{{ entry.info.city }}{% if entry.info.city and entry.info.region %}, {% endif %}{{ entry.info.region }}{%- else -%}-{%- endif -%}{% if entry.info.country %} ({{ entry.info.country }}){% endif %}</td>
           <td><span class="count-badge">{{ "{:,}".format(entry.total) }}</span></td>
           <td style="font-size:0.78rem; color:var(--text2);">{% for p, c in entry.top_paths %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}</td>
+          <td>
+            <form method="POST" action="/admin/blocklist" style="margin:0;" onsubmit="return confirm('{{ entry.ip }} 을(를) 차단할까요?');">
+              <input type="hidden" name="cidr" value="{{ entry.ip }}/32">
+              <input type="hidden" name="reason" value="관리자 대시보드에서 수동 차단">
+              <button type="submit" style="background:var(--red); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.76rem; cursor:pointer;">차단</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
         </tbody>
