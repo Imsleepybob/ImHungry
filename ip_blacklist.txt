@@ -24555,3 +24555,4 @@
 116.179.32.232/32  # Auto-blocked: High suspicion score: 15 - 2026-09-29 16:39:27.405183
 220.181.108.112/32  # Auto-blocked: High suspicion score: 15 - 2026-09-29 16:45:35.456763
 116.179.32.12/32  # Auto-blocked: High suspicion score: 15 - 2026-09-29 16:51:42.776978
+116.179.32.104/32  # Auto-blocked: High suspicion score: 15 - 2026-09-29 17:03:59.224312
