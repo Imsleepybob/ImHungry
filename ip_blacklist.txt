@@ -24600,3 +24600,4 @@
 34.19.196.206/32  # Auto-blocked: Rate limit exceeded - 2026-09-30 15:29:27.396556
 34.19.196.206/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 15:29:36.016909
 220.181.108.81/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 15:33:38.360831
+220.181.108.104/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 16:09:04.207502
