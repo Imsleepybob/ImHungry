@@ -15,6 +15,7 @@ import json
 import threading
 import hashlib
 import base64
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -160,6 +161,19 @@ def save_to_blacklist(ip_or_cidr, reason="Automatic detection"):
         app.logger.info(f"Added to blacklist: {ip_or_cidr} - {reason}")
     except Exception as e:
         app.logger.error(f"Error saving to blacklist: {e}")
+
+def bulk_add_networks_to_blacklist(cidr_list, reason="Bulk addition"):
+    global BLOCKED_NETWORKS, BLOCKED_INDEX
+    try:
+        timestamp = datetime.now()
+        lines = [f"{c}  # {reason} - {timestamp}\n" for c in cidr_list]
+        with open(BLACKLIST_FILE, 'a', encoding='utf-8') as f:
+            f.writelines(lines)
+        app.logger.info(f"Bulk added to blacklist: {len(cidr_list)}건 - {reason}")
+    except Exception as e:
+        app.logger.error(f"Error bulk saving to blacklist: {e}")
+    BLOCKED_NETWORKS = BLOCKED_NETWORKS + list(cidr_list)
+    BLOCKED_INDEX = _build_blocked_index(BLOCKED_NETWORKS)
 
 def _build_blocked_index(networks):
     ranges = {4: [], 6: []}
@@ -689,18 +703,11 @@ def get_ip_info(ip):
         )
         if resp.status_code == 200:
             data = resp.json()
-            asn_obj = data.get('asn') or {}
-            asn_id = asn_obj.get('asn', '')
-            if not asn_id:
-                m = re.match(r'(AS\d+)', data.get('org', ''))
-                asn_id = m.group(1) if m else ''
             result = {
                 'org': data.get('org', ''),
                 'region': data.get('region', ''),
                 'country': data.get('country', ''),
                 'city': data.get('city', ''),
-                'asn': asn_id,
-                'route': asn_obj.get('route', ''),
             }
             IP_INFO_CACHE[ip] = (time.time(), result)
             _save_ipinfo_cache()
@@ -710,33 +717,105 @@ def get_ip_info(ip):
     IP_INFO_CACHE[ip] = (time.time(), {})
     return {}
 
-ASN_INFO_CACHE = {}
-ASN_INFO_CACHE_TTL = 86400 * 7
+ASN_DB_URL = os.environ.get('ASN_DB_URL', '')
+ASN_DB_PATH = os.path.join(LOG_DIR, 'asn_lookup.db')
+_asn_db_download_lock = threading.Lock()
+_asn_db_downloading = False
 
-def get_asn_prefixes(asn_id):
-    if not asn_id:
-        return None
-    cached = ASN_INFO_CACHE.get(asn_id)
-    if cached and time.time() - cached[0] < ASN_INFO_CACHE_TTL:
-        return cached[1]
+def asn_db_status():
+    if os.path.exists(ASN_DB_PATH):
+        return 'ready'
+    if not ASN_DB_URL:
+        return 'not_configured'
+    return 'downloading'
+
+def ensure_asn_db():
+    global _asn_db_downloading
+    if os.path.exists(ASN_DB_PATH) or not ASN_DB_URL:
+        return
+    with _asn_db_download_lock:
+        if os.path.exists(ASN_DB_PATH) or _asn_db_downloading:
+            return
+        _asn_db_downloading = True
     try:
-        resp = requests.get(
-            f'https://ipinfo.io/{asn_id}?token={IPINFO_API_KEY}',
-            headers={'Accept': 'application/json'},
-            timeout=5
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            prefixes = [p['netblock'] for p in data.get('prefixes', []) if p.get('netblock')]
-            prefixes6 = [p['netblock'] for p in data.get('prefixes6', []) if p.get('netblock')]
-            result = {'name': data.get('name', ''), 'prefixes': prefixes, 'prefixes6': prefixes6}
-            ASN_INFO_CACHE[asn_id] = (time.time(), result)
-            return result
-        ASN_INFO_CACHE[asn_id] = (time.time(), None)
-        return None
+        app.logger.info("ASN DB 다운로드 시작")
+        resp = requests.get(ASN_DB_URL, stream=True, timeout=180)
+        resp.raise_for_status()
+        tmp_path = ASN_DB_PATH + '.tmp'
+        with open(tmp_path, 'wb') as f:
+            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+        os.replace(tmp_path, ASN_DB_PATH)
+        app.logger.info("ASN DB 다운로드 완료")
     except Exception as e:
-        app.logger.error(f"ASN 조회 실패 ({asn_id}): {e}")
+        app.logger.error(f"ASN DB 다운로드 실패: {e}")
+    finally:
+        _asn_db_downloading = False
+
+def _asn_db_conn():
+    return sqlite3.connect(f'file:{ASN_DB_PATH}?mode=ro', uri=True)
+
+def _row_to_cidr(start_key, prefix_len, version):
+    n = int.from_bytes(start_key, 'big')
+    base = ipaddress.IPv4Address(n) if version == 4 else ipaddress.IPv6Address(n)
+    return f'{base}/{prefix_len}'
+
+def asn_db_lookup_ip(ip):
+    if not os.path.exists(ASN_DB_PATH):
         return None
+    addr = ipaddress.ip_address(ip)
+    key = int(addr).to_bytes(16, 'big')
+    conn = _asn_db_conn()
+    try:
+        row = conn.execute(
+            "SELECT start_key, prefix_len, country_code, asn FROM networks "
+            "WHERE version = ? AND start_key <= ? ORDER BY start_key DESC LIMIT 1",
+            (addr.version, key)
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    start_key, prefix_len, country_code, asn = row
+    net = ipaddress.ip_network(_row_to_cidr(start_key, prefix_len, addr.version), strict=False)
+    if int(addr) > int(net.broadcast_address):
+        return None
+    return {'route': str(net), 'country_code': country_code, 'asn': asn}
+
+def asn_network_summary(asn):
+    if not os.path.exists(ASN_DB_PATH) or not asn:
+        return None
+    conn = _asn_db_conn()
+    try:
+        count_row = conn.execute(
+            "SELECT COUNT(*) FROM networks WHERE asn = ?", (asn,)
+        ).fetchone()
+        name_row = conn.execute(
+            "SELECT as_name FROM asn_info WHERE asn = ?", (asn,)
+        ).fetchone()
+    finally:
+        conn.close()
+    return {
+        'count': count_row[0] if count_row else 0,
+        'as_name': name_row[0] if name_row else '',
+    }
+
+def asn_db_lookup_networks(asn):
+    if not os.path.exists(ASN_DB_PATH):
+        return None
+    conn = _asn_db_conn()
+    try:
+        rows = conn.execute(
+            "SELECT start_key, prefix_len, version FROM networks WHERE asn = ?", (asn,)
+        ).fetchall()
+        name_row = conn.execute(
+            "SELECT as_name FROM asn_info WHERE asn = ?", (asn,)
+        ).fetchone()
+    finally:
+        conn.close()
+    networks = [_row_to_cidr(r[0], r[1], r[2]) for r in rows]
+    return {'as_name': name_row[0] if name_row else '', 'networks': networks}
 
 
 def parse_logs_for_dashboard(days=30):
@@ -1929,6 +2008,7 @@ def admin_blocklist():
         recent_lines=recent_lines,
         total_networks=len(BLOCKED_NETWORKS),
         github_configured=github_sync_configured(),
+        asn_db_status=asn_db_status(),
     )
 
 @app.route('/admin/blocklist/asn-lookup')
@@ -1943,27 +2023,58 @@ def admin_blocklist_asn_lookup():
     except ValueError:
         return jsonify({'error': '올바른 IP 주소가 아닙니다.'}), 400
 
-    if not IPINFO_API_KEY:
-        return jsonify({'error': 'IPINFO_API_KEY가 설정되어 있지 않습니다.'}), 400
+    status = asn_db_status()
+    if status == 'not_configured':
+        return jsonify({'error': 'ASN_DB_URL이 설정되어 있지 않습니다.'}), 400
+    if status == 'downloading':
+        threading.Thread(target=ensure_asn_db, daemon=True).start()
+        return jsonify({'error': 'ASN 데이터를 내려받는 중입니다. 잠시 후 다시 시도해주세요.'}), 503
 
-    info = get_ip_info(ip)
+    info = asn_db_lookup_ip(ip)
     if not info:
-        return jsonify({'error': 'IPinfo에서 이 IP에 대한 정보를 가져오지 못했습니다.'}), 404
+        return jsonify({'error': '이 IP에 대한 대역 정보를 찾지 못했습니다.'}), 404
 
     asn_id = info.get('asn', '')
-    route = info.get('route', '')
-    asn_data = get_asn_prefixes(asn_id) if asn_id else None
+    summary = asn_network_summary(asn_id) if asn_id else None
 
     return jsonify({
         'ip': ip,
-        'org': info.get('org', ''),
+        'route': info.get('route', ''),
+        'country_code': info.get('country_code', ''),
         'asn': asn_id,
-        'route': route,
-        'asn_name': asn_data['name'] if asn_data else None,
-        'prefixes': asn_data['prefixes'] if asn_data else None,
-        'prefixes6': asn_data['prefixes6'] if asn_data else None,
-        'asn_lookup_available': asn_data is not None,
+        'asn_name': summary['as_name'] if summary else None,
+        'asn_network_count': summary['count'] if summary else None,
+        'asn_lookup_available': summary is not None,
     })
+
+@app.route('/admin/blocklist/asn-block', methods=['POST'])
+def admin_blocklist_asn_block():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+
+    data = request.get_json(silent=True) or {}
+    asn_id = (data.get('asn') or '').strip()
+    reason = (data.get('reason') or '').strip() or f'ASN 전체 차단: {asn_id} (admin page)'
+
+    if not asn_id:
+        return jsonify({'error': 'asn 값이 필요합니다.'}), 400
+    if asn_db_status() != 'ready':
+        return jsonify({'error': 'ASN 데이터가 아직 준비되지 않았습니다.'}), 503
+
+    summary = asn_network_summary(asn_id)
+    expected_count = summary['count'] if summary else 0
+
+    def _do_block():
+        asn_data = asn_db_lookup_networks(asn_id)
+        networks = asn_data['networks'] if asn_data else []
+        if networks:
+            bulk_add_networks_to_blacklist(networks, reason)
+            sync_blacklist_to_github()
+            app.logger.info(f"ASN 전체 차단 완료: {asn_id} ({len(networks)}건)")
+
+    threading.Thread(target=_do_block, daemon=True).start()
+    return jsonify({'started': True, 'asn': asn_id, 'expected_count': expected_count}), 202
 
 @app.route('/admin/blocklist/bulk-add', methods=['POST'])
 def admin_blocklist_bulk_add():
@@ -2123,6 +2234,7 @@ def _warm_region_caches():
         time.sleep(1)
 
 threading.Thread(target=_warm_region_caches, daemon=True).start()
+threading.Thread(target=ensure_asn_db, daemon=True).start()
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
