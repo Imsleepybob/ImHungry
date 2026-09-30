@@ -119,11 +119,11 @@ button {
       {% endif %}
     </h2>
     <form method="POST">
-      <label for="cidr">IP 또는 CIDR</label>
-      <input type="text" id="cidr" name="cidr" placeholder="CIDR" required>
+      <label for="cidr">IP 또는 CIDR (예: 1.2.3.4 또는 1.2.3.0/24)</label>
+      <input type="text" id="cidr" name="cidr" placeholder="1.2.3.4/32" required>
       <label for="reason">사유 (선택)</label>
-      <input type="text" id="reason" name="reason" placeholder="사유">
-      <button type="submit">차단</button>
+      <input type="text" id="reason" name="reason" placeholder="예: 반복 스캔 시도">
+      <button type="submit">차단 추가</button>
     </form>
   </div>
 
@@ -164,47 +164,54 @@ async function lookupAsn() {
 
 function renderLookupResult(data) {
     const resultBox = document.getElementById('lookup-result');
-    let html = `<div style="margin-bottom:8px; color:var(--text2);">${data.ip} — ${data.org || '조직 정보 없음'}</div>`;
+    let html = `<div style="margin-bottom:8px; color:var(--text2);">${data.ip}${data.country_code ? ' (' + data.country_code + ')' : ''}</div>`;
 
     if (data.route) {
-        html += `<div style="margin-bottom:10px;">
-            <label style="display:inline-flex; align-items:center; gap:6px; font-weight:normal;">
-                <input type="checkbox" class="cidr-check" value="${data.route}" checked> 상위 대역(route): <code>${data.route}</code>
-            </label>
+        html += `<div style="margin-bottom:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span>상위 대역: <code>${data.route}</code></span>
+            <button type="button" onclick="blockCidr('${data.route}')">이 대역만 차단</button>
         </div>`;
     }
 
-    if (data.asn_lookup_available && (data.prefixes.length || data.prefixes6.length)) {
-        const all = data.prefixes.concat(data.prefixes6);
-        html += `<div style="margin-bottom:6px; color:var(--text2);">${data.asn} (${data.asn_name || ''}) 소속 전체 대역 ${all.length}개</div>`;
-        html += `<div style="max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:8px; margin-bottom:10px;">`;
-        for (const cidr of all) {
-            html += `<label style="display:flex; align-items:center; gap:6px; font-weight:normal; padding:2px 0;">
-                <input type="checkbox" class="cidr-check" value="${cidr}"> <code>${cidr}</code>
-            </label>`;
+    if (data.asn) {
+        if (data.asn_lookup_available) {
+            html += `<div style="margin-bottom:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>${data.asn}${data.asn_name ? ' (' + data.asn_name + ')' : ''} — 전체 ${data.asn_network_count.toLocaleString()}개 대역</span>
+                <button type="button" onclick="blockAsn('${data.asn}', ${data.asn_network_count})">이 ASN 전체 차단</button>
+            </div>`;
+        } else {
+            html += `<div style="margin-bottom:10px; color:var(--text2);">${data.asn} 소속 전체 대역 목록은 가져오지 못했습니다. 위의 상위 대역만 이용 가능합니다.</div>`;
         }
-        html += `</div>`;
-    } else if (data.asn) {
-        html += `<div style="margin-bottom:10px; color:var(--text2);">${data.asn} 소속 전체 대역 목록은 현재 IPinfo 요금제에서 가져올 수 없었습니다. 위의 상위 대역만 이용 가능합니다.</div>`;
     }
 
-    html += `<button type="button" onclick="bulkBlock()">선택 항목 일괄 차단</button>`;
     resultBox.innerHTML = html;
 }
 
-async function bulkBlock() {
-    const checks = document.querySelectorAll('.cidr-check:checked');
-    const cidrs = Array.from(checks).map(c => c.value);
-    if (!cidrs.length) { return; }
-    if (!confirm(`${cidrs.length}개 대역을 차단하시겠습니까?`)) { return; }
+async function blockCidr(cidr) {
+    if (!confirm(`${cidr} 을(를) 차단할까요?`)) { return; }
     const res = await fetch('/admin/blocklist/bulk-add', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({cidrs, reason: 'ASN/route 일괄 차단 (admin page)'})
+        body: JSON.stringify({cidrs: [cidr], reason: '상위 대역 차단 (admin page)'})
     });
     const data = await res.json();
-    alert(`${data.added_count}개 차단 완료` + (data.invalid.length ? ` (실패 ${data.invalid.length}개)` : '') + (data.github_synced ? ' - GitHub 동기화됨' : ''));
+    alert(`${data.added_count}개 차단 완료` + (data.github_synced ? ' - GitHub 동기화됨' : ''));
     location.reload();
+}
+
+async function blockAsn(asn, count) {
+    if (!confirm(`${asn} 소속 대역 ${count.toLocaleString()}개를 전부 차단할까요? 시간이 걸릴 수 있고, 완료 전까지 목록에는 순차적으로 반영됩니다.`)) { return; }
+    const res = await fetch('/admin/blocklist/asn-block', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({asn, reason: `ASN 전체 차단: ${asn} (admin page)`})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        alert(data.error || '요청 실패');
+        return;
+    }
+    alert(`${data.expected_count.toLocaleString()}개 차단을 백그라운드에서 시작했습니다. 잠시 후 목록을 새로고침해서 확인해주세요.`);
 }
 </script>
 </body>
