@@ -24588,3 +24588,4 @@
 220.181.108.92/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 02:18:00.517895
 116.179.32.67/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 03:12:42.256156
 220.181.108.114/32  # Auto-blocked: High suspicion score: 15 - 2026-09-30 03:30:55.388886
+127.0.0.1/32  # Auto-blocked: Rate limit exceeded - 2026-09-30 04:38:33.103231
