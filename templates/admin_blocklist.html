@@ -119,17 +119,17 @@ button {
       {% endif %}
     </h2>
     <form method="POST">
-      <label for="cidr">IP 또는 CIDR (예: 1.2.3.4 또는 1.2.3.0/24)</label>
+      <label for="cidr">IP 또는 CIDR</label>
       <input type="text" id="cidr" name="cidr" placeholder="1.2.3.4/32" required>
       <label for="reason">사유 (선택)</label>
-      <input type="text" id="reason" name="reason" placeholder="예: 반복 스캔 시도">
+      <input type="text" id="reason" name="reason" placeholder="사">
       <button type="submit">차단 추가</button>
     </form>
   </div>
 
   <div class="card">
     <h2>IP로 ASN/상위 대역 조회</h2>
-    <label for="lookup-ip">조회할 IP (예: 8.8.8.8)</label>
+    <label for="lookup-ip">조회할 IP</label>
     <input type="text" id="lookup-ip" placeholder="1.2.3.4">
     <button type="button" id="lookup-btn" onclick="lookupAsn()">조회</button>
     <div id="lookup-result" style="margin-top:14px; font-size:0.85rem;"></div>
