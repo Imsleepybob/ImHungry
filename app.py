@@ -314,10 +314,12 @@ def _load_ipinfo_cache():
         app.logger.warning(f"IPInfo 캐시 파일 로드 실패: {e}")
 
 def _save_ipinfo_cache():
-    """현재 메모리 캐시를 파일로 저장."""
+    """현재 메모리 캐시를 파일로 저장하고, 만료된 항목은 메모리에서도 정리."""
     try:
         now = time.time()
-        valid = {ip: v for ip, v in IP_INFO_CACHE.items() if now - v[0] < IP_INFO_CACHE_TTL}
+        valid = {ip: v for ip, v in list(IP_INFO_CACHE.items()) if now - v[0] < IP_INFO_CACHE_TTL}
+        IP_INFO_CACHE.clear()
+        IP_INFO_CACHE.update(valid)
         with open(IPINFO_CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(valid, f, ensure_ascii=False)
     except Exception as e:
@@ -710,7 +712,6 @@ def get_ip_info(ip):
                 'city': data.get('city', ''),
             }
             IP_INFO_CACHE[ip] = (time.time(), result)
-            _save_ipinfo_cache()
             return result
     except Exception:
         pass
@@ -729,6 +730,20 @@ def asn_db_status():
         return 'not_configured'
     return 'downloading'
 
+ASN_DB_LOCK_PATH = ASN_DB_PATH + '.lock'
+ASN_DB_LOCK_STALE_SECONDS = 600
+
+def _verify_asn_db_file(path):
+    try:
+        conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+        try:
+            conn.execute("SELECT COUNT(*) FROM networks LIMIT 1").fetchone()
+        finally:
+            conn.close()
+        return True
+    except Exception:
+        return False
+
 def ensure_asn_db():
     global _asn_db_downloading
     if os.path.exists(ASN_DB_PATH) or not ASN_DB_URL:
@@ -738,18 +753,44 @@ def ensure_asn_db():
             return
         _asn_db_downloading = True
     try:
-        app.logger.info("ASN DB 다운로드 시작")
-        resp = requests.get(ASN_DB_URL, stream=True, timeout=180)
-        resp.raise_for_status()
-        tmp_path = ASN_DB_PATH + '.tmp'
-        with open(tmp_path, 'wb') as f:
-            for chunk in resp.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    f.write(chunk)
-        os.replace(tmp_path, ASN_DB_PATH)
-        app.logger.info("ASN DB 다운로드 완료")
-    except Exception as e:
-        app.logger.error(f"ASN DB 다운로드 실패: {e}")
+        if os.path.exists(ASN_DB_LOCK_PATH):
+            age = time.time() - os.path.getmtime(ASN_DB_LOCK_PATH)
+            if age < ASN_DB_LOCK_STALE_SECONDS:
+                return
+            try:
+                os.remove(ASN_DB_LOCK_PATH)
+            except OSError:
+                pass
+        try:
+            lock_fd = os.open(ASN_DB_LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(lock_fd)
+        except FileExistsError:
+            return
+
+        try:
+            if os.path.exists(ASN_DB_PATH):
+                return
+            app.logger.info("ASN DB 다운로드 시작")
+            resp = requests.get(ASN_DB_URL, stream=True, timeout=180)
+            resp.raise_for_status()
+            tmp_path = f'{ASN_DB_PATH}.tmp.{os.getpid()}'
+            with open(tmp_path, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+            if not _verify_asn_db_file(tmp_path):
+                app.logger.error("ASN DB 파일 검증 실패, 삭제 후 재시도 필요")
+                os.remove(tmp_path)
+                return
+            os.replace(tmp_path, ASN_DB_PATH)
+            app.logger.info("ASN DB 다운로드 완료")
+        except Exception as e:
+            app.logger.error(f"ASN DB 다운로드 실패: {e}")
+        finally:
+            try:
+                os.remove(ASN_DB_LOCK_PATH)
+            except OSError:
+                pass
     finally:
         _asn_db_downloading = False
 
@@ -855,7 +896,6 @@ def parse_logs_for_dashboard(days=30):
     )
 
     parsed_rows = []
-    pending_geo_ips = set()
 
     if os.path.exists(ACCESS_LOG_PATH):
         with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
@@ -902,21 +942,10 @@ def parse_logs_for_dashboard(days=30):
                         is_bot = True
                         cname = crawler_label.split(' (')[0].strip()
 
-                if not is_bot:
-                    cached = IP_INFO_CACHE.get(ip)
-                    if not cached or time.time() - cached[0] >= IP_INFO_CACHE_TTL:
-                        pending_geo_ips.add(ip)
-
                 parsed_rows.append((
                     date_str, ip, device, os_name, browser,
                     is_bot, cname, path, status, referrer, ua_stripped
                 ))
-
-    if pending_geo_ips:
-        with ThreadPoolExecutor(max_workers=20) as pool:
-            futures = {pool.submit(get_ip_info, ip): ip for ip in pending_geo_ips}
-            for future in as_completed(futures):
-                future.result()
 
     for (date_str, ip, device, os_name, browser,
          is_bot, cname, path, status, referrer, ua) in parsed_rows:
@@ -1818,6 +1847,7 @@ def admin_dashboard():
             futures = {pool.submit(get_ip_info, ip): ip for ip in missing_ips}
             for f in as_completed(futures):
                 f.result()
+        _save_ipinfo_cache()
 
     enriched_bot_ips = []
     for entry in top_bots:
