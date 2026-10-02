@@ -1,6 +1,6 @@
 {
-  "name": "ImHungry",
-  "short_name": "ImHungry",
+  "name": "급식알리미",
+  "short_name": "급식알리미",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
