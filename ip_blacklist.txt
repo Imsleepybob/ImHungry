@@ -36421,3 +36421,4 @@
 34.124.147.208/32  # Auto-blocked: High suspicion score: 15 - 2026-10-04 23:23:55.901260
 124.239.12.196/32  # Auto-blocked: High suspicion score: 15 - 2026-10-04 23:47:44.790684
 35.189.229.134/32  # Auto-blocked: Rate limit exceeded - 2026-10-05 05:47:32.894186
+5.102.169.29/32  # Auto-blocked: Rate limit exceeded - 2026-10-05 17:09:51.596992
