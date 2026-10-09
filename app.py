@@ -1007,6 +1007,13 @@ def parse_logs_for_dashboard(days=30):
         'btn_share': 0,
         'btn_notification': 0,
     }
+    pwa_ips = defaultdict(lambda: {'visits': 0, 'uids': set(), 'schools': defaultdict(int), 'last_seen': ''})
+    pwa_schools = defaultdict(lambda: {'visits': 0, 'uids': set()})
+    pwa_uids = set()
+    pwa_uid_visits = defaultdict(int)
+    pwa_by_day = defaultdict(int)
+    pwa_total = 0
+    pwa_today = 0
     if os.path.exists(EVENTS_LOG_PATH):
         with open(EVENTS_LOG_PATH, 'r', encoding='utf-8') as f:
             for line in f:
@@ -1021,6 +1028,31 @@ def parse_logs_for_dashboard(days=30):
                         event_stats['theme'][value] += 1
                     elif event == 'search_method':
                         event_stats['search_method'][value] += 1
+                    elif event == 'pwa_visit':
+                        ts = str(data.get('ts', ''))
+                        ev_date = datetime.strptime(ts[:10], '%Y-%m-%d').date()
+                        if ev_date < cutoff:
+                            continue
+                        ip = str(data.get('ip', '')) or 'Unknown'
+                        uid = str(data.get('uid', ''))
+                        code = str(value)
+                        entry = pwa_ips[ip]
+                        entry['visits'] += 1
+                        if ts > entry['last_seen']:
+                            entry['last_seen'] = ts
+                        if uid:
+                            entry['uids'].add(uid)
+                            pwa_uids.add(uid)
+                            pwa_uid_visits[uid] += 1
+                        if code:
+                            entry['schools'][code] += 1
+                            pwa_schools[code]['visits'] += 1
+                            if uid:
+                                pwa_schools[code]['uids'].add(uid)
+                        pwa_total += 1
+                        if ev_date == today:
+                            pwa_today += 1
+                        pwa_by_day[ev_date.isoformat()] += 1
                     elif event in event_stats:
                         event_stats[event] += 1
                 except Exception:
@@ -1034,6 +1066,44 @@ def parse_logs_for_dashboard(days=30):
         else:
             info = get_school_from_neis(code)
             school_names[code] = info['school_name'] if info else code
+
+    def resolve_school_name(code):
+        if code in school_names:
+            return school_names[code]
+        cached = school_code_cache.get(code)
+        if cached:
+            name = cached[1]['school_name']
+        else:
+            info = get_school_from_neis(code)
+            name = info['school_name'] if info else code
+        school_names[code] = name
+        return name
+
+    pwa_stats = {
+        'devices': len(pwa_uids),
+        'returning_devices': sum(1 for count in pwa_uid_visits.values() if count >= 2),
+        'ips': len(pwa_ips),
+        'visits': pwa_total,
+        'today_visits': pwa_today,
+        'ip_list': [
+            {
+                'ip': ip,
+                'visits': data['visits'],
+                'devices': len(data['uids']),
+                'schools': [
+                    (resolve_school_name(code), count)
+                    for code, count in sorted(data['schools'].items(), key=lambda x: x[1], reverse=True)
+                ],
+                'last_seen': data['last_seen'][:16].replace('T', ' '),
+            }
+            for ip, data in sorted(pwa_ips.items(), key=lambda x: x[1]['visits'], reverse=True)
+        ],
+        'school_list': [
+            (resolve_school_name(code), data['visits'], len(data['uids']))
+            for code, data in sorted(pwa_schools.items(), key=lambda x: x[1]['visits'], reverse=True)
+        ],
+        'by_day': dict(sorted(pwa_by_day.items())[-14:]),
+    }
 
     return {
         'total_requests': stats['total_requests'],
@@ -1094,6 +1164,7 @@ def parse_logs_for_dashboard(days=30):
             'temp_blocked_ips': len(blocked_ips),
             'total_failed_attempts': sum(failed_attempts.values()),
         },
+        'pwa': pwa_stats,
         'days': days,
     }
 
@@ -1478,7 +1549,8 @@ def index():
 
     if school_code_cookie and not error_message:
         app.logger.info(f"Redirecting to school meal page for school_code: {school_code_cookie}")
-        return redirect(url_for('school_meal_view', school_code=school_code_cookie))
+        extra_args = {'source': 'pwa'} if request.args.get('source') == 'pwa' else {}
+        return redirect(url_for('school_meal_view', school_code=school_code_cookie, **extra_args))
 
     if error_message:
         return render_template('school_meal.html',
@@ -1611,16 +1683,20 @@ def track_event():
         return '', 204
     event = data.get('event', '')
     value = str(data.get('value', ''))[:50]
-    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification'}
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit'}
     if event not in allowed:
         return '', 204
-    events_logger = logging.getLogger('events')
-    events_logger.info(json.dumps({
+    record = {
         'ts': datetime.now(KST).isoformat(),
         'ip': get_client_ip(),
         'event': event,
         'value': value
-    }, ensure_ascii=False))
+    }
+    if event == 'pwa_visit':
+        record['value'] = re.sub(r'\D', '', value)[:10]
+        record['uid'] = re.sub(r'[^0-9a-fA-F]', '', str(data.get('uid', '')))[:32]
+    events_logger = logging.getLogger('events')
+    events_logger.info(json.dumps(record, ensure_ascii=False))
     return '', 204
 
 
@@ -2265,6 +2341,9 @@ def _warm_region_caches():
 
 threading.Thread(target=_warm_region_caches, daemon=True).start()
 threading.Thread(target=ensure_asn_db, daemon=True).start()
+
+from push import init_push
+init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'))
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")

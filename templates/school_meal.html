@@ -314,25 +314,6 @@
   </div>
 </div>
 
-<div id="ios-webapp-guide">
-  <div class="ios-webapp-guide-content">
-    <p>📱 급식알리미를 편하게 이용하고 싶으신가요?</p>
-    <p>하단의 공유 버튼을 눌러 <strong>홈 화면에 추가</strong>를 선택하세요!</p>
-    <button id="dismiss-ios-btn" class="dismiss-btn">닫기</button>
-  </div>
-</div>
-
-<div id="android-app-guide" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(100%); background-color:rgba(0,0,0,0.85); border-radius:16px; padding:15px 20px; width:90%; max-width:400px; color:white; z-index:1000; opacity:0; transition:all 0.5s ease;">
-  <div style="text-align:center;">
-    <p style="color:white; margin-bottom:8px; font-size:15px; line-height:1.5;">📱 원하는 날짜, 시간에 급식 알림을 받고 싶으신가요?</p>
-    <p style="color:rgba(255,255,255,0.8); font-size:13px; margin-bottom:12px;">앱을 설치하면 급식 알림을 받을 수 있어요!</p>
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <a href="/급식알리미.apk" style="flex:1; max-width:120px; padding:10px; background:var(--primary-color); color:white; border-radius:10px; text-decoration:none; text-align:center; font-weight:600; font-size:14px;">앱 다운로드</a>
-      <button id="dismiss-android-btn" style="flex:1; max-width:120px; padding:10px; background:rgba(255,255,255,0.15); color:white; border:none; border-radius:10px; cursor:pointer; font-size:14px;">괜찮아요</button>
-    </div>
-  </div>
-</div>
-
 <footer class="main-footer">
   <div class="footer-content">
     <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
@@ -376,24 +357,6 @@ function getCookie(name) {
         catch (e) { return parts.pop().split(';').shift(); }
     }
     return null;
-}
-
-function isIOS() {
-    return ['iPad Simulator','iPhone Simulator','iPod Simulator','iPad','iPhone','iPod'].includes(navigator.platform) ||
-        (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-}
-function isSafari() {
-    const ua = navigator.userAgent;
-    return /Safari/i.test(ua) &&
-        !/CriOS/i.test(ua) &&
-        !/FxiOS/i.test(ua) &&
-        !/EdgiOS/i.test(ua) &&
-        !/OPiOS/i.test(ua);
-}
-function shouldShowGuide() { return !localStorage.getItem('ios-webapp-guide-shown') && isIOS() && isSafari() && !window.navigator.standalone; }
-function dismissIOSGuide() {
-    const el = document.getElementById('ios-webapp-guide');
-    if (el) { el.classList.remove('show'); setTimeout(() => { el.style.display = 'none'; }, 500); localStorage.setItem('ios-webapp-guide-shown', 'true'); }
 }
 
 function isValidSearchQuery(query) {
@@ -771,9 +734,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const dismissBtn = document.getElementById('dismiss-ios-btn');
-    if (dismissBtn) dismissBtn.addEventListener('click', dismissIOSGuide);
-
     if (regionForm) {
         regionForm.addEventListener('submit', function(e) {
             if (!regionSelect || !regionSelect.value) { e.preventDefault(); alert("지역을 선택해주세요."); if (regionSelect) regionSelect.focus(); return; }
@@ -796,11 +756,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleMonthBtn.innerHTML = hidden ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
             if (hidden) monthTable.scrollIntoView({behavior:'smooth'});
         });
-    }
-
-    const iosGuide = document.getElementById('ios-webapp-guide');
-    if (iosGuide && shouldShowGuide()) {
-        setTimeout(() => { iosGuide.style.display='block'; setTimeout(() => iosGuide.classList.add('show'), 10); }, 1000);
     }
 
     if (loadingDiv) loadingDiv.style.display = 'none';
@@ -827,11 +782,12 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% if school_name and month_meals %}
 <div id="noti-guide-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:3000; align-items:flex-end; justify-content:center;">
-  <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; text-align:center; touch-action:none;">
+  <div id="noti-guide-sheet" style="background:var(--bg-container); border-radius:20px 20px 0 0; padding:32px 24px 40px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; text-align:center; touch-action:none;">
     <div id="noti-drag-handle" style="width:40px; height:4px; background:var(--border-color); border-radius:2px; margin:0 auto 24px;"></div>
     <img id="noti-guide-icon" src="{{ url_for('static', filename='apple-touch-icon-114x114.png') }}" class="noti-guide-app-icon" alt="급식알리미">
     <p id="noti-guide-title" style="font-size:1.2rem; font-weight:700; color:var(--text-primary); margin:0 0 8px;"></p>
-    <p id="noti-guide-desc" style="font-size:0.95rem; color:var(--text-secondary); margin:0 0 28px; line-height:1.6;"></p>
+    <p id="noti-guide-desc" style="font-size:0.95rem; color:var(--text-secondary); margin:0 0 20px; line-height:1.6;"></p>
+    <ol id="noti-guide-steps"></ol>
     <div id="noti-guide-btns" style="display:flex; gap:10px;"></div>
   </div>
 </div>
@@ -839,7 +795,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="notification-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3100; align-items:center; justify-content:center;">
   <div style="background:var(--bg-container); border-radius:16px; padding:24px; max-width:360px; width:90%; max-height:80vh; overflow-y:auto;">
     <h3 style="margin:0 0 16px; color:var(--text-primary);">🔔 알림 설정</h3>
-    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">앱이 설치된 기기에서 급식 알림을 받을 수 있습니다. 급식이 없는 날은 알림이 오지 않습니다.</p>
+    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">설정한 시각에 급식 알림을 받을 수 있습니다. 급식이 없는 날은 알림이 오지 않습니다.</p>
     <div style="margin-bottom:12px;">
       <label style="font-weight:600; color:var(--text-primary);">알림 받을 식사</label>
       <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
@@ -894,11 +850,24 @@ document.addEventListener('DOMContentLoaded', function() {
 #noti-guide-modal.show { display: flex; }
 #noti-guide-sheet { transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
 #noti-guide-sheet.show { transform: translateY(0); }
-#noti-guide-title, #noti-guide-desc {
+#noti-guide-title, #noti-guide-desc, #noti-guide-steps {
     opacity: 0; transform: translateY(18px);
     transition: opacity 0.35s ease, transform 0.35s ease;
 }
-#noti-guide-title.show, #noti-guide-desc.show { opacity: 1; transform: translateY(0); }
+#noti-guide-title.show, #noti-guide-desc.show, #noti-guide-steps.show { opacity: 1; transform: translateY(0); }
+#noti-guide-steps {
+    text-align: left; margin: 0 0 24px; padding: 16px 16px 16px 36px;
+    background: var(--bg-secondary); border-radius: 12px; color: var(--text-primary);
+    font-size: 0.9rem; line-height: 1.6;
+}
+#noti-guide-steps li { margin-bottom: 8px; }
+#noti-guide-steps li:last-child { margin-bottom: 0; }
+.noti-guide-btn {
+    flex: 1; padding: 14px; border: none; border-radius: 12px; cursor: pointer;
+    font-weight: 700; font-size: 1rem;
+}
+.noti-guide-btn.primary { background: var(--primary-color); color: white; }
+.noti-guide-btn.secondary { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; }
 #notification-modal { display: none; }
 #notification-modal.show { display: flex; }
 @keyframes iconPulse {
@@ -917,61 +886,89 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
     const selectedDays = new Set([1, 2, 3, 4, 5]);
 
-    function showNotiGuide(type) {
-        const modal = document.getElementById('noti-guide-modal');
-        const sheet = document.getElementById('noti-guide-sheet');
-        const titleEl = document.getElementById('noti-guide-title');
-        const descEl = document.getElementById('noti-guide-desc');
-        const btnsEl = document.getElementById('noti-guide-btns');
-
-        const configs = {
-            android: {
-                title: '알림 기능은 앱에서만 사용이 가능해요!',
-                desc: '다운로드할까요?',
-                btns: `<a href="/급식알리미.apk" style="flex:1; padding:14px; background:var(--primary-color); color:white; border-radius:12px; text-decoration:none; text-align:center; font-weight:700; font-size:1rem;">네</a>
-                       <button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--bg-secondary); color:var(--text-primary); border:none; border-radius:12px; cursor:pointer; font-weight:600; font-size:1rem;">괜찮아요</button>`
-            },
-            ios: {
-                title: '알림 기능은 안드로이드 앱에서만 가능해요!',
-                desc: 'iOS에서도 지원되도록 노력할게요.',
-                btns: `<button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--primary-color); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700; font-size:1rem;">확인</button>`
-            },
-            desktop: {
-                title: '알림 기능은 모바일 앱 환경에서만 가능해요!',
-                desc: '모바일에서 이용해주세요!',
-                btns: `<button onclick="closeNotiGuide()" style="flex:1; padding:14px; background:var(--primary-color); color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700; font-size:1rem;">확인</button>`
-            }
+    function notiGuideEls() {
+        return {
+            modal: document.getElementById('noti-guide-modal'),
+            sheet: document.getElementById('noti-guide-sheet'),
+            titleEl: document.getElementById('noti-guide-title'),
+            descEl: document.getElementById('noti-guide-desc'),
+            stepsEl: document.getElementById('noti-guide-steps'),
+            btnsEl: document.getElementById('noti-guide-btns')
         };
+    }
 
-        const cfg = configs[type];
+    async function copyCurrentLink(button) {
+        const url = location.origin + location.pathname;
+        const original = button.textContent;
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch (e) {
+            window.prompt('아래 주소를 복사해 주세요.', url);
+            return;
+        }
+        button.textContent = '복사되었어요';
+        setTimeout(() => { button.textContent = original; }, 2000);
+    }
+
+    async function handleGuideAction(id, button) {
+        NotificationManager.triggerHaptic('impact', 'LIGHT');
+        if (id === 'close') { closeNotiGuide(); return; }
+        if (id === 'copy') { copyCurrentLink(button); return; }
+        if (id === 'install') {
+            const outcome = await NotificationManager.promptInstall();
+            renderNotiGuide(outcome === 'accepted' ? NotificationManager.getInstalledGuide() : NotificationManager.getInstallGuide());
+        }
+    }
+
+    function renderNotiGuide(cfg) {
+        const { titleEl, descEl, stepsEl, btnsEl } = notiGuideEls();
         titleEl.textContent = cfg.title;
-        descEl.textContent = cfg.desc;
-        btnsEl.innerHTML = cfg.btns;
+        descEl.textContent = cfg.desc || '';
+        descEl.style.display = cfg.desc ? '' : 'none';
+        stepsEl.textContent = '';
+        (cfg.steps || []).forEach((text) => {
+            const li = document.createElement('li');
+            li.textContent = text;
+            stepsEl.appendChild(li);
+        });
+        stepsEl.style.display = (cfg.steps && cfg.steps.length) ? '' : 'none';
+        btnsEl.textContent = '';
+        cfg.actions.forEach((action) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'noti-guide-btn ' + (action.primary ? 'primary' : 'secondary');
+            button.textContent = action.label;
+            button.addEventListener('click', () => handleGuideAction(action.id, button));
+            btnsEl.appendChild(button);
+        });
+    }
+
+    function showNotiGuide(cfg) {
+        const { modal, sheet, titleEl, descEl, stepsEl } = notiGuideEls();
+        renderNotiGuide(cfg);
         titleEl.classList.remove('show');
         descEl.classList.remove('show');
+        stepsEl.classList.remove('show');
 
         document.body.style.overflow = 'hidden';
         modal.classList.add('show');
         requestAnimationFrame(() => requestAnimationFrame(() => {
             sheet.classList.add('show');
             setTimeout(() => titleEl.classList.add('show'), 100);
-            setTimeout(() => descEl.classList.add('show'), 600);
+            setTimeout(() => descEl.classList.add('show'), 400);
+            setTimeout(() => stepsEl.classList.add('show'), 600);
         }));
-
-        modal.addEventListener('click', (e) => { if (e.target === modal) closeNotiGuide(); }, { once: true });
     }
 
     window.closeNotiGuide = function() {
         NotificationManager.triggerHaptic('impact', 'LIGHT');
-        const modal = document.getElementById('noti-guide-modal');
-        const sheet = document.getElementById('noti-guide-sheet');
-        const titleEl = document.getElementById('noti-guide-title');
-        const descEl = document.getElementById('noti-guide-desc');
+        const { modal, sheet, titleEl, descEl, stepsEl } = notiGuideEls();
 
         sheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
         sheet.style.transform = 'translateY(100%)';
         titleEl.classList.remove('show');
         descEl.classList.remove('show');
+        stepsEl.classList.remove('show');
         document.body.style.overflow = '';
 
         setTimeout(() => {
@@ -981,6 +978,10 @@ document.addEventListener('DOMContentLoaded', function() {
             sheet.style.transition = '';
         }, 400);
     };
+
+    document.getElementById('noti-guide-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeNotiGuide();
+    });
 
     (function initDragHandle() {
         const sheet = document.getElementById('noti-guide-sheet');
@@ -1025,20 +1026,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const notiBtn = document.getElementById('notification-btn');
         if (!notiBtn) return;
 
+        const openNotificationModal = () => {
+            document.getElementById('notification-modal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+        };
+
         notiBtn.addEventListener('click', async () => {
             trackEvent('btn_notification', 'click');
             if (NotificationManager.isAppEnvironment()) {
                 const ready = await NotificationManager.waitForCapacitor();
-                if (!ready) return;
-                document.getElementById('notification-modal').classList.add('show');
-                document.body.style.overflow = 'hidden';
-            } else if (NotificationManager.isAndroidBrowser()) {
-                showNotiGuide('android');
-            } else if (NotificationManager.isIOSBrowser()) {
-                showNotiGuide('ios');
-            } else {
-                showNotiGuide('desktop');
+                if (ready) openNotificationModal();
+                return;
             }
+            if (!NotificationManager.isPWA()) {
+                showNotiGuide(NotificationManager.getInstallGuide());
+                return;
+            }
+            if (!NotificationManager.isWebPushSupported()) {
+                showNotiGuide(NotificationManager.getUnsupportedGuide());
+                return;
+            }
+            const permission = await NotificationManager.requestWebPermission();
+            if (permission === 'granted') openNotificationModal();
+            else if (permission === 'denied') showNotiGuide(NotificationManager.getDeniedGuide());
+            else showNotiGuide(NotificationManager.getPermissionDismissedGuide());
         });
 
         const saved = NotificationManager.loadSettings();
@@ -1091,10 +1102,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 breakfast: { enabled: document.getElementById('noti-breakfast-enable').checked, time: document.getElementById('noti-breakfast-time').value },
                 lunch:     { enabled: document.getElementById('noti-lunch-enable').checked,     time: document.getElementById('noti-lunch-time').value },
                 dinner:    { enabled: document.getElementById('noti-dinner-enable').checked,    time: document.getElementById('noti-dinner-time').value },
-                days: Array.from(selectedDays)
+                days: Array.from(selectedDays),
+                school: { code: {{ school_code | tojson }}, region: {{ current_school.region_code | tojson }} }
             };
 
             NotificationManager.saveSettings(settings);
+            if (NotificationManager.isWebPushSupported()) {
+                const ok = await NotificationManager.subscribeWebPush(settings);
+                document.getElementById('notification-modal').classList.remove('show');
+                document.body.style.overflow = '';
+                if (ok) {
+                    NotificationManager.triggerHaptic('notification', 'SUCCESS');
+                    alert('알림이 설정되었습니다.');
+                } else {
+                    NotificationManager.triggerHaptic('notification', 'ERROR');
+                    alert('알림 설정에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                }
+                return;
+            }
             const mealData = {{ month_meals | tojson | safe }};
             const count = await NotificationManager.schedule(settings, mealData);
             document.getElementById('notification-modal').classList.remove('show');
@@ -1106,6 +1131,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (NotificationManager.isAppEnvironment()) {
             const mealData = {{ month_meals | tojson | safe }};
             NotificationManager.autoSchedule(mealData);
+        } else if (NotificationManager.isWebPushSupported()) {
+            NotificationManager.syncWebPush();
         }
     }
 
