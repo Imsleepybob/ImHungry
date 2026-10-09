@@ -2343,7 +2343,7 @@ threading.Thread(target=_warm_region_caches, daemon=True).start()
 threading.Thread(target=ensure_asn_db, daemon=True).start()
 
 from push import init_push
-init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'))
+init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'), _admin_auth_check)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
