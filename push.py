@@ -1,17 +1,21 @@
+import atexit
 import base64
 import hashlib
+import hmac
 import html
 import json
 import os
 import re
+import secrets
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Blueprint, jsonify, request, send_from_directory, make_response
+from flask import Blueprint, jsonify, redirect, request, send_from_directory, make_response
 from pywebpush import webpush, WebPushException
 
 push_bp = Blueprint('push', __name__)
@@ -33,20 +37,35 @@ NO_MEAL = '급식 정보 없음'
 GRACE_SECONDS = 300
 MAX_BODY_BYTES = 8192
 MAX_SUBSCRIPTIONS = 5000
+MAX_BODY_CHARS = 120
+MAX_TITLE_CHARS = 30
 ALLOWED_PUSH_HOSTS = ('.googleapis.com', '.push.services.mozilla.com', '.push.apple.com', '.notify.windows.com')
 
 TIME_RE = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
 SCHOOL_RE = re.compile(r'^\d{5,10}$')
 REGION_RE = re.compile(r'^[A-Z]\d{2}$')
 
-_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None, 'configured': False, 'started_pid': None}
+_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None, 'configured': False, 'started_pid': None, 'csrf': None}
 _subs = {}
 _lock = threading.Lock()
 _init_lock = threading.Lock()
-_remote = {'loaded': False, 'sha': None, 'pushed_hash': None, 'pending': False}
+_remote = {'loaded': False, 'sha': None, 'pushed_hash': None, 'pending': False, 'last_restore': '-', 'last_push': '-'}
+_broadcast = {'running': False, 'started': '', 'finished': '', 'title': '', 'body': '', 'total': 0, 'done': 0, 'ok': 0, 'gone': 0, 'fail': 0, 'errors': []}
+_broadcast_lock = threading.Lock()
 _remote_lock = threading.Lock()
 _gh_io_lock = threading.Lock()
 _logged_skips = set()
+
+
+def _clip(text, limit=MAX_BODY_CHARS):
+    if len(text) <= limit:
+        return text
+    return text[:limit - 2] + '..'
+
+
+def _note_remote(kind, ok, message):
+    stamp = datetime.now(_state['tz']).strftime('%Y-%m-%d %H:%M:%S')
+    _remote['last_' + kind] = f"{stamp} {'성공' if ok else '실패'} - {message}"
 
 
 def push_enabled():
@@ -135,7 +154,9 @@ def _restore_remote():
     _remote['sha'] = sha
     _remote['pushed_hash'] = hashlib.sha256(raw).hexdigest() if raw else None
     _remote['loaded'] = True
-    _state['logger'].info(f'푸시 구독 GitHub 복원 완료: 현재 {len(_subs)}건')
+    remote_count = len(data) if isinstance(data, dict) else 0
+    _note_remote('restore', True, f'GitHub {remote_count}건 확인, 복원 후 현재 {len(_subs)}건')
+    _state['logger'].info(f'푸시 구독 GitHub 복원 완료: GitHub {remote_count}건 확인, 현재 {len(_subs)}건')
 
 
 def _remote_payload():
@@ -161,11 +182,13 @@ def _gh_push():
         if resp.status_code in (200, 201):
             _remote['sha'] = resp.json()['content']['sha']
             _remote['pushed_hash'] = digest
+            _note_remote('push', True, f'구독 {len(_subs)}건 저장')
             _state['logger'].info('푸시 구독 GitHub 동기화 완료')
             return True
         if resp.status_code in (409, 422) and attempt == 0:
             _restore_remote()
             continue
+        _note_remote('push', False, f'HTTP {resp.status_code} {resp.text[:120]}')
         _state['logger'].error(f'푸시 구독 GitHub 동기화 실패: {resp.status_code} {resp.text[:200]}')
         return False
     return False
@@ -181,6 +204,7 @@ def _remote_sync_worker():
                 _restore_remote()
             ok = _gh_push()
         except Exception as e:
+            _note_remote('push', False, f'{type(e).__name__}: {str(e)[:150]}')
             _state['logger'].error(f'푸시 구독 GitHub 동기화 예외: {e}')
     if not ok:
         _schedule_remote_sync(GITHUB_RETRY_DELAY)
@@ -198,12 +222,26 @@ def _schedule_remote_sync(delay=None):
     timer.start()
 
 
+def _flush_remote():
+    if not _gh_enabled() or not _remote['loaded']:
+        return
+    if not _gh_io_lock.acquire(timeout=10):
+        return
+    try:
+        _gh_push()
+    except Exception as e:
+        _state['logger'].error(f'푸시 구독 종료 시 GitHub 저장 실패: {e}')
+    finally:
+        _gh_io_lock.release()
+
+
 def _initial_restore():
     with _gh_io_lock:
         try:
             _restore_remote()
             restored = True
         except Exception as e:
+            _note_remote('restore', False, f'{type(e).__name__}: {str(e)[:150]}')
             _state['logger'].error(f'푸시 구독 GitHub 복원 실패: {e}')
             restored = False
     if restored:
@@ -423,7 +461,7 @@ def send_due(now=None):
         if not menu or menu == NO_MEAL:
             _log_skip_once(endpoint, slot, today, '오늘 해당 급식 정보 없음', info)
             continue
-        body = ', '.join(menu.split('\n')[:3])
+        body = _clip(', '.join(menu.split('\n')[:3]))
         jobs.append((endpoint, record['p256dh'], record['auth'], slot, f'🍱 오늘의 {label}', body, f'{today}-{key}', info))
 
     if not jobs:
@@ -469,6 +507,76 @@ def _admin_gate():
     if check is None:
         return make_response('관리자 인증이 설정되지 않았습니다.', 503)
     return check()
+
+
+def _csrf_token():
+    if not _state.get('csrf'):
+        _state['csrf'] = secrets.token_hex(16)
+    return _state['csrf']
+
+
+def _csrf_ok():
+    return hmac.compare_digest(request.form.get('csrf', ''), _csrf_token())
+
+
+def _run_broadcast(snapshot, title, body, tag):
+    logger = _state['logger']
+    gone = set()
+    try:
+        pending = snapshot
+        for attempt in range(2):
+            retry = []
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                results = pool.map(lambda item: _send_one(item[0], item[1], item[2], title, body, tag), pending)
+                for item, (endpoint, outcome, detail) in zip(pending, results):
+                    with _broadcast_lock:
+                        if outcome == 'ok':
+                            _broadcast['ok'] += 1
+                            _broadcast['done'] += 1
+                        elif outcome == 'gone':
+                            _broadcast['gone'] += 1
+                            _broadcast['done'] += 1
+                            gone.add(endpoint)
+                        elif outcome == 'retry' and attempt == 0:
+                            retry.append(item)
+                        else:
+                            _broadcast['fail'] += 1
+                            _broadcast['done'] += 1
+                            if len(_broadcast['errors']) < 10:
+                                _broadcast['errors'].append(f'{_host(endpoint)}: {detail}')
+            if not retry:
+                break
+            time.sleep(2)
+            pending = retry
+        if gone:
+            with _lock:
+                for endpoint in gone:
+                    _subs.pop(endpoint, None)
+                _save_store(sync=True)
+    except Exception as e:
+        logger.error(f'[push] 전체 발송 중 예외: {e}')
+    finally:
+        with _broadcast_lock:
+            _broadcast['running'] = False
+            _broadcast['finished'] = datetime.now(_state['tz']).strftime('%Y-%m-%d %H:%M:%S')
+            summary = f"대상 {_broadcast['total']}건, 성공 {_broadcast['ok']}, 만료 삭제 {_broadcast['gone']}, 실패 {_broadcast['fail']}"
+        logger.info(f'[push] 전체 발송 완료: {summary}')
+
+
+def _start_broadcast(title, body):
+    with _lock:
+        snapshot = [(endpoint, record['p256dh'], record['auth']) for endpoint, record in _subs.items()]
+    if not snapshot:
+        return False, '구독자가 없습니다.'
+    now = datetime.now(_state['tz'])
+    with _broadcast_lock:
+        if _broadcast['running']:
+            return False, '이미 발송이 진행 중입니다.'
+        _broadcast.update(running=True, started=now.strftime('%Y-%m-%d %H:%M:%S'), finished='', title=title, body=body,
+                          total=len(snapshot), done=0, ok=0, gone=0, fail=0, errors=[])
+    _state['logger'].info(f"[push] 전체 발송 시작: 대상 {len(snapshot)}건, 제목={title[:30]}, 내용={body[:50]}")
+    threading.Thread(target=_run_broadcast, args=(snapshot, title, body, f'broadcast-{int(now.timestamp())}'), daemon=True).start()
+    return True, ''
 
 
 def _admin_page(result=None):
@@ -535,6 +643,7 @@ def _admin_page(result=None):
             f"<td>{esc(','.join(str(d) for d in settings.get('days', [])))}</td>"
             f"<td>{esc(verdict(record, 'breakfast'))}</td><td>{esc(verdict(record, 'lunch'))}</td><td>{esc(verdict(record, 'dinner'))}</td>"
             '<td><form method="post" action="/admin/push/test">'
+            f'<input type="hidden" name="csrf" value="{esc(_csrf_token())}">'
             f'<input type="hidden" name="id" value="{esc(_endpoint_id(endpoint))}">'
             '<button type="submit">테스트 발송</button></form></td>'
             '</tr>'
@@ -542,7 +651,31 @@ def _admin_page(result=None):
 
     result_html = ''
     if result is not None:
-        result_html = f'<h3>테스트 발송 결과</h3><pre>{esc(result)}</pre>'
+        result_html = f'<h3>처리 결과</h3><pre>{esc(result)}</pre>'
+    with _broadcast_lock:
+        bc = dict(_broadcast)
+        bc['errors'] = list(_broadcast['errors'])
+    bc_status = ''
+    if bc['started']:
+        state_text = f"진행 중 ({bc['done']}/{bc['total']})" if bc['running'] else f"완료 {bc['finished']}"
+        bc_status = (
+            f"<p>마지막 전체 발송: {esc(bc['started'])} / {esc(state_text)}<br>"
+            f"대상 {bc['total']}건, 성공 {bc['ok']}, 만료 삭제 {bc['gone']}, 실패 {bc['fail']}<br>"
+            f"제목: {esc(bc['title'])} / 내용: {esc(bc['body'])}</p>"
+        )
+        if bc['errors']:
+            bc_status += '<pre>' + esc('\n'.join(bc['errors'])) + '</pre>'
+    broadcast_html = (
+        '<h3>전체 발송</h3>'
+        f"<form method=\"post\" action=\"/admin/push/broadcast\" onsubmit=\"return confirm('현재 구독 {len(snapshot)}건 모두에게 알림을 발송합니다. 계속할까요?')\">"
+        f'<input type="hidden" name="csrf" value="{esc(_csrf_token())}">'
+        f'<p><input name="title" maxlength="{MAX_TITLE_CHARS}" placeholder="제목 (비우면 급식알리미)" style="width:100%;box-sizing:border-box;padding:8px"></p>'
+        f'<p><textarea id="bc-body" name="body" maxlength="{MAX_BODY_CHARS}" rows="3" required placeholder="내용" style="width:100%;box-sizing:border-box;padding:8px"></textarea></p>'
+        f'<p><span id="bc-count">0 / {MAX_BODY_CHARS}</span> <button type="submit">전체 발송</button></p></form>'
+        f"<script>var t=document.getElementById('bc-body'),c=document.getElementById('bc-count');t.addEventListener('input',function(){{c.textContent=t.value.length+' / {MAX_BODY_CHARS}'}});</script>"
+        f'{bc_status}'
+    )
+    refresh = '<meta http-equiv="refresh" content="3">' if bc['running'] else ''
     status = [
         ('서버 시각(KST)', now.strftime('%Y-%m-%d %H:%M:%S') + f' (요일 번호 {(now.weekday() + 1) % 7}, 일=0)'),
         ('푸시 활성', '예' if push_enabled() else '아니오'),
@@ -552,14 +685,16 @@ def _admin_page(result=None):
         ('프로세스', f"요청 처리 PID {os.getpid()} / 스케줄러 시작 PID {_state['started_pid']}"),
         ('구독 수', str(len(snapshot))),
         ('GitHub 백업', f"{'사용' if _gh_enabled() else '미사용'} / 레포 {GITHUB_REPO or '-'} / 복원 완료 {'예' if _remote['loaded'] else '아니오'}"),
+        ('GitHub 마지막 복원', _remote['last_restore']),
+        ('GitHub 마지막 저장', _remote['last_push']),
     ]
     status_html = ''.join(f'<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>' for k, v in status)
     return (
         '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1"><title>푸시 진단</title>'
+        f'<meta name="viewport" content="width=device-width,initial-scale=1">{refresh}<title>푸시 진단</title>'
         '<style>body{font-family:sans-serif;margin:16px}table{border-collapse:collapse;margin-bottom:16px}'
         'th,td{border:1px solid #ccc;padding:6px 10px;font-size:14px;text-align:left}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap}</style></head><body>'
-        f'<h2>푸시 알림 진단</h2><table>{status_html}</table>{result_html}'
+        f'<h2>푸시 알림 진단</h2><table>{status_html}</table>{result_html}{broadcast_html}'
         '<h3>구독 목록</h3><table><tr><th>ID</th><th>푸시 서비스</th><th>학교 / 지역</th><th>요일</th><th>조식 판정</th><th>중식 판정</th><th>석식 판정</th><th></th></tr>'
         f"{''.join(rows) or '<tr><td colspan=8>구독 없음</td></tr>'}</table></body></html>"
     )
@@ -578,6 +713,8 @@ def admin_push_test():
     denied = _admin_gate()
     if denied is not None:
         return denied
+    if not _csrf_ok():
+        return _admin_page('요청이 만료되었거나 유효하지 않습니다. 페이지를 새로고침한 뒤 다시 시도하세요.'), 403
     target = request.form.get('id', '')
     with _lock:
         match = [(endpoint, dict(record)) for endpoint, record in _subs.items() if _endpoint_id(endpoint) == target]
@@ -586,6 +723,25 @@ def admin_push_test():
     endpoint, record = match[0]
     _, outcome, detail = _send_one(endpoint, record['p256dh'], record['auth'], '급식알리미 테스트', '이 알림이 보이면 서버에서 기기까지의 발송 경로는 정상입니다.', 'push-test')
     return _admin_page(f'대상: {_host(endpoint)} ({target})\n결과: {outcome}\n상세: {detail}')
+
+
+@push_bp.route('/admin/push/broadcast', methods=['POST'])
+def admin_push_broadcast():
+    denied = _admin_gate()
+    if denied is not None:
+        return denied
+    if not _csrf_ok():
+        return _admin_page('요청이 만료되었거나 유효하지 않습니다. 페이지를 새로고침한 뒤 다시 시도하세요.'), 403
+    title = (request.form.get('title') or '').strip() or '급식알리미'
+    body = (request.form.get('body') or '').strip()
+    if not body:
+        return _admin_page('내용을 입력해 주세요.'), 400
+    if len(title) > MAX_TITLE_CHARS or len(body) > MAX_BODY_CHARS:
+        return _admin_page(f'제목은 {MAX_TITLE_CHARS}자, 내용은 {MAX_BODY_CHARS}자 이내로 입력해 주세요.'), 400
+    started, message = _start_broadcast(title, body)
+    if not started:
+        return _admin_page(message), 409
+    return redirect('/admin/push')
 
 
 def _safe_send_due():
@@ -608,6 +764,7 @@ def ensure_started():
         logger.info(f'푸시 기능 시작(PID {pid}): 로컬 구독 {len(_subs)}건, GitHub 백업 {"사용" if _gh_enabled() else "미사용"}')
         if _gh_enabled():
             threading.Thread(target=_initial_restore, daemon=True).start()
+            atexit.register(_flush_remote)
         else:
             logger.warning('푸시 구독 GitHub 백업 비활성: PUSH_GITHUB_REPO / PUSH_GITHUB_TOKEN(또는 GITHUB_TOKEN)이 설정되지 않았습니다.')
         scheduler = BackgroundScheduler(timezone=_state['tz'])
@@ -617,12 +774,15 @@ def ensure_started():
 
 
 def _reset_after_fork():
-    global _lock, _remote_lock, _gh_io_lock, _init_lock
+    global _lock, _remote_lock, _gh_io_lock, _init_lock, _broadcast_lock
+    _broadcast_lock = threading.Lock()
     _lock = threading.Lock()
     _remote_lock = threading.Lock()
     _gh_io_lock = threading.Lock()
     _init_lock = threading.Lock()
-    _remote.update(loaded=False, sha=None, pushed_hash=None, pending=False)
+    _remote.update(loaded=False, sha=None, pushed_hash=None, pending=False, last_restore='-', last_push='-')
+    _broadcast.update(running=False)
+    _state['csrf'] = None
     _logged_skips.clear()
     _subs.clear()
     _state['scheduler'] = None
