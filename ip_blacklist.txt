@@ -36450,3 +36450,4 @@
 34.150.163.64/32  # Auto-blocked: High suspicion score: 15 - 2026-10-10 17:05:42.399989
 34.148.73.58/32  # Auto-blocked: High suspicion score: 15 - 2026-10-10 17:20:40.768818
 34.152.13.200/32  # Auto-blocked: High suspicion score: 15 - 2026-10-10 18:34:11.532832
+34.146.62.167/32  # Auto-blocked: High suspicion score: 15 - 2026-10-10 18:47:57.373158
