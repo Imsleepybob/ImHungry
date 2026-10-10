@@ -39,13 +39,14 @@ TIME_RE = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
 SCHOOL_RE = re.compile(r'^\d{5,10}$')
 REGION_RE = re.compile(r'^[A-Z]\d{2}$')
 
-_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None}
+_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None, 'configured': False, 'started_pid': None}
 _subs = {}
 _lock = threading.Lock()
 _init_lock = threading.Lock()
 _remote = {'loaded': False, 'sha': None, 'pushed_hash': None, 'pending': False}
 _remote_lock = threading.Lock()
 _gh_io_lock = threading.Lock()
+_logged_skips = set()
 
 
 def push_enabled():
@@ -358,6 +359,27 @@ def _send_one(endpoint, p256dh, auth, title, body, tag):
         return endpoint, 'fail', f'{type(e).__name__}: {str(e)[:200]}'
 
 
+def _slot_time_state(now, meal_setting):
+    hours, minutes = map(int, meal_setting['time'].split(':'))
+    due = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
+    elapsed = (now - due).total_seconds()
+    if elapsed < 0:
+        return 'wait', int(-elapsed // 60) + 1
+    if elapsed >= GRACE_SECONDS:
+        return 'late', int(elapsed // 60)
+    return 'window', int(elapsed // 60)
+
+
+def _log_skip_once(endpoint, slot, today, reason, info):
+    key = (endpoint, slot, today, reason)
+    if key in _logged_skips:
+        return
+    if len(_logged_skips) > 5000:
+        _logged_skips.clear()
+    _logged_skips.add(key)
+    _state['logger'].info(f'[push] 건너뜀({info}): {reason}')
+
+
 def send_due(now=None):
     now = now or datetime.now(_state['tz'])
     today = now.strftime('%Y%m%d')
@@ -375,24 +397,21 @@ def send_due(now=None):
             meal_setting = settings.get(key) or {}
             if not meal_setting.get('enabled'):
                 continue
-            hours, minutes = map(int, meal_setting['time'].split(':'))
-            due = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
-            elapsed = (now - due).total_seconds()
-            if not 0 <= elapsed < GRACE_SECONDS:
+            time_state, _ = _slot_time_state(now, meal_setting)
+            if time_state != 'window':
                 continue
             slot = f"{key}@{meal_setting['time']}"
             info = f"{label} {meal_setting['time']} school={record['school_code']} host={_host(endpoint)}"
             if weekday not in settings.get('days', []):
-                if elapsed < 60:
-                    logger.info(f"[push] 건너뜀({info}): 오늘 요일이 알림 요일에 없음 (오늘={weekday}, 설정={settings.get('days')})")
+                _log_skip_once(endpoint, slot, today, f"오늘 요일이 알림 요일에 없음 (오늘={weekday}, 설정={settings.get('days')})", info)
                 continue
             if slot in already:
                 continue
-            candidates.append((endpoint, record, key, label, slot, info, elapsed))
+            candidates.append((endpoint, record, key, label, slot, info))
 
     meal_cache = {}
     jobs = []
-    for endpoint, record, key, label, slot, info, elapsed in candidates:
+    for endpoint, record, key, label, slot, info in candidates:
         school_key = (record['school_code'], record['region_code'])
         if school_key not in meal_cache:
             try:
@@ -402,8 +421,7 @@ def send_due(now=None):
                 meal_cache[school_key] = {}
         menu = (meal_cache[school_key].get(today) or {}).get(key)
         if not menu or menu == NO_MEAL:
-            if elapsed < 60:
-                logger.info(f'[push] 건너뜀({info}): 오늘 해당 급식 정보 없음')
+            _log_skip_once(endpoint, slot, today, '오늘 해당 급식 정보 없음', info)
             continue
         body = ', '.join(menu.split('\n')[:3])
         jobs.append((endpoint, record['p256dh'], record['auth'], slot, f'🍱 오늘의 {label}', body, f'{today}-{key}', info))
@@ -459,29 +477,63 @@ def _admin_page(result=None):
     scheduler = _state['scheduler']
     next_run = '-'
     running = False
+    stale = False
     if scheduler:
         running = bool(scheduler.running)
         job = scheduler.get_job('push_send_due')
         if job is not None and job.next_run_time is not None:
             next_run = job.next_run_time.strftime('%Y-%m-%d %H:%M:%S')
+            stale = (now - job.next_run_time).total_seconds() > 90
     today = now.strftime('%Y%m%d')
     with _lock:
         snapshot = [(endpoint, dict(record)) for endpoint, record in _subs.items()]
 
+    weekday = (now.weekday() + 1) % 7
+    meal_cache = {}
+
+    def menu_for(record, key):
+        school_key = (record['school_code'], record['region_code'])
+        if school_key not in meal_cache:
+            try:
+                meal_cache[school_key] = _state['get_month_meals'](*school_key)
+            except Exception:
+                meal_cache[school_key] = None
+        data = meal_cache[school_key]
+        if data is None:
+            return None
+        menu = (data.get(today) or {}).get(key)
+        return bool(menu and menu != NO_MEAL)
+
+    def verdict(record, key):
+        settings = record['settings']
+        meal_setting = settings.get(key) or {}
+        if not meal_setting.get('enabled'):
+            return '꺼짐'
+        slot = f"{key}@{meal_setting['time']}"
+        head = f"{meal_setting['time']} - "
+        if weekday not in settings.get('days', []):
+            return head + f"오늘 요일 제외 (오늘={weekday})"
+        has_menu = menu_for(record, key)
+        menu_text = '급식 조회 실패' if has_menu is None else ('급식 있음' if has_menu else '오늘 급식 없음(발송 안 함)')
+        time_state, minutes = _slot_time_state(now, meal_setting)
+        sent = record['sent']['meals'] if record['sent'].get('date') == today else []
+        if slot in sent:
+            return head + '오늘 발송 처리됨'
+        if time_state == 'wait':
+            return head + f"{minutes}분 뒤 발송 예정 / {menu_text}"
+        if time_state == 'late':
+            return head + f"설정 시각이 {minutes}분 지나 오늘은 발송 안 함 / {menu_text}"
+        return head + f"발송 가능 구간(다음 분 실행 때 발송) / {menu_text}"
+
     rows = []
     for endpoint, record in sorted(snapshot, key=lambda x: x[1]['school_code']):
         settings = record['settings']
-        meals = []
-        for key, label in MEALS:
-            m = settings.get(key) or {}
-            meals.append(f"{m['time']} (켬)" if m.get('enabled') else '꺼짐')
-        sent = ', '.join(record['sent']['meals']) if record['sent'].get('date') == today and record['sent']['meals'] else '-'
         rows.append(
             '<tr>'
             f"<td>{esc(_endpoint_id(endpoint))}</td><td>{esc(_host(endpoint))}</td>"
             f"<td>{esc(record['school_code'])} / {esc(record['region_code'])}</td>"
             f"<td>{esc(','.join(str(d) for d in settings.get('days', [])))}</td>"
-            f"<td>{esc(meals[0])}</td><td>{esc(meals[1])}</td><td>{esc(meals[2])}</td><td>{esc(sent)}</td>"
+            f"<td>{esc(verdict(record, 'breakfast'))}</td><td>{esc(verdict(record, 'lunch'))}</td><td>{esc(verdict(record, 'dinner'))}</td>"
             '<td><form method="post" action="/admin/push/test">'
             f'<input type="hidden" name="id" value="{esc(_endpoint_id(endpoint))}">'
             '<button type="submit">테스트 발송</button></form></td>'
@@ -496,7 +548,8 @@ def _admin_page(result=None):
         ('푸시 활성', '예' if push_enabled() else '아니오'),
         ('VAPID 공개키 앞 12자', VAPID_PUBLIC_KEY[:12]),
         ('VAPID subject', VAPID_SUBJECT),
-        ('스케줄러', ('실행 중' if running else '중지') + f' / 다음 실행 {next_run}'),
+        ('스케줄러', ('실행 중' if running else '중지') + f' / 다음 실행 {next_run}' + (' / 경고: 다음 실행 시각이 과거입니다. 이 프로세스에서 스케줄러가 동작하지 않습니다.' if stale else '')),
+        ('프로세스', f"요청 처리 PID {os.getpid()} / 스케줄러 시작 PID {_state['started_pid']}"),
         ('구독 수', str(len(snapshot))),
         ('GitHub 백업', f"{'사용' if _gh_enabled() else '미사용'} / 레포 {GITHUB_REPO or '-'} / 복원 완료 {'예' if _remote['loaded'] else '아니오'}"),
     ]
@@ -507,8 +560,8 @@ def _admin_page(result=None):
         '<style>body{font-family:sans-serif;margin:16px}table{border-collapse:collapse;margin-bottom:16px}'
         'th,td{border:1px solid #ccc;padding:6px 10px;font-size:14px;text-align:left}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap}</style></head><body>'
         f'<h2>푸시 알림 진단</h2><table>{status_html}</table>{result_html}'
-        '<h3>구독 목록</h3><table><tr><th>ID</th><th>푸시 서비스</th><th>학교 / 지역</th><th>요일</th><th>조식</th><th>중식</th><th>석식</th><th>오늘 발송 기록</th><th></th></tr>'
-        f"{''.join(rows) or '<tr><td colspan=9>구독 없음</td></tr>'}</table></body></html>"
+        '<h3>구독 목록</h3><table><tr><th>ID</th><th>푸시 서비스</th><th>학교 / 지역</th><th>요일</th><th>조식 판정</th><th>중식 판정</th><th>석식 판정</th><th></th></tr>'
+        f"{''.join(rows) or '<tr><td colspan=8>구독 없음</td></tr>'}</table></body></html>"
     )
 
 
@@ -542,23 +595,54 @@ def _safe_send_due():
         _state['logger'].error(f'send_due failed: {e}')
 
 
-def init_push(app, get_month_meals, tz, store_path, admin_check=None):
+def ensure_started():
+    pid = os.getpid()
+    if _state['started_pid'] == pid or not _state['configured'] or not push_enabled():
+        return
     with _init_lock:
-        if _state['scheduler'] is not None:
+        if _state['started_pid'] == pid:
             return
-        _state.update(path=store_path, get_month_meals=get_month_meals, tz=tz, logger=app.logger, admin_check=admin_check)
-        app.register_blueprint(push_bp)
-        if not push_enabled():
-            app.logger.warning('Web push disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT 환경변수가 설정되지 않았습니다.')
-            _state['scheduler'] = False
-            return
+        _state['started_pid'] = pid
+        logger = _state['logger']
         _load_store()
-        app.logger.info(f'푸시 기능 시작: 로컬 구독 {len(_subs)}건, GitHub 백업 {"사용" if _gh_enabled() else "미사용"}')
+        logger.info(f'푸시 기능 시작(PID {pid}): 로컬 구독 {len(_subs)}건, GitHub 백업 {"사용" if _gh_enabled() else "미사용"}')
         if _gh_enabled():
             threading.Thread(target=_initial_restore, daemon=True).start()
         else:
-            app.logger.warning('푸시 구독 GitHub 백업 비활성: PUSH_GITHUB_REPO / PUSH_GITHUB_TOKEN(또는 GITHUB_TOKEN)이 설정되지 않았습니다.')
-        scheduler = BackgroundScheduler(timezone=tz)
+            logger.warning('푸시 구독 GitHub 백업 비활성: PUSH_GITHUB_REPO / PUSH_GITHUB_TOKEN(또는 GITHUB_TOKEN)이 설정되지 않았습니다.')
+        scheduler = BackgroundScheduler(timezone=_state['tz'])
         scheduler.add_job(_safe_send_due, 'cron', minute='*', max_instances=1, coalesce=True, id='push_send_due')
         scheduler.start()
         _state['scheduler'] = scheduler
+
+
+def _reset_after_fork():
+    global _lock, _remote_lock, _gh_io_lock, _init_lock
+    _lock = threading.Lock()
+    _remote_lock = threading.Lock()
+    _gh_io_lock = threading.Lock()
+    _init_lock = threading.Lock()
+    _remote.update(loaded=False, sha=None, pushed_hash=None, pending=False)
+    _logged_skips.clear()
+    _subs.clear()
+    _state['scheduler'] = None
+    _state['started_pid'] = None
+
+
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=_reset_after_fork)
+
+
+@push_bp.before_app_request
+def _start_on_request():
+    ensure_started()
+
+
+def init_push(app, get_month_meals, tz, store_path, admin_check=None):
+    with _init_lock:
+        if _state['configured']:
+            return
+        _state.update(path=store_path, get_month_meals=get_month_meals, tz=tz, logger=app.logger, admin_check=admin_check, configured=True)
+        app.register_blueprint(push_bp)
+        if not push_enabled():
+            app.logger.warning('Web push disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT 환경변수가 설정되지 않았습니다.')
