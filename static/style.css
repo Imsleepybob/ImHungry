@@ -149,6 +149,10 @@ body {
 .form-field-animated.visible {
     overflow: visible;
 }
+#regionSelectWrapper {
+    transform: none;
+    transition: max-height 0.4s ease, opacity 0.4s ease;
+}
 #schoolRow.visible {
     max-height: 160px;
 }
