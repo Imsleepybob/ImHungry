@@ -123,6 +123,8 @@
         if (!enabled) return;
         const target = event.target.closest ? event.target.closest(INTERACTIVE) : null;
         if (!target || target.hasAttribute('data-no-haptic') || target.disabled || target.getAttribute('aria-disabled') === 'true') return;
+        // Let iOS handle native select activation and its picker without a capture-phase haptic call.
+        if (target.tagName === 'SELECT') return;
         if (canVibrate || isAppEnv) {
             if (event.isTrusted) fire(kindFor(target), 30);
             return;
