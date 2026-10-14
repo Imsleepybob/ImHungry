@@ -39,13 +39,15 @@ MAX_BODY_BYTES = 8192
 MAX_SUBSCRIPTIONS = 5000
 MAX_BODY_CHARS = 120
 MAX_TITLE_CHARS = 30
-ALLOWED_PUSH_HOSTS = ('.googleapis.com', '.push.services.mozilla.com', '.push.apple.com', '.notify.windows.com')
+ALLOWED_PUSH_EXACT = ('fcm.googleapis.com', 'android.googleapis.com', 'updates.push.services.mozilla.com', 'web.push.apple.com')
+ALLOWED_PUSH_SUFFIX = ('.push.services.mozilla.com', '.push.apple.com', '.notify.windows.com')
+ALLERGY_RE = re.compile(r'\s*(?:\(\d{1,2}(?:\.\d{1,2})*\.?\)|\d{1,2}(?:\.\d{1,2})*\.)\s*$')
 
 TIME_RE = re.compile(r'^([01]\d|2[0-3]):[0-5]\d$')
 SCHOOL_RE = re.compile(r'^\d{5,10}$')
 REGION_RE = re.compile(r'^[A-Z]\d{2}$')
 
-_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None, 'configured': False, 'started_pid': None, 'csrf': None}
+_state = {'path': None, 'get_month_meals': None, 'tz': None, 'logger': None, 'scheduler': None, 'admin_check': None, 'configured': False, 'started_pid': None, 'csrf': None, 'csrf_fn': None}
 _subs = {}
 _lock = threading.Lock()
 _init_lock = threading.Lock()
@@ -259,7 +261,7 @@ def _valid_endpoint(endpoint):
     host = (parsed.hostname or '').lower()
     if parsed.scheme != 'https' or not host:
         return False
-    return any(host.endswith(suffix) for suffix in ALLOWED_PUSH_HOSTS)
+    return host in ALLOWED_PUSH_EXACT or any(host.endswith(suffix) for suffix in ALLOWED_PUSH_SUFFIX)
 
 
 def _clean_settings(raw):
@@ -397,6 +399,15 @@ def _send_one(endpoint, p256dh, auth, title, body, tag):
         return endpoint, 'fail', f'{type(e).__name__}: {str(e)[:200]}'
 
 
+def _menu_lines(menu):
+    lines = []
+    for line in menu.split('\n'):
+        cleaned = ALLERGY_RE.sub('', line).strip()
+        if cleaned:
+            lines.append(cleaned)
+    return lines
+
+
 def _slot_time_state(now, meal_setting):
     hours, minutes = map(int, meal_setting['time'].split(':'))
     due = now.replace(hour=hours, minute=minutes, second=0, microsecond=0)
@@ -461,7 +472,7 @@ def send_due(now=None):
         if not menu or menu == NO_MEAL:
             _log_skip_once(endpoint, slot, today, '오늘 해당 급식 정보 없음', info)
             continue
-        body = _clip(', '.join(menu.split('\n')[:3]))
+        body = _clip(', '.join(_menu_lines(menu)[:3]))
         jobs.append((endpoint, record['p256dh'], record['auth'], slot, f'🍱 오늘의 {label}', body, f'{today}-{key}', info))
 
     if not jobs:
@@ -510,13 +521,15 @@ def _admin_gate():
 
 
 def _csrf_token():
+    if _state.get('csrf_fn'):
+        return _state['csrf_fn']()
     if not _state.get('csrf'):
         _state['csrf'] = secrets.token_hex(16)
     return _state['csrf']
 
 
 def _csrf_ok():
-    return hmac.compare_digest(request.form.get('csrf', ''), _csrf_token())
+    return hmac.compare_digest(request.form.get('csrf_token', ''), _csrf_token())
 
 
 def _run_broadcast(snapshot, title, body, tag):
@@ -643,7 +656,7 @@ def _admin_page(result=None):
             f"<td>{esc(','.join(str(d) for d in settings.get('days', [])))}</td>"
             f"<td>{esc(verdict(record, 'breakfast'))}</td><td>{esc(verdict(record, 'lunch'))}</td><td>{esc(verdict(record, 'dinner'))}</td>"
             '<td><form method="post" action="/admin/push/test">'
-            f'<input type="hidden" name="csrf" value="{esc(_csrf_token())}">'
+            f'<input type="hidden" name="csrf_token" value="{esc(_csrf_token())}">'
             f'<input type="hidden" name="id" value="{esc(_endpoint_id(endpoint))}">'
             '<button type="submit">테스트 발송</button></form></td>'
             '</tr>'
@@ -668,7 +681,7 @@ def _admin_page(result=None):
     broadcast_html = (
         '<h3>전체 발송</h3>'
         f"<form method=\"post\" action=\"/admin/push/broadcast\" onsubmit=\"return confirm('현재 구독 {len(snapshot)}건 모두에게 알림을 발송합니다. 계속할까요?')\">"
-        f'<input type="hidden" name="csrf" value="{esc(_csrf_token())}">'
+        f'<input type="hidden" name="csrf_token" value="{esc(_csrf_token())}">'
         f'<p><input name="title" maxlength="{MAX_TITLE_CHARS}" placeholder="제목 (비우면 급식알리미)" style="width:100%;box-sizing:border-box;padding:8px"></p>'
         f'<p><textarea id="bc-body" name="body" maxlength="{MAX_BODY_CHARS}" rows="3" required placeholder="내용" style="width:100%;box-sizing:border-box;padding:8px"></textarea></p>'
         f'<p><span id="bc-count">0 / {MAX_BODY_CHARS}</span> <button type="submit">전체 발송</button></p></form>'
@@ -798,11 +811,11 @@ def _start_on_request():
     ensure_started()
 
 
-def init_push(app, get_month_meals, tz, store_path, admin_check=None):
+def init_push(app, get_month_meals, tz, store_path, admin_check=None, csrf_token=None):
     with _init_lock:
         if _state['configured']:
             return
-        _state.update(path=store_path, get_month_meals=get_month_meals, tz=tz, logger=app.logger, admin_check=admin_check, configured=True)
+        _state.update(path=store_path, get_month_meals=get_month_meals, tz=tz, logger=app.logger, admin_check=admin_check, csrf_fn=csrf_token, configured=True)
         app.register_blueprint(push_bp)
         if not push_enabled():
             app.logger.warning('Web push disabled: VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT 환경변수가 설정되지 않았습니다.')

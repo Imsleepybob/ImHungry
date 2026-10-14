@@ -119,6 +119,7 @@ button {
       {% endif %}
     </h2>
     <form method="POST">
+<input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
       <label for="cidr">IP 또는 CIDR</label>
       <input type="text" id="cidr" name="cidr" placeholder="1.2.3.4/32" required>
       <label for="reason">사유 (선택)</label>
@@ -191,7 +192,7 @@ async function blockCidr(cidr) {
     if (!confirm(`${cidr} 을(를) 차단할까요?`)) { return; }
     const res = await fetch('/admin/blocklist/bulk-add', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': '{{ admin_csrf_token() }}'},
         body: JSON.stringify({cidrs: [cidr], reason: '상위 대역 차단 (admin page)'})
     });
     const data = await res.json();
@@ -203,7 +204,7 @@ async function blockAsn(asn, count) {
     if (!confirm(`${asn} 소속 대역 ${count.toLocaleString()}개를 전부 차단할까요? 시간이 걸릴 수 있고, 완료 전까지 목록에는 순차적으로 반영됩니다.`)) { return; }
     const res = await fetch('/admin/blocklist/asn-block', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': '{{ admin_csrf_token() }}'},
         body: JSON.stringify({asn, reason: `ASN 전체 차단: ${asn} (admin page)`})
     });
     const data = await res.json();

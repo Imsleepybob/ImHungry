@@ -380,7 +380,23 @@ const NotificationManager = {
 
     // [수정] 햅틱 피드백 - impact: 'LIGHT'|'MEDIUM'|'HEAVY', notification: 'SUCCESS'|'WARNING'|'ERROR'
     triggerHaptic(type = 'impact', style = 'LIGHT') {
-        if (!this.isAppEnvironment()) return;
+        if (!this.isAppEnvironment()) {
+            const web = window.Haptics;
+            if (!web) return;
+            const level = String(style).toUpperCase();
+            if (type === 'notification') {
+                if (level === 'SUCCESS') web.success();
+                else if (level === 'ERROR') web.error();
+                else web.warning();
+            } else if (level === 'HEAVY') {
+                web.heavy();
+            } else if (level === 'MEDIUM') {
+                web.toggle();
+            } else {
+                web.tap();
+            }
+            return;
+        }
         const haptics = window.Capacitor?.Plugins?.Haptics;
         if (!haptics) return;
         try {

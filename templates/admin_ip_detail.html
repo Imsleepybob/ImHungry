@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>IP 추적 - {{ ip }}</title>
+<style>
+:root { color-scheme: light dark; --bg:#f5f5f7; --card:#fff; --text:#1d1d1f; --muted:#6e6e73; --line:#e5e5ea; --blue:#007aff; --red:#ff3b30; --green:#34c759; }
+@media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --text:#f5f5f7; --muted:#98989d; --line:#2c2c2e; --blue:#0a84ff; --red:#ff453a; --green:#30d158; } }
+* { box-sizing: border-box; }
+body { margin:0; padding:20px; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif; }
+.page { max-width:980px; margin:0 auto; }
+a { color:var(--blue); text-decoration:none; }
+h1 { font-size:24px; margin:8px 0 4px; letter-spacing:-.03em; }
+h2 { font-size:16px; margin:0 0 12px; }
+.sub { color:var(--muted); font-size:14px; margin-bottom:18px; }
+.card { background:var(--card); border-radius:16px; padding:18px; margin-bottom:14px; overflow-x:auto; }
+.badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; margin-right:6px; }
+.badge.red { background:color-mix(in srgb, var(--red) 16%, transparent); color:var(--red); }
+.badge.green { background:color-mix(in srgb, var(--green) 18%, transparent); color:var(--green); }
+.badge.gray { background:var(--line); color:var(--muted); }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.stat { background:var(--bg); border-radius:12px; padding:12px; }
+.stat b { display:block; font-size:20px; margin-top:4px; }
+.stat span { color:var(--muted); font-size:12px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { text-align:left; padding:8px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-weight:600; font-size:12px; }
+td.path { word-break:break-all; max-width:340px; }
+td.ua { color:var(--muted); max-width:240px; word-break:break-all; font-size:12px; }
+.s2 { color:var(--green); } .s3 { color:var(--blue); } .s4, .s5 { color:var(--red); }
+form { display:inline; margin:0; }
+button { border:0; border-radius:10px; padding:9px 14px; font-size:14px; font-weight:600; cursor:pointer; background:var(--blue); color:#fff; margin-right:6px; }
+button.red { background:var(--red); } button.gray { background:var(--line); color:var(--text); }
+.note { padding:12px 14px; border-radius:12px; background:color-mix(in srgb, var(--blue) 12%, transparent); margin-bottom:14px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <a href="/admin/dashboard">&larr; 대시보드로 돌아가기</a>
+  <h1>{{ ip }}</h1>
+  <div class="sub">
+    {% if blocked %}<span class="badge red">차단됨</span>{% else %}<span class="badge green">차단 안 됨</span>{% endif %}
+    {% if detail %}<span class="badge gray">추적 중</span>{% endif %}
+    {% if info %}{{ info.get('org', '') }} {% if info.get('country') %}({{ info.get('country') }}{% if info.get('city') %}, {{ info.get('city') }}{% endif %}){% endif %}{% endif %}
+  </div>
+
+  {% if notice == 'unblocked' %}<div class="note">차단을 해제했습니다.</div>
+  {% elif notice == 'range' %}<div class="note">이 IP만 해제했으나 더 넓은 대역 차단에 포함되어 있어 여전히 차단 상태입니다. 차단 관리 페이지에서 대역을 확인해 주세요.</div>{% endif %}
+
+  <div class="card">
+    {% if blocked %}
+    <form method="post" action="/admin/ip/{{ ip }}/unblock" onsubmit="return confirm('{{ ip }} 의 차단을 해제할까요?');">
+      <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+      <button type="submit" class="red">차단 해제</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/admin/ip/{{ ip }}/watch">
+      <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+      {% if detail %}<input type="hidden" name="action" value="stop"><button type="submit" class="gray">추적 중지</button>
+      {% else %}<input type="hidden" name="action" value="start"><button type="submit">추적 시작</button>{% endif %}
+    </form>
+  </div>
+
+  {% if detail %}
+  <div class="card">
+    <h2>요약</h2>
+    <div class="grid">
+      <div class="stat"><span>추적 시작 사유</span><b style="font-size:15px">{{ detail.reason }}</b></div>
+      <div class="stat"><span>추적 시작</span><b style="font-size:15px">{{ detail.since }}</b></div>
+      <div class="stat"><span>차단 시각</span><b style="font-size:15px">{{ detail.blocked_at or '-' }}</b></div>
+      <div class="stat"><span>기록된 요청</span><b>{{ detail.trail|length }}</b></div>
+      <div class="stat"><span>차단 후 요청</span><b>{{ detail.hits_after_block }}</b></div>
+      <div class="stat"><span>로그인 실패</span><b>{{ detail.failures|length }}</b></div>
+    </div>
+  </div>
+
+  {% if detail.failures %}
+  <div class="card">
+    <h2>관리자 로그인 실패 시각</h2>
+    <table><tbody>{% for t in detail.failures|reverse %}<tr><td>{{ t }}</td></tr>{% endfor %}</tbody></table>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2>방문한 페이지 ({{ pages|length }}개)</h2>
+    {% if pages %}
+    <table>
+      <thead><tr><th>경로</th><th>횟수</th><th>마지막 방문</th></tr></thead>
+      <tbody>{% for path, entry in pages %}<tr><td class="path">{{ path }}</td><td>{{ entry.count }}</td><td>{{ entry.last }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<span class="sub">기록된 요청이 없습니다.</span>{% endif %}
+  </div>
+
+  <div class="card">
+    <h2>요청 기록 (최신순, 최대 300건)</h2>
+    <table>
+      <thead><tr><th>시각</th><th>메서드</th><th>경로</th><th>상태</th><th>User-Agent</th></tr></thead>
+      <tbody>{% for item in trail %}<tr>
+        <td>{{ item.t }}</td><td>{{ item.m }}</td><td class="path">{{ item.p }}</td>
+        <td class="s{{ (item.s // 100) }}">{{ item.s }}</td><td class="ua">{{ item.u }}</td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card"><span class="sub">추적 중이 아닌 IP입니다. 추적을 시작하면 이후의 모든 요청과 아직 남아 있는 이전 접속 기록을 모아서 표시합니다.</span></div>
+  {% endif %}
+</div>
+</body>
+</html>

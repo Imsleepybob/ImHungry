@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
-<meta name="description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트입니다. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
+<meta name="description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
 <title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - ImHungry - 간편한 급식 사이트</title>
 <meta property="og:type" content="website">
 <meta property="og:title" content="{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미">
-<meta property="og:description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트입니다. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트입니다. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
+<meta property="og:description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
@@ -28,6 +28,8 @@
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
 <script src="{{ url_for('static', filename='notification.js') }}"></script>
+<script src="{{ url_for('static', filename='haptics.js') }}"></script>
+<script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
 <script>
@@ -56,7 +58,11 @@
   </div>
   <div style="display:flex; align-items:center; gap:4px;">
     {% if school_name and month_meals %}
-    <button id="notification-btn" class="theme-toggle-btn" aria-label="알림 설정" style="font-size:20px; line-height:1;">🔔</button>
+    <button id="notification-btn" class="theme-toggle-btn" aria-label="알림 설정">
+      <svg width="22" height="24" viewBox="3 2 22.1133 24.2227" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M3 20.5508C3 21.4062 3.65625 21.9688 4.76953 21.9688H9.71484C9.80859 24.2305 11.5781 26.2109 14.0508 26.2109C16.5352 26.2109 18.3047 24.2422 18.3984 21.9688H23.3438C24.4453 21.9688 25.1133 21.4062 25.1133 20.5508C25.1133 19.3789 23.918 18.3242 22.9102 17.2812C22.1367 16.4727 21.9258 14.8086 21.832 13.4609C21.75 8.84375 20.5547 5.86719 17.4375 4.74219C17.0391 3.20703 15.7852 2 14.0508 2C12.3281 2 11.0625 3.20703 10.6758 4.74219C7.55859 5.86719 6.36328 8.84375 6.28125 13.4609C6.1875 14.8086 5.97656 16.4727 5.20312 17.2812C4.18359 18.3242 3 19.3789 3 20.5508ZM5.27344 20.1992V20.0586C5.48438 19.7188 6.1875 19.0273 6.79688 18.3477C7.64062 17.4102 8.03906 15.8984 8.14453 13.6133C8.23828 8.49219 9.76172 6.86328 11.7656 6.3125C12.0586 6.24219 12.2227 6.10156 12.2344 5.79688C12.2695 4.57812 12.9727 3.72266 14.0508 3.72266C15.1406 3.72266 15.832 4.57812 15.8789 5.79688C15.8906 6.10156 16.043 6.24219 16.3359 6.3125C18.3516 6.86328 19.875 8.49219 19.9688 13.6133C20.0742 15.8984 20.4727 17.4102 21.3047 18.3477C21.9258 19.0273 22.6172 19.7188 22.8281 20.0586V20.1992H5.27344ZM11.543 21.9688H16.5703C16.4766 23.5625 15.4688 24.5586 14.0508 24.5586C12.6445 24.5586 11.625 23.5625 11.543 21.9688Z"/>
+      </svg>
+    </button>
     {% endif %}
     <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
       <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
@@ -123,8 +129,8 @@
     <div style="background:var(--bg-container); border:1px solid var(--border-color); border-radius:0 0 16px 16px; padding:24px 22px; box-shadow:var(--shadow-md);">
       <h1 style="font-size:1.15rem; font-weight:700; color:var(--text-primary); margin:0 0 12px;">급식알리미(ImHungry)란?</h1>
       <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.75; margin:0 0 16px;">
-        급식알리미는 전국 초·중·고등학교의 급식 정보를 빠르고 간편하게 조회할 수 있는 서비스입니다.
-        학교 이름 한 번만 입력하면, 학교 정보가 저장되어 다음부터는 접속 즉시 오늘의 급식을 바로 확인할 수 있습니다.
+        급식알리미는 전국 초·중·고등학교의 급식 정보를 빠르고 간편하게 조회할 수 있는 서비스예요.
+        학교 이름 한 번만 입력하면, 학교 정보가 저장되어 다음부터는 접속 즉시 오늘의 급식을 바로 확인할 수 있어요.
       </p>
       <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">주요 기능</h2>
       <ul style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
@@ -136,13 +142,13 @@
       </ul>
       <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">이용 방법</h2>
       <ol style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
-        <li>지역을 선택합니다.</li>
-        <li>학교 이름을 입력하면 자동완성 목록이 나타납니다.</li>
-        <li>학교를 선택하면 오늘의 급식 정보가 바로 표시됩니다.</li>
-        <li>이후 방문부터는 학교 검색 없이 바로 급식 정보를 확인할 수 있습니다.</li>
+        <li>지역을 선택해요.</li>
+        <li>학교 이름을 입력하면 자동완성 목록이 나타나요.</li>
+        <li>학교를 선택하면 오늘의 급식 정보가 바로 표시돼요.</li>
+        <li>이후 방문부터는 학교 검색 없이 바로 급식 정보를 확인할 수 있어요.</li>
       </ol>
       <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
-        급식 데이터는 교육부 NEIS(나이스) 공공 API를 통해 제공됩니다.
+        급식 데이터는 교육부 NEIS(나이스) 공공 API를 통해 제공돼요.
       </p>
     </div>
   </div>
@@ -185,9 +191,15 @@
     <div id="bodyad-desktop">
       <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
     </div>
+    {% if adfit.rect_unit %}
+    <div id="bodyad-mobile" class="ad-rect">
+      <ins class="kakao_ad_area" data-ad-unit="{{ adfit.rect_unit }}" data-ad-width="300" data-ad-height="250"></ins>
+    </div>
+    {% else %}
     <div id="bodyad-mobile">
       <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
     </div>
+    {% endif %}
 
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
@@ -270,7 +282,7 @@
     </div>
     <div class="manual-finder-content" id="manualFinderContent">
       <div class="finder-description">
-        학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있습니다.
+        학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있어요.
       </div>
       <div class="regions-grid">
         {% for region_name, region_code in regions.items() %}
@@ -313,6 +325,12 @@
     <span class="allergy-info-item">⑲잣</span>
   </div>
 </div>
+
+{% if adfit.bottom_unit and school_name %}
+<div class="ad-bottom">
+  <ins class="kakao_ad_area" data-ad-unit="{{ adfit.bottom_unit }}" data-ad-width="300" data-ad-height="250"></ins>
+</div>
+{% endif %}
 
 <footer class="main-footer">
   <div class="footer-content">
@@ -554,7 +572,7 @@ async function initFormAnimation() {
         promptEl.classList.remove('fade-in-start');
 
         await delay(350 + 1800);
-        await fadePromptText(promptEl, '급식알리미에 오신 것을 환영합니다!');
+        await fadePromptText(promptEl, '급식알리미에 오신 걸 환영해요!');
         await delay(2200);
         await fadePromptText(promptEl, '학교만 한 번 입력하면 앞으로는 접속하자마자 오늘의 급식을 확인하실 수 있어요!😋');
         showAboutBtn();
@@ -795,7 +813,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="notification-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3100; align-items:center; justify-content:center;">
   <div style="background:var(--bg-container); border-radius:16px; padding:24px; max-width:360px; width:90%; max-height:80vh; overflow-y:auto;">
     <h3 style="margin:0 0 16px; color:var(--text-primary);">🔔 알림 설정</h3>
-    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">설정한 시각에 급식 알림을 받을 수 있습니다. 급식이 없는 날은 알림이 오지 않습니다.</p>
+    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">설정한 시각에 급식 알림을 받을 수 있어요. 급식이 없는 날은 알림이 오지 않아요.</p>
     <div style="margin-bottom:12px;">
       <label style="font-weight:600; color:var(--text-primary);">알림 받을 식사</label>
       <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
@@ -954,9 +972,9 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.classList.add('show');
         requestAnimationFrame(() => requestAnimationFrame(() => {
             sheet.classList.add('show');
-            setTimeout(() => titleEl.classList.add('show'), 100);
-            setTimeout(() => descEl.classList.add('show'), 400);
-            setTimeout(() => stepsEl.classList.add('show'), 600);
+            setTimeout(() => { titleEl.classList.add('show'); if (window.Haptics) Haptics.intro(0); }, 100);
+            setTimeout(() => { descEl.classList.add('show'); if (window.Haptics) Haptics.intro(1); }, 400);
+            setTimeout(() => { stepsEl.classList.add('show'); if (window.Haptics) Haptics.intro(2); }, 600);
         }));
     }
 

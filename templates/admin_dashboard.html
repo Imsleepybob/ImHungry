@@ -614,6 +614,7 @@ body {
         </td>
         <td>
           <form method="POST" action="/admin/blocklist" style="margin:0;" onsubmit="return confirm('{{ entry.ip }} 을(를) 차단할까요?');">
+<input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
             <input type="hidden" name="cidr" value="{{ entry.ip }}/32">
             <input type="hidden" name="reason" value="관리자 대시보드에서 수동 차단">
             <button type="submit" style="background:var(--red); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.76rem; cursor:pointer;">차단</button>
@@ -797,6 +798,73 @@ body {
       {% else %}
       <div class="empty-state">데이터 없음</div>
       {% endif %}
+    </div>
+  </div>
+
+  <!-- 보안 감시 IP -->
+  <div class="section-title" style="margin-top:20px;">보안 감시 IP</div>
+  <div class="cards-2">
+    <div class="card">
+      <div class="section-header">
+        <div class="chart-title">🛡 감시 중인 IP ({{ stats.watch | length }}개)</div>
+      </div>
+      <form method="POST" action="/admin/watch" style="display:flex; gap:8px; margin-bottom:12px;">
+        <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+        <input type="text" name="ip" placeholder="추적할 IP 주소" required style="flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--border,#ddd); background:transparent; color:inherit;">
+        <button type="submit" class="btn-expand">추적 시작</button>
+      </form>
+      {% if stats.watch %}
+      <table class="data-table">
+        <thead><tr><th>IP 주소</th><th>사유</th><th>상태</th><th>실패</th><th>차단 후</th><th>마지막 활동</th></tr></thead>
+        <tbody>
+        {% for row in stats.watch %}
+        <tr>
+          <td><a href="/admin/ip/{{ row.ip }}" class="path-text">{{ row.ip }}</a></td>
+          <td>{{ row.reason }}</td>
+          <td>{% if row.blocked_at %}차단됨{% else %}추적 중{% endif %}</td>
+          <td>{{ row.failures }}</td>
+          <td>{{ row.hits_after_block }}</td>
+          <td><small>{{ (row.last_seen or row.since)[:16].replace('T', ' ') }}</small></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">감시 중인 IP 없음<br><small>관리자 로그인에 3번 실패한 IP는 자동으로 차단되며 여기에 기록됩니다</small></div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <div class="section-header">
+        <div class="chart-title">🔐 최근 보안 이벤트</div>
+      </div>
+      {% if stats.incidents %}
+      <table class="data-table">
+        <thead><tr><th>시각</th><th>IP</th><th>종류</th><th>내용</th></tr></thead>
+        <tbody>
+        {% for item in stats.incidents[:20] %}
+        <tr>
+          <td><small>{{ item.t[:16].replace('T', ' ') }}</small></td>
+          <td><a href="/admin/ip/{{ item.ip }}" class="path-text">{{ item.ip }}</a></td>
+          <td>{{ item.k }}</td>
+          <td><small>{{ item.d }}</small></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">기록 없음</div>
+      {% endif %}
+      <div style="margin-top:14px; font-size:12px; opacity:.7;">
+        기록 저장소: {% if stats.persistence.github %}GitHub 백업 사용{% else %}GitHub 백업 미사용(로컬 파일만){% endif %}
+        / 복원 {{ '완료' if stats.persistence.restored else '대기' }} / 보관 {{ stats.persistence.stored_days }}일<br>
+        {% if ip_debug %}<details style="margin-top:8px;">
+          <summary>현재 요청의 IP 판별 정보</summary>
+          {% for key, value in ip_debug.items() %}<div>{{ key }}: {{ value or '-' }}</div>{% endfor %}
+          <div style="margin-top:4px;">CF-Connecting-IP가 비어 있으면 Cloudflare 헤더를 받지 못하는 환경이므로 X-Forwarded-For 첫 값을 사용합니다.</div>
+        </details>{% endif %}
+        복원: {{ stats.persistence.restore_note }}<br>
+        저장: {{ stats.persistence.sync_note }}
+      </div>
     </div>
   </div>
 
@@ -1147,6 +1215,7 @@ function toggleTheme() {
           <td style="font-size:0.78rem; color:var(--text2);">{% for p, c in entry.top_paths %}<span style="display:inline-block; margin:1px 4px 1px 0;">{{ p }} <span class="count-badge">{{ c }}</span></span>{% endfor %}</td>
           <td>
             <form method="POST" action="/admin/blocklist" style="margin:0;" onsubmit="return confirm('{{ entry.ip }} 을(를) 차단할까요?');">
+<input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
               <input type="hidden" name="cidr" value="{{ entry.ip }}/32">
               <input type="hidden" name="reason" value="관리자 대시보드에서 수동 차단">
               <button type="submit" style="background:var(--red); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:0.76rem; cursor:pointer;">차단</button>

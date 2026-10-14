@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="급식알리미">
-    <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록입니다. 원하는 학교를 선택하여 급식 정보를 확인하세요.">
+    <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록이에요. 원하는 학교를 선택해서 급식 정보를 확인해 보세요.">
     <title>{{ region_name }} {{ school_level }} 목록 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
@@ -20,6 +20,7 @@
             }
         })();
     </script>
+<script src="{{ url_for('static', filename='haptics.js') }}"></script>
 </head>
 <body>
     <header class="main-header">
@@ -49,7 +50,7 @@
         </div>
         {% if schools %}
         <div class="school-count-info">
-            총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}가 있습니다.
+            총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}가 있어요.
         </div>
         <div class="schools-grid">
             {% for school in schools %}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ff3b30">
+<title>접근이 차단되었습니다</title>
+<style>
+:root { color-scheme: light dark; --red: #ff3b30; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--red); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { width: min(100%, 440px); text-align: center; }
+.icon { width: 76px; height: 76px; margin: 0 auto 22px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; }
+h1 { margin: 0 0 12px; font-size: clamp(26px, 7vw, 32px); line-height: 1.2; letter-spacing: -0.04em; font-weight: 750; }
+p { margin: 0 0 10px; font-size: 16px; line-height: 1.6; opacity: 0.95; }
+.card { margin: 26px 0 0; padding: 16px 18px; border-radius: 16px; background: rgba(0, 0, 0, 0.16); text-align: left; font-size: 14px; line-height: 1.7; }
+.card dt { opacity: 0.75; float: left; clear: left; width: 82px; }
+.card dd { margin: 0 0 4px 82px; word-break: break-all; font-variant-numeric: tabular-nums; }
+.small { margin-top: 18px; font-size: 13px; opacity: 0.8; }
+@media (prefers-color-scheme: dark) { :root { --red: #ff453a; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="icon" aria-hidden="true">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 3v5.5c0 4.4-2.9 8.3-7 9.5-4.1-1.2-7-5.1-7-9.5V6l7-3z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 9l6 6M15 9l-6 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </div>
+  <h1>접근이 차단되었습니다</h1>
+  <p>이 IP 주소에서 비정상적인 요청이 감지되어 급식알리미 이용이 제한되었습니다.</p>
+  <p>이 조치는 서비스를 보호하기 위한 것이며, 요청 기록은 보안 점검에 사용될 수 있습니다.</p>
+  <dl class="card">
+    <dt>IP 주소</dt><dd>{{ ip }}</dd>
+    <dt>상태</dt><dd>차단됨</dd>
+  </dl>
+  <p class="small">오류라고 생각되시면 서비스 운영자에게 문의해 주시기 바랍니다. 확인 후 해제해 드리겠습니다.</p>
+</main>
+</body>
+</html>

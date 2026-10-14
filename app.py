@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory, abort
+from markupsafe import escape
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
 import calendar
@@ -16,6 +17,10 @@ import threading
 import hashlib
 import base64
 import sqlite3
+import secrets
+import dashagg
+import dashstore
+import secwatch
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
@@ -293,9 +298,27 @@ def schedule_github_sync():
 
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"\'').strip().lower()
 
+KST = timezone(timedelta(hours=9))
+ADMIN_LOGIN_FAIL_LIMIT = 3
+ADMIN_SESSION_COOKIE = 'admin_session'
+CLIENT_IP_HEADERS = [h.strip() for h in os.environ.get('CLIENT_IP_HEADERS', 'CF-Connecting-IP').split(',') if h.strip()]
+security_watch = secwatch.SecurityWatch(KST)
+login_guard = secwatch.LoginGuard(limit=ADMIN_LOGIN_FAIL_LIMIT, window=3600)
+admin_sessions = secwatch.SessionStore(ttl=8 * 3600)
+admin_csrf = secwatch.Csrf(os.environ.get('ADMIN_CSRF_SECRET'))
+dash_store = dashstore.DashStore(os.path.join(LOG_DIR, 'dashboard'), KST, app.logger, security_merge=secwatch.merge_security)
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=dash_store.reset_after_fork)
+
 IPINFO_API_KEY = os.environ.get('IPINFO_API_KEY', '')
 IP_INFO_CACHE = {}
 IP_INFO_CACHE_TTL = 86400
+IP_INFO_TTL_OK = 30 * 86400
+_ipinfo_dirty = False
+
+
+def _ipinfo_fresh(ts, info):
+    return time.time() - ts < (IP_INFO_TTL_OK if info else IP_INFO_CACHE_TTL)
 IPINFO_CACHE_FILE = os.path.join(LOG_DIR, 'ipinfo_cache.json')
 
 def _load_ipinfo_cache():
@@ -307,7 +330,7 @@ def _load_ipinfo_cache():
             data = json.load(f)
         now = time.time()
         for ip, (ts, info) in data.items():
-            if now - ts < IP_INFO_CACHE_TTL:
+            if _ipinfo_fresh(ts, info):
                 IP_INFO_CACHE[ip] = (ts, info)
         app.logger.info(f"IPInfo 캐시 로드: {len(IP_INFO_CACHE)}개 항목")
     except Exception as e:
@@ -317,21 +340,48 @@ def _save_ipinfo_cache():
     """현재 메모리 캐시를 파일로 저장하고, 만료된 항목은 메모리에서도 정리."""
     try:
         now = time.time()
-        valid = {ip: v for ip, v in list(IP_INFO_CACHE.items()) if now - v[0] < IP_INFO_CACHE_TTL}
+        valid = {ip: v for ip, v in list(IP_INFO_CACHE.items()) if _ipinfo_fresh(v[0], v[1])}
         IP_INFO_CACHE.clear()
         IP_INFO_CACHE.update(valid)
         with open(IPINFO_CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(valid, f, ensure_ascii=False)
+        global _ipinfo_dirty
+        _ipinfo_dirty = True
     except Exception as e:
         app.logger.warning(f"IPInfo 캐시 파일 저장 실패: {e}")
+    save_ipinfo_if_dirty()
+
+
+def save_ipinfo_if_dirty(force=False):
+    global _ipinfo_dirty
+    if not (force or _ipinfo_dirty):
+        return
+    _ipinfo_dirty = False
+    try:
+        dash_store.touch_ipinfo({ip: [v[0], v[1]] for ip, v in list(IP_INFO_CACHE.items()) if v[1]})
+    except Exception as e:
+        app.logger.warning(f"IPInfo 영구 저장 반영 실패: {e}")
+
+def _valid_ip(value):
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
 
 def get_client_ip():
+    for header in CLIENT_IP_HEADERS:
+        value = request.headers.get(header, '').strip()
+        if value and _valid_ip(value):
+            return value
     if request.headers.getlist("X-Forwarded-For"):
         return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
     elif request.access_route:
         return request.access_route[0]
     else:
         return request.remote_addr
+
 
 def should_log_request(path, method=None):
     if any(pattern in path.lower() for pattern in NO_LOG_PATHS):
@@ -415,6 +465,25 @@ def log_security_incident(ip, incident_type, details, suspicion_score=0):
         f"Path: {request.path}, Method: {request.method}"
     )
 
+def _host_cidr(ip):
+    try:
+        return f"{ip}/{128 if ipaddress.ip_address(ip).version == 6 else 32}"
+    except ValueError:
+        return None
+
+
+def block_ip_now(ip, reason):
+    cidr = _host_cidr(ip)
+    if cidr is None:
+        return False
+    blocked_ips.add(ip)
+    log_security_incident(ip, "BLOCK_NOW", reason)
+    save_to_blacklist(cidr, f"Blocked: {reason}")
+    add_network_to_blacklist_memory(cidr)
+    schedule_github_sync()
+    return True
+
+
 def auto_block_ip(ip, reason, duration=None):
     if duration is None:
         duration = SECURITY_CONFIG['auto_block_duration']
@@ -422,14 +491,36 @@ def auto_block_ip(ip, reason, duration=None):
     log_security_incident(ip, "AUTO_BLOCK", f"{reason} - Duration: {duration}s")
     failed_attempts[ip] += 1
     if failed_attempts[ip] >= SECURITY_CONFIG['failed_attempt_threshold']:
-        save_to_blacklist(f"{ip}/32", f"Auto-blocked: {reason}")
-        add_network_to_blacklist_memory(f"{ip}/32")
-        schedule_github_sync()
+        cidr = _host_cidr(ip)
+        if cidr is not None:
+            save_to_blacklist(cidr, f"Auto-blocked: {reason}")
+            add_network_to_blacklist_memory(cidr)
+            schedule_github_sync()
+        if security_watch.is_watched(ip):
+            security_watch.mark_blocked(ip)
+
+
+def _wants_html():
+    return request.method == 'GET' and 'text/html' in request.headers.get('Accept', '')
+
+
+def _blocked_response(force_redirect=False):
+    if force_redirect or _wants_html():
+        response = redirect('/blocked', code=302)
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    response = make_response('', 444)
+    response.headers['Connection'] = 'close'
+    return response
+
 
 @app.before_request
 def security_check():
+    dash_store.start()
     client_ip = get_client_ip()
     if is_admin_ip(client_ip):
+        return
+    if request.path == '/blocked':
         return
     if request.path.startswith('/admin'):
         return
@@ -439,9 +530,7 @@ def security_check():
         return response
     if is_ip_blocked(client_ip):
         log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
-        response = make_response('', 444)
-        response.headers['Connection'] = 'close'
-        return response
+        return _blocked_response()
     if is_rate_limited(client_ip):
         log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
         auto_block_ip(client_ip, "Rate limit exceeded", 864000)
@@ -469,6 +558,20 @@ def security_check():
             response.headers['Connection'] = 'close'
             return response
 
+
+@app.after_request
+def track_watched_requests(response):
+    try:
+        ip = get_client_ip()
+        if security_watch.is_watched(ip):
+            target = request.path + ('?' + request.query_string.decode('utf-8', 'replace') if request.query_string else '')
+            security_watch.record_request(ip, request.method, target, response.status_code,
+                                          request.headers.get('User-Agent', ''), request.headers.get('Referer', ''))
+    except Exception as e:
+        app.logger.error(f"track_watched_requests 오류: {e}")
+    return response
+
+
 def setup_security_logging():
     security_logger = logging.getLogger('security')
     security_handler = RotatingFileHandler(
@@ -494,6 +597,8 @@ EVENTS_LOG_PATH = os.path.join(LOG_DIR, 'events.log')
 
 
 class AccessLogFormatter(logging.Formatter):
+    converter = staticmethod(lambda timestamp: datetime.fromtimestamp(timestamp, KST).timetuple())
+
     def format(self, record):
         record.remote_addr = getattr(record, 'remote_addr', 'N/A')
         record.user_agent = getattr(record, 'user_agent', 'N/A')
@@ -696,7 +801,7 @@ def log_namuboard_access_request():
 
 def get_ip_info(ip):
     cached = IP_INFO_CACHE.get(ip)
-    if cached and time.time() - cached[0] < IP_INFO_CACHE_TTL:
+    if cached and _ipinfo_fresh(cached[0], cached[1]):
         return cached[1]
     try:
         resp = requests.get(
@@ -859,215 +964,161 @@ def asn_db_lookup_networks(asn):
     return {'as_name': name_row[0] if name_row else '', 'networks': networks}
 
 
-def parse_logs_for_dashboard(days=30):
-    today = datetime.now(KST).date()
-    cutoff = today - timedelta(days=days)
 
-    stats = {
-        'total_requests': 0,
-        'unique_ips': set(),
-        'today_requests': 0,
-        'requests_by_day': defaultdict(int),
-        'status_codes': defaultdict(int),
-        'paths': defaultdict(int),
-        'school_visits': defaultdict(int),
-        'ips': defaultdict(int),
-        'referrers': defaultdict(int),
-        'crawlers': 0,
-        'users': 0,
-        'devices': defaultdict(int),
-        'os_names': defaultdict(int),
-        'browsers': defaultdict(int),
-        'crawler_names': defaultdict(int),
-        'user_paths': defaultdict(int),
-        'bot_paths': defaultdict(int),
-        'bot_ips': defaultdict(lambda: {'total': 0, 'paths': defaultdict(int), 'crawler_name': 'Unknown'}),
-    }
+ACCESS_LOG_RE = re.compile(
+    r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
+    r'IP: (\S+) - '
+    r'(?:Device: (\S+) - (?:OS: (.*?) - )?Browser: ([^-]+?) - (?:Crawler: (.*?) - )?)?'
+    r'UA: (.*?) - '
+    r'Method: (\w+) - '
+    r'Path: (\S+) - '
+    r'Status: (\d+) - '
+    r'Referrer: (.*?)$'
+)
+TRAIL_LOG_RE = re.compile(
+    r'(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[,.\d]* - IP: (\S+) - .*?UA: (.*?) - Method: (\w+) - Path: (\S+) - Status: (\d+) - Referrer: (.*?)$'
+)
+_tail_state = {
+    'access': {'inode': None, 'offset': 0, 'init': False},
+    'events': {'inode': None, 'offset': 0, 'init': False},
+}
+_tail_lock = threading.Lock()
 
-    log_re = re.compile(
-        r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
-        r'IP: (\S+) - '
-        r'(?:Device: (\S+) - (?:OS: (.*?) - )?Browser: ([^-]+?) - (?:Crawler: (.*?) - )?)?'
-        r'UA: (.*?) - '
-        r'Method: (\w+) - '
-        r'Path: (\S+) - '
-        r'Status: (\d+) - '
-        r'Referrer: (.*?)$'
-    )
 
-    parsed_rows = []
+def _tail_new_lines(path, state):
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return []
+    if not state['init']:
+        state['init'] = True
+        state['inode'] = stat.st_ino
+        state['offset'] = 0 if not dash_store.parts else stat.st_size
+    elif state['inode'] != stat.st_ino or stat.st_size < state['offset']:
+        state['inode'] = stat.st_ino
+        state['offset'] = 0
+    if stat.st_size <= state['offset']:
+        return []
+    with open(path, 'rb') as f:
+        f.seek(state['offset'])
+        data = f.read()
+    end = data.rfind(b'\n')
+    if end == -1:
+        return []
+    state['offset'] += end + 1
+    return data[:end + 1].decode('utf-8', 'replace').splitlines()
 
-    if os.path.exists(ACCESS_LOG_PATH):
-        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
-            for line in f:
-                m = log_re.match(line.strip())
+
+def _classify_access_row(ip, device, os_name, browser, crawler_field, ua):
+    ua_stripped = ua.strip() if ua else ''
+    if not ua_stripped or ua_stripped == 'Unknown' or len(ua_stripped) < 10:
+        return 'bot', 'Empty UA', None, None, None
+    if device:
+        if crawler_field is not None and crawler_field.strip() != 'N':
+            return 'bot', crawler_field.split(' (')[0].strip(), None, None, None
+        if device == 'Crawler':
+            _, clabel, *_ = detect_client_type(ua_stripped)
+            return 'bot', (clabel.split(' (')[0].strip() if clabel else 'Unknown'), None, None, None
+    else:
+        is_crawler, crawler_label, *_ = detect_client_type(ua_stripped)
+        if is_crawler:
+            return 'bot', crawler_label.split(' (')[0].strip(), None, None, None
+    geo = IP_INFO_CACHE.get(ip, (0, {}))[1]
+    country = geo.get('country', '')
+    org_lower = geo.get('org', '').lower()
+    geo_bot_name = None
+    if country and country != 'KR':
+        geo_bot_name = f"Non-KR ({geo.get('org', country)})"
+    else:
+        for pattern, label in KR_CORP_CRAWLER_PATTERNS:
+            if pattern in org_lower:
+                geo_bot_name = label
+                break
+    if geo_bot_name:
+        return 'bot', geo_bot_name, None, None, None
+    if device:
+        return 'user', None, device, (os_name.strip() if os_name else 'Unknown OS'), (browser.strip() if browser else 'Other')
+    _, _, det_device, det_os, det_browser = detect_client_type(ua_stripped)
+    return 'user', None, det_device, det_os, det_browser
+
+
+def _live_agg(date_str):
+    agg = dash_store.live.get(date_str)
+    if agg is None:
+        agg = dashagg.new_agg()
+        dash_store.live[date_str] = agg
+    return agg
+
+
+def tail_logs_into_store():
+    with _tail_lock:
+        access_lines = _tail_new_lines(ACCESS_LOG_PATH, _tail_state['access'])
+        event_lines = _tail_new_lines(EVENTS_LOG_PATH, _tail_state['events'])
+        with dash_store.lock:
+            for line in access_lines:
+                m = ACCESS_LOG_RE.match(line.strip())
                 if not m:
                     continue
-                (date_str, ip, device, os_name, browser,
-                 crawler_field, ua, method, path, status, referrer) = m.groups()
-
-                try:
-                    log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                    if log_date < cutoff:
-                        continue
-                except Exception:
-                    continue
-
-                stats['total_requests'] += 1
-                stats['unique_ips'].add(ip)
-                if log_date == today:
-                    stats['today_requests'] += 1
-                stats['requests_by_day'][date_str] += 1
-                stats['status_codes'][status] += 1
-
-                is_bot = False
-                cname = 'Unknown'
-
-                ua_stripped = ua.strip() if ua else ''
-                if not ua_stripped or ua_stripped == 'Unknown' or len(ua_stripped) < 10:
-                    is_bot = True
-                    cname = 'Empty UA'
-                elif device:
-                    is_crawler_entry = crawler_field is not None and crawler_field.strip() != 'N'
-                    if is_crawler_entry:
-                        is_bot = True
-                        cname = crawler_field.split(' (')[0].strip()
-                    elif device == 'Crawler':
-                        is_bot = True
-                        _, clabel, *_ = detect_client_type(ua_stripped)
-                        cname = clabel.split(' (')[0].strip() if clabel else 'Unknown'
-                else:
-                    is_crawler, crawler_label, *_ = detect_client_type(ua_stripped)
-                    if is_crawler:
-                        is_bot = True
-                        cname = crawler_label.split(' (')[0].strip()
-
-                parsed_rows.append((
-                    date_str, ip, device, os_name, browser,
-                    is_bot, cname, path, status, referrer, ua_stripped
-                ))
-
-    for (date_str, ip, device, os_name, browser,
-         is_bot, cname, path, status, referrer, ua) in parsed_rows:
-
-        if is_bot:
-            stats['crawlers'] += 1
-            stats['crawler_names'][cname] += 1
-            stats['bot_ips'][ip]['total'] += 1
-            stats['bot_ips'][ip]['paths'][path] += 1
-            stats['bot_ips'][ip]['crawler_name'] = cname
-            stats['bot_paths'][path] += 1
-        else:
-            geo = IP_INFO_CACHE.get(ip, (0, {}))[1]
-            country = geo.get('country', '')
-            org_lower = geo.get('org', '').lower()
-
-            geo_bot_name = None
-            if country and country != 'KR':
-                geo_bot_name = f"Non-KR ({geo.get('org', country)})"
-            else:
-                for pattern, label in KR_CORP_CRAWLER_PATTERNS:
-                    if pattern in org_lower:
-                        geo_bot_name = label
-                        break
-
-            if geo_bot_name:
-                stats['crawlers'] += 1
-                stats['crawler_names'][geo_bot_name] += 1
-                stats['bot_ips'][ip]['total'] += 1
-                stats['bot_ips'][ip]['paths'][path] += 1
-                stats['bot_ips'][ip]['crawler_name'] = geo_bot_name
-                stats['bot_paths'][path] += 1
-            else:
-                stats['ips'][ip] += 1
-                stats['user_paths'][path] += 1
-                school_m = re.match(r'^/meal/(\w+)$', path)
-                if school_m:
-                    stats['school_visits'][school_m.group(1)] += 1
-                if referrer and referrer != 'N/A':
-                    ref_m = re.match(r'https?://([^/]+)', referrer)
-                    if ref_m:
-                        stats['referrers'][ref_m.group(1)] += 1
-                stats['users'] += 1
-                if device:
-                    stats['devices'][device] += 1
-                    stats['os_names'][os_name.strip() if os_name else 'Unknown OS'] += 1
-                    stats['browsers'][browser.strip() if browser else 'Other'] += 1
-                else:
-                    _, _, det_device, det_os, det_browser = detect_client_type(ua)
-                    stats['devices'][det_device] += 1
-                    stats['os_names'][det_os] += 1
-                    stats['browsers'][det_browser] += 1
-
-    event_stats = {
-        'theme': defaultdict(int),
-        'search_method': defaultdict(int),
-        'btn_month': 0,
-        'btn_nearby': 0,
-        'btn_share': 0,
-        'btn_notification': 0,
-    }
-    pwa_ips = defaultdict(lambda: {'visits': 0, 'uids': set(), 'schools': defaultdict(int), 'last_seen': ''})
-    pwa_schools = defaultdict(lambda: {'visits': 0, 'uids': set()})
-    pwa_uids = set()
-    pwa_uid_visits = defaultdict(int)
-    pwa_by_day = defaultdict(int)
-    pwa_total = 0
-    pwa_today = 0
-    if os.path.exists(EVENTS_LOG_PATH):
-        with open(EVENTS_LOG_PATH, 'r', encoding='utf-8') as f:
-            for line in f:
+                (date_str, ip, device, os_name, browser, crawler_field, ua, method, path, status, referrer) = m.groups()
+                kind, name, dev, os_final, browser_final = _classify_access_row(ip, device, os_name, browser, crawler_field, ua)
+                dashagg.add_access(_live_agg(date_str), ip, status, path, referrer, kind, name, dev, os_final, browser_final)
+            for line in event_lines:
                 line = line.strip()
                 if not line:
                     continue
                 try:
                     data = json.loads(line)
+                    ts = str(data.get('ts', ''))
+                    date_str = ts[:10]
+                    datetime.strptime(date_str, '%Y-%m-%d')
                     event = data.get('event', '')
-                    value = data.get('value', '')
-                    if event == 'theme':
-                        event_stats['theme'][value] += 1
-                    elif event == 'search_method':
-                        event_stats['search_method'][value] += 1
-                    elif event == 'pwa_visit':
-                        ts = str(data.get('ts', ''))
-                        ev_date = datetime.strptime(ts[:10], '%Y-%m-%d').date()
-                        if ev_date < cutoff:
-                            continue
-                        ip = str(data.get('ip', '')) or 'Unknown'
-                        uid = str(data.get('uid', ''))
-                        code = str(value)
-                        entry = pwa_ips[ip]
-                        entry['visits'] += 1
-                        if ts > entry['last_seen']:
-                            entry['last_seen'] = ts
-                        if uid:
-                            entry['uids'].add(uid)
-                            pwa_uids.add(uid)
-                            pwa_uid_visits[uid] += 1
-                        if code:
-                            entry['schools'][code] += 1
-                            pwa_schools[code]['visits'] += 1
-                            if uid:
-                                pwa_schools[code]['uids'].add(uid)
-                        pwa_total += 1
-                        if ev_date == today:
-                            pwa_today += 1
-                        pwa_by_day[ev_date.isoformat()] += 1
-                    elif event in event_stats:
-                        event_stats[event] += 1
+                    if event == 'pwa_visit':
+                        dashagg.add_pwa(_live_agg(date_str), str(data.get('ip', '')) or 'Unknown', str(data.get('uid', '')), str(data.get('value', '')), ts)
+                    else:
+                        dashagg.add_event(_live_agg(date_str), event, data.get('value', ''))
                 except Exception:
                     continue
 
-    school_names = {}
-    for code in list(stats['school_visits'].keys()):
-        cached = school_code_cache.get(code)
-        if cached:
-            school_names[code] = cached[1]['school_name']
-        else:
-            info = get_school_from_neis(code)
-            school_names[code] = info['school_name'] if info else code
 
-    def resolve_school_name(code):
+def _dash_tick():
+    tail_logs_into_store()
+    if security_watch.dirty:
+        dash_store.set_security(security_watch.snapshot())
+        security_watch.dirty = False
+    save_ipinfo_if_dirty()
+
+
+dash_store.tick_hook = _dash_tick
+
+
+def _on_dash_restored():
+    with dash_store.lock:
+        remote_ipinfo = dict(dash_store.ipinfo)
+    now = time.time()
+    for ip, (ts, info) in remote_ipinfo.items():
+        if not isinstance(info, dict) or not info:
+            continue
+        current = IP_INFO_CACHE.get(ip)
+        if (current is None or current[0] < ts) and now - ts < IP_INFO_TTL_OK:
+            IP_INFO_CACHE[ip] = (ts, info)
+    with dash_store.lock:
+        security_doc = dash_store.security
+    if security_doc:
+        merged = secwatch.merge_security(security_watch.snapshot(), security_doc)
+        security_watch.replace(merged)
+    save_ipinfo_if_dirty(force=True)
+
+
+dash_store.on_restored.append(_on_dash_restored)
+
+
+def parse_logs_for_dashboard(days=30):
+    dash_store.start()
+    tail_logs_into_store()
+    today = datetime.now(KST).date()
+    school_names = {}
+
+    def school_name(code):
         if code in school_names:
             return school_names[code]
         cached = school_code_cache.get(code)
@@ -1079,94 +1130,30 @@ def parse_logs_for_dashboard(days=30):
         school_names[code] = name
         return name
 
-    pwa_stats = {
-        'devices': len(pwa_uids),
-        'returning_devices': sum(1 for count in pwa_uid_visits.values() if count >= 2),
-        'ips': len(pwa_ips),
-        'visits': pwa_total,
-        'today_visits': pwa_today,
-        'ip_list': [
-            {
-                'ip': ip,
-                'visits': data['visits'],
-                'devices': len(data['uids']),
-                'schools': [
-                    (resolve_school_name(code), count)
-                    for code, count in sorted(data['schools'].items(), key=lambda x: x[1], reverse=True)
-                ],
-                'last_seen': data['last_seen'][:16].replace('T', ' '),
-            }
-            for ip, data in sorted(pwa_ips.items(), key=lambda x: x[1]['visits'], reverse=True)
-        ],
-        'school_list': [
-            (resolve_school_name(code), data['visits'], len(data['uids']))
-            for code, data in sorted(pwa_schools.items(), key=lambda x: x[1]['visits'], reverse=True)
-        ],
-        'by_day': dict(sorted(pwa_by_day.items())[-14:]),
+    cache_stats = {
+        '급식 캐시': len(meal_cache),
+        '학교코드 캐시': len(school_code_cache),
+        '검색결과 캐시': len(search_result_cache),
+        '지역별학교 캐시': len(region_schools_cache),
     }
-
-    return {
-        'total_requests': stats['total_requests'],
-        'unique_ips': len(stats['unique_ips']),
-        'today_requests': stats['today_requests'],
-        'crawlers': stats['crawlers'],
-        'users': stats['users'],
-        'requests_by_day': dict(sorted(stats['requests_by_day'].items())[-14:]),
-        'status_codes': dict(sorted(stats['status_codes'].items())),
-        'top_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
-        'all_user_paths': sorted(stats['user_paths'].items(), key=lambda x: x[1], reverse=True),
-        'top_bot_paths': sorted(stats['bot_paths'].items(), key=lambda x: x[1], reverse=True)[:15],
-        'all_bot_paths': sorted(stats['bot_paths'].items(), key=lambda x: x[1], reverse=True),
-        'top_schools': [
-            (school_names.get(c, c), v)
-            for c, v in sorted(stats['school_visits'].items(), key=lambda x: x[1], reverse=True)[:10]
-        ],
-        'all_schools': [
-            (school_names.get(c, c), v)
-            for c, v in sorted(stats['school_visits'].items(), key=lambda x: x[1], reverse=True)
-        ],
-        'top_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True)[:10],
-        'all_ips': sorted(stats['ips'].items(), key=lambda x: x[1], reverse=True),
-        'top_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True)[:10],
-        'all_referrers': sorted(stats['referrers'].items(), key=lambda x: x[1], reverse=True),
-        'devices': dict(stats['devices']),
-        'os_names': dict(sorted(stats['os_names'].items(), key=lambda x: x[1], reverse=True)),
-        'browsers': dict(stats['browsers']),
-        'top_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True)[:15],
-        'all_crawlers': sorted(stats['crawler_names'].items(), key=lambda x: x[1], reverse=True),
-        'bot_ip_list': [
-            {
-                'ip': ip,
-                'total': data['total'],
-                'crawler_name': data['crawler_name'],
-                'top_paths': sorted(data['paths'].items(), key=lambda x: x[1], reverse=True)[:5],
-            }
-            for ip, data in sorted(
-                stats['bot_ips'].items(), key=lambda x: x[1]['total'], reverse=True
-            )
-        ],
-        'events': {
-            'theme': dict(event_stats['theme']),
-            'search_method': dict(event_stats['search_method']),
-            'btn_month': event_stats['btn_month'],
-            'btn_nearby': event_stats['btn_nearby'],
-            'btn_share': event_stats['btn_share'],
-            'btn_notification': event_stats['btn_notification'],
-        },
-        'cache_stats': {
-            '급식 캐시': len(meal_cache),
-            '학교코드 캐시': len(school_code_cache),
-            '검색결과 캐시': len(search_result_cache),
-            '지역별학교 캐시': len(region_schools_cache),
-        },
-        'security': {
-            'blocked_networks': len(BLOCKED_NETWORKS),
-            'temp_blocked_ips': len(blocked_ips),
-            'total_failed_attempts': sum(failed_attempts.values()),
-        },
-        'pwa': pwa_stats,
-        'days': days,
+    security_stats = {
+        'blocked_networks': len(BLOCKED_NETWORKS),
+        'temp_blocked_ips': len(blocked_ips),
+        'total_failed_attempts': sum(failed_attempts.values()),
     }
+    aggs = dash_store.merged_days(today, days)
+    result = dashagg.finalize(aggs, today, days, school_name, cache_stats, security_stats)
+    result['persistence'] = {
+        'github': dash_store.gh_enabled(),
+        'restored': dash_store.restored,
+        'restore_note': dash_store.restore_note,
+        'sync_note': dash_store.sync_note,
+        'stored_days': len(dash_store.parts),
+    }
+    watch_rows, incidents = security_watch.view()
+    result['watch'] = watch_rows
+    result['incidents'] = incidents
+    return result
 
 
 API_KEY = "e309120a7d884eb7b725deaac507a5af"
@@ -1400,13 +1387,27 @@ def _fetch_and_store_region(region_code):
         with _region_prefetch_lock:
             _region_prefetch_running.discard(region_code)
 
+MEAL_CACHE_TTL = 6 * 3600
+MEAL_EMPTY_TTL = 600
+
+
+def _meal_cache_get(cache_key, allow_stale=False):
+    entry = meal_cache.get(cache_key)
+    if not entry:
+        return None
+    if allow_stale or time.time() < entry['expires']:
+        return entry['data']
+    return None
+
+
 def get_month_meals_from_api(school_code, region_code):
     today = datetime.now(KST)
     month_str = today.strftime("%Y%m")
     cache_key = f"{region_code}_{school_code}_{month_str}"
 
-    if cache_key in meal_cache:
-        return meal_cache[cache_key]
+    fresh = _meal_cache_get(cache_key)
+    if fresh is not None:
+        return fresh
 
     url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
     params = {
@@ -1422,8 +1423,9 @@ def get_month_meals_from_api(school_code, region_code):
         response.raise_for_status()
         data = response.json()
 
-        if "mealServiceDietInfo" in data and data.get("mealServiceDietInfo")[1].get("row"):
-            for row in data["mealServiceDietInfo"][1]["row"]:
+        info = data.get("mealServiceDietInfo")
+        if info and len(info) > 1 and info[1].get("row"):
+            for row in info[1]["row"]:
                 date_str = row["MLSV_YMD"]
                 menu = row["DDISH_NM"].replace("<br/>", "\n").replace("y ", "").replace("y\n", "\n")
                 meal_type = row["MMEAL_SC_CODE"]
@@ -1432,15 +1434,25 @@ def get_month_meals_from_api(school_code, region_code):
                 elif meal_type == "2": meals[date_str]["lunch"] = menu
                 elif meal_type == "3": meals[date_str]["dinner"] = menu
 
-        meal_cache[cache_key] = dict(meals)
-        return dict(meals)
+            result = dict(meals)
+            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_CACHE_TTL}
+            return result
+
+        result_code = (data.get("RESULT") or {}).get("CODE", "")
+        if result_code == "INFO-200":
+            result = {}
+            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_EMPTY_TTL}
+            return result
+        app.logger.warning(f"NEIS meal response without data (school={school_code}, code={result_code or 'unknown'})")
 
     except requests.exceptions.Timeout:
         app.logger.error(f"NEIS API timeout for school {school_code}")
-        return dict(meals)
     except Exception as e:
         app.logger.error(f"Error fetching meals from API for {school_code}: {e}")
-        return dict(meals)
+
+    stale = _meal_cache_get(cache_key, allow_stale=True)
+    return stale if stale is not None else {}
+
 
 def get_nearby_schools(current_school_info):
     try:
@@ -1847,31 +1859,7 @@ def view_namuboard_logs():
         return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
 
 
-def _admin_auth_check():
-    """관리자 인증 확인. 통과하면 None, 실패하면 Response 반환."""
-    client_ip = get_client_ip()
-    if is_admin_ip(client_ip):
-        return None
-    auth_cookie = request.cookies.get('admin_auth', '')
-    if ADMIN_PASSWORD_HASH and auth_cookie == ADMIN_PASSWORD_HASH:
-        return None
-    if request.method == 'POST':
-        pw = request.form.get('password', '')
-        if ADMIN_PASSWORD_HASH and hashlib.sha256(pw.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
-            resp = make_response(redirect(request.url))
-            resp.set_cookie('admin_auth', ADMIN_PASSWORD_HASH,
-                            max_age=3600 * 8, httponly=True, samesite='Lax')
-            return resp
-        return make_response(
-            '<form method="POST">비밀번호: <input type="password" name="password">'
-            '<button type="submit">확인</button>'
-            '<p style="color:red">비밀번호가 틀렸습니다.</p></form>',
-            401
-        )
-    return make_response(
-        '<form method="POST">비밀번호: <input type="password" name="password">'
-        '<button type="submit">확인</button></form>'
-    )
+
 
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -1916,7 +1904,7 @@ def admin_dashboard():
     missing_ips = [
         e['ip'] for e in top_bots
         if e['ip'] not in IP_INFO_CACHE
-        or time.time() - IP_INFO_CACHE[e['ip']][0] >= IP_INFO_CACHE_TTL
+        or not _ipinfo_fresh(*IP_INFO_CACHE[e['ip']])
     ]
     if missing_ips:
         with ThreadPoolExecutor(max_workers=20) as pool:
@@ -1931,7 +1919,15 @@ def admin_dashboard():
         enriched_bot_ips.append({**entry, 'info': info})
     stats['bot_ip_list_enriched'] = enriched_bot_ips
 
-    return render_template('admin_dashboard.html', stats=stats)
+    ip_debug = {
+        'CF-Connecting-IP': request.headers.get('CF-Connecting-IP', ''),
+        'True-Client-IP': request.headers.get('True-Client-IP', ''),
+        'X-Forwarded-For': request.headers.get('X-Forwarded-For', ''),
+        'remote_addr': request.remote_addr or '',
+        '서버가 사용한 IP': get_client_ip(),
+        '사용 중인 헤더 설정': ','.join(CLIENT_IP_HEADERS) or '(없음)',
+    }
+    return render_template('admin_dashboard.html', stats=stats, ip_debug=ip_debug)
 
 
 @app.route('/stats', methods=['GET', 'POST'])
@@ -2015,6 +2011,226 @@ def security_status():
 @app.route("/health")
 def health():
     return "ok", 200
+
+
+LOGIN_PAGE_HTML = """<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>관리자 로그인</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f7;color:#1d1d1f}
+.card{width:min(92vw,360px);background:#fff;border-radius:18px;padding:32px 28px;box-shadow:0 10px 40px rgba(0,0,0,.08)}
+h1{margin:0 0 20px;font-size:22px;letter-spacing:-.03em}
+input{width:100%;box-sizing:border-box;padding:13px 14px;border:1px solid #d2d2d7;border-radius:12px;font-size:16px;margin-bottom:12px}
+button{width:100%;padding:13px;border:0;border-radius:12px;background:#007aff;color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+.err{margin:0 0 14px;color:#d70015;font-size:14px;line-height:1.5}
+@media (prefers-color-scheme:dark){body{background:#000;color:#f5f5f7}.card{background:#1c1c1e}input{background:#2c2c2e;border-color:#3a3a3c;color:#f5f5f7}button{background:#0a84ff}.err{color:#ff453a}}
+</style></head><body><form class="card" method="post">
+<h1>관리자 로그인</h1>__NOTICE__
+<input type="password" name="password" placeholder="비밀번호" autocomplete="current-password" autofocus>
+<button type="submit">로그인</button></form></body></html>"""
+
+
+def _is_https_request():
+    return request.is_secure or request.headers.get('X-Forwarded-Proto', '').lower() == 'https'
+
+
+def admin_identity():
+    token = request.cookies.get(ADMIN_SESSION_COOKIE, '')
+    if admin_sessions.valid(token):
+        return 'session:' + token
+    return 'ip:' + (get_client_ip() or '')
+
+
+def admin_csrf_token():
+    return admin_csrf.token(admin_identity())
+
+
+app.jinja_env.globals['admin_csrf_token'] = admin_csrf_token
+
+
+@app.context_processor
+def inject_ad_config():
+    return {'adfit': {
+        'rect_unit': os.environ.get('ADFIT_RECT_UNIT', '').strip(),
+        'bottom_unit': os.environ.get('ADFIT_BOTTOM_UNIT', '').strip(),
+    }}
+
+
+def _admin_login_page(message='', status=200):
+    notice = f'<p class="err">{escape(message)}</p>' if message else ''
+    response = make_response(LOGIN_PAGE_HTML.replace('__NOTICE__', notice), status)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+def _collect_prior_trail(ip, limit=200):
+    items = []
+    try:
+        with open(ACCESS_LOG_PATH, 'r', encoding='utf-8', errors='replace') as f:
+            for line in f:
+                if ip not in line:
+                    continue
+                m = TRAIL_LOG_RE.match(line.strip())
+                if not m or m.group(3) != ip:
+                    continue
+                day, clock, _, ua, method, path, status, ref = m.groups()
+                items.append({'t': f'{day}T{clock}+09:00', 'm': method, 'p': path[:300], 's': int(status), 'u': ua[:160], 'r': ref[:160]})
+    except OSError:
+        return []
+    return items[-limit:]
+
+
+def _flush_dash_now():
+    try:
+        dash_store.set_security(security_watch.snapshot())
+        security_watch.dirty = False
+        dash_store.sync()
+    except Exception as e:
+        app.logger.error(f"대시보드 즉시 저장 실패: {e}")
+
+
+def _block_for_login_failures(ip, count):
+    security_watch.watch(ip, '관리자 로그인 연속 실패', seed_trail=_collect_prior_trail(ip))
+    block_ip_now(ip, f'Admin login failed {count} times')
+    security_watch.mark_blocked(ip)
+    security_watch.incident(ip, 'BLOCK', f'관리자 로그인 {count}회 실패로 차단')
+    threading.Thread(target=_flush_dash_now, daemon=True).start()
+
+
+def remove_host_from_blacklist(ip):
+    cidr = _host_cidr(ip)
+    if cidr is None:
+        return 0
+    target = ipaddress.ip_network(cidr, strict=False)
+    kept = []
+    removed = 0
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                part = line.split('#', 1)[0].strip()
+                if part:
+                    try:
+                        if ipaddress.ip_network(part, strict=False) == target:
+                            removed += 1
+                            continue
+                    except ValueError:
+                        pass
+                kept.append(line)
+        if removed:
+            tmp = BLACKLIST_FILE + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.writelines(kept)
+            os.replace(tmp, BLACKLIST_FILE)
+            refresh_blacklist()
+            schedule_github_sync()
+    blocked_ips.discard(ip)
+    failed_attempts.pop(ip, None)
+    return removed
+
+
+def _admin_auth_check():
+    client_ip = get_client_ip()
+    session_ok = admin_sessions.valid(request.cookies.get(ADMIN_SESSION_COOKIE, ''))
+    if is_admin_ip(client_ip) or session_ok:
+        if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+            supplied = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token', '')
+            if not admin_csrf.valid(admin_identity(), supplied):
+                return make_response('요청이 만료되었거나 유효하지 않습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.', 403)
+        return None
+    if is_ip_blocked(client_ip):
+        return _blocked_response(force_redirect='text/html' in request.headers.get('Accept', ''))
+    if request.method == 'POST' and ADMIN_PASSWORD_HASH:
+        if secwatch.verify_password(request.form.get('password', ''), ADMIN_PASSWORD_HASH):
+            login_guard.success(client_ip)
+            response = make_response(redirect(request.url))
+            response.set_cookie(ADMIN_SESSION_COOKIE, admin_sessions.create(), max_age=8 * 3600, httponly=True,
+                                secure=_is_https_request(), samesite='Strict')
+            return response
+        count = login_guard.failure(client_ip)
+        security_watch.record_failure(client_ip)
+        security_watch.incident(client_ip, 'LOGIN_FAIL', f'{count}회째 실패')
+        log_security_incident(client_ip, "ADMIN_LOGIN_FAIL", f"{count}회째 실패")
+        if count >= ADMIN_LOGIN_FAIL_LIMIT:
+            _block_for_login_failures(client_ip, count)
+            return _blocked_response(force_redirect=True)
+        remaining = ADMIN_LOGIN_FAIL_LIMIT - count
+        return _admin_login_page(f'비밀번호가 맞지 않습니다. {remaining}번 더 틀리면 접근이 차단됩니다.', 401)
+    return _admin_login_page()
+
+
+@app.route('/blocked')
+def blocked_page():
+    ip = get_client_ip()
+    if not is_ip_blocked(ip):
+        return redirect('/')
+    response = make_response(render_template('blocked.html', ip=ip), 403)
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+    return response
+
+
+@app.route('/admin/ip/<ip>')
+def admin_ip_detail(ip):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not _valid_ip(ip):
+        return make_response('올바른 IP 주소가 아닙니다.', 400)
+    detail = security_watch.detail(ip)
+    trail = list(reversed(detail['trail'])) if detail else []
+    page_counts = defaultdict(lambda: {'count': 0, 'last': ''})
+    for item in (detail['trail'] if detail else []):
+        entry = page_counts[item['p'].split('?')[0]]
+        entry['count'] += 1
+        entry['last'] = max(entry['last'], item['t'])
+    pages = sorted(page_counts.items(), key=lambda kv: kv[1]['count'], reverse=True)
+    return render_template('admin_ip_detail.html', ip=ip, detail=detail, trail=trail, pages=pages,
+                           info=get_ip_info(ip) or {}, blocked=is_ip_blocked(ip), notice=request.args.get('notice', ''))
+
+
+@app.route('/admin/ip/<ip>/unblock', methods=['POST'])
+def admin_ip_unblock(ip):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not _valid_ip(ip):
+        return make_response('올바른 IP 주소가 아닙니다.', 400)
+    removed = remove_host_from_blacklist(ip)
+    security_watch.mark_unblocked(ip)
+    security_watch.incident(ip, 'UNBLOCK', f'관리자가 차단 해제 (삭제 {removed}건)')
+    threading.Thread(target=_flush_dash_now, daemon=True).start()
+    return redirect(f'/admin/ip/{ip}?notice=' + ('unblocked' if not is_ip_blocked(ip) else 'range'))
+
+
+@app.route('/admin/ip/<ip>/watch', methods=['POST'])
+def admin_ip_watch(ip):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not _valid_ip(ip):
+        return make_response('올바른 IP 주소가 아닙니다.', 400)
+    if request.form.get('action') == 'stop':
+        security_watch.unwatch(ip)
+    else:
+        security_watch.watch(ip, '관리자가 추적 시작', seed_trail=_collect_prior_trail(ip))
+    threading.Thread(target=_flush_dash_now, daemon=True).start()
+    return redirect(f'/admin/ip/{ip}')
+
+
+@app.route('/admin/watch', methods=['POST'])
+def admin_watch_add():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    ip = request.form.get('ip', '').strip()
+    if not _valid_ip(ip):
+        return make_response('올바른 IP 주소가 아닙니다.', 400)
+    security_watch.watch(ip, '관리자가 추적 시작', seed_trail=_collect_prior_trail(ip))
+    threading.Thread(target=_flush_dash_now, daemon=True).start()
+    return redirect(f'/admin/ip/{ip}')
+
+
 
 @app.route('/admin/clear/meal-cache', methods=['POST'])
 def admin_clear_meal_cache():
@@ -2343,7 +2559,7 @@ threading.Thread(target=_warm_region_caches, daemon=True).start()
 threading.Thread(target=ensure_asn_db, daemon=True).start()
 
 from push import init_push
-init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'), _admin_auth_check)
+init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'), _admin_auth_check, admin_csrf_token)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
