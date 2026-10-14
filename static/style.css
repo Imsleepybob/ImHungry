@@ -149,9 +149,29 @@ body {
 .form-field-animated.visible {
     overflow: visible;
 }
+/* Keep the native region control outside the animated/clipped field state.
+   iOS Safari presents <select> choices in a system picker and can fail to open
+   while an ancestor is being composited or clipped. */
 #regionSelectWrapper {
+    display: none;
+    max-height: none;
+    overflow: visible;
+    opacity: 1;
     transform: none;
-    transition: max-height 0.4s ease, opacity 0.4s ease;
+    transition: none;
+    pointer-events: auto;
+}
+#regionSelectWrapper.visible {
+    display: block;
+}
+
+/* Preserve the platform's native picker for the region control on iOS. */
+@supports (-webkit-touch-callout: none) {
+    #region {
+        -webkit-appearance: menulist;
+        appearance: auto;
+        background-image: none;
+    }
 }
 #schoolRow.visible {
     max-height: 160px;
