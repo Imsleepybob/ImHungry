@@ -472,7 +472,7 @@ def send_due(now=None):
         if not menu or menu == NO_MEAL:
             _log_skip_once(endpoint, slot, today, '오늘 해당 급식 정보 없음', info)
             continue
-        body = _clip(', '.join(_menu_lines(menu)[:3]))
+        body = _clip(', '.join(_menu_lines(menu)))
         jobs.append((endpoint, record['p256dh'], record['auth'], slot, f'🍱 오늘의 {label}', body, f'{today}-{key}', info))
 
     if not jobs:
