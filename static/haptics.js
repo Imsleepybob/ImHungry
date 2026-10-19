@@ -4,6 +4,7 @@
     const isAppEnv = ua.includes('ImHungryApp');
     const INTERACTIVE = 'button, a[href], [role="button"], summary, label, select, input[type="checkbox"], input[type="radio"], input[type="submit"], [data-haptic]';
     const ATTACHABLE = 'button, a[href], [role="button"], summary, [data-haptic-attach]';
+    const AD_AREA = 'ins.kakao_ad_area, .adsbygoogle, [id^="google_ads"], [id^="aswift"]';
     const ANDROID = {
         tap: 10,
         select: 6,
@@ -90,8 +91,12 @@
         return ios(kind, minGap);
     }
 
+    function inAd(element) {
+        return !!(element.closest && element.closest(AD_AREA));
+    }
+
     function attachTo(element) {
-        if (!tappt || attached.has(element) || element.hasAttribute('data-no-haptic')) return;
+        if (!tappt || attached.has(element) || element.hasAttribute('data-no-haptic') || inAd(element)) return;
         if (!element.matches(ATTACHABLE)) return;
         if (getComputedStyle(element).display === 'inline') return;
         attached.set(element, tappt.attach(element));
@@ -122,9 +127,7 @@
     function onClick(event) {
         if (!enabled) return;
         const target = event.target.closest ? event.target.closest(INTERACTIVE) : null;
-        if (!target || target.hasAttribute('data-no-haptic') || target.disabled || target.getAttribute('aria-disabled') === 'true') return;
-        // Let iOS handle native select activation and its picker without a capture-phase haptic call.
-        if (target.tagName === 'SELECT') return;
+        if (!target || target.hasAttribute('data-no-haptic') || target.disabled || target.getAttribute('aria-disabled') === 'true' || inAd(target)) return;
         if (canVibrate || isAppEnv) {
             if (event.isTrusted) fire(kindFor(target), 30);
             return;

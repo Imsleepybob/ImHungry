@@ -149,7 +149,6 @@ body {
 .form-field-animated.visible {
     overflow: visible;
 }
-
 #schoolRow.visible {
     max-height: 160px;
 }
@@ -668,11 +667,6 @@ input[type="text"]:focus {
 #ad-mobile, #ad-desktop { text-align: center; margin: 0 auto; }
 #bodyad-desktop, #bodyad-mobile { text-align: center; margin: 10px auto; }
 #bodyad-mobile { display: block; }
-#ad-mobile { min-height: 100px; }
-#ad-desktop, #bodyad-desktop { min-height: 90px; }
-#bodyad-mobile { min-height: 50px; }
-#bodyad-mobile.ad-rect { min-height: 250px; }
-.ad-bottom { text-align: center; margin: 28px auto; min-height: 250px; }
 
 @media (min-width: 768px) {
     #ad-desktop, #bodyad-desktop { display: block; }

@@ -19,7 +19,8 @@ GITHUB_REPO = os.environ.get('PUSH_GITHUB_REPO', '').strip()
 GITHUB_BRANCH = os.environ.get('PUSH_GITHUB_BRANCH', 'main').strip()
 GITHUB_DIR = os.environ.get('DASH_GITHUB_DIR', 'dashboard').strip().strip('/')
 GITHUB_API = 'https://api.github.com'
-SYNC_INTERVAL = 1800
+SYNC_INTERVAL = 600
+REFRESH_INTERVAL = 120
 RETENTION_DAYS = 90
 DAY_FILE_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})\.json$')
 
@@ -267,6 +268,42 @@ class DashStore:
             except Exception as e:
                 self.logger.error(f'[dashboard] 복원 후처리 실패: {e}')
 
+    def refresh_remote(self):
+        cutoff = (datetime.now(self.tz).date() - timedelta(days=RETENTION_DAYS)).isoformat()
+        merged = 0
+        for item in self._list_remote_days():
+            match = DAY_FILE_RE.match(item.get('name', ''))
+            if not match or match.group(1) < cutoff:
+                continue
+            key = 'day:' + match.group(1)
+            if (self.remote.get(key) or {}).get('sha') == item.get('sha'):
+                continue
+            raw = self._fetch_raw('days/' + item['name'])
+            if raw is None:
+                continue
+            self._merge_day(match.group(1), json.loads(raw.decode('utf-8')).get('parts') or {})
+            self.remote[key] = {'sha': item.get('sha'), 'hash': hashlib.sha256(raw).hexdigest()}
+            self.dirty.add(key)
+            merged += 1
+        for key in ('ipinfo', 'security'):
+            sha = self._fetch_sha(f'{key}.json')
+            if not sha or sha == (self.remote.get(key) or {}).get('sha'):
+                continue
+            raw = self._fetch_raw(f'{key}.json')
+            if raw is None:
+                continue
+            doc = json.loads(raw.decode('utf-8'))
+            if key == 'ipinfo':
+                self._merge_ipinfo(doc)
+            else:
+                self._merge_security(doc)
+            self.remote[key] = {'sha': sha, 'hash': hashlib.sha256(raw).hexdigest()}
+            self.dirty.add(key)
+            merged += 1
+        if merged:
+            self.logger.info(f'[dashboard] 다른 인스턴스가 저장한 기록 {merged}건을 병합했습니다')
+        return merged
+
     def _push_key(self, key):
         path = self._key_path(key)
         for attempt in range(2):
@@ -312,7 +349,7 @@ class DashStore:
             except Exception as e:
                 self.logger.error(f'[dashboard] 로그 집계 실패: {e}')
         self.persist_live()
-        if not self.gh_enabled() or not self.restored:
+        if not self.gh_enabled():
             return
         with self.io_lock:
             with self.lock:
@@ -337,26 +374,44 @@ class DashStore:
                 self._note('sync', True, f'변경된 파일 {self.put_count - put_before}개 저장 (확인 {len(done)}개)')
 
     def _loop(self):
+        next_restore = 0
+        next_refresh = time.time() + REFRESH_INTERVAL
+        next_sync = 0
         while not self.stop.is_set():
-            if not self.restored and self.gh_enabled():
+            now = time.time()
+            if self.gh_enabled() and not self.restored and now >= next_restore:
                 try:
                     with self.io_lock:
                         self.restore_remote()
                 except Exception as e:
                     self._note('restore', False, f'{type(e).__name__}: {str(e)[:150]}')
                     self.logger.error(f'[dashboard] GitHub 복원 실패: {e}')
-                    self.stop.wait(120)
-                    continue
-            try:
-                self.sync()
-            except Exception as e:
-                self.logger.error(f'[dashboard] 동기화 예외: {e}')
-            self.stop.wait(SYNC_INTERVAL)
+                    next_restore = time.time() + 120
+            if self.gh_enabled() and self.restored and now >= next_refresh:
+                try:
+                    with self.io_lock:
+                        self.refresh_remote()
+                except Exception as e:
+                    self.logger.error(f'[dashboard] GitHub 병합 실패: {e}')
+                next_refresh = time.time() + REFRESH_INTERVAL
+            if now >= next_sync:
+                try:
+                    self.sync()
+                except Exception as e:
+                    self.logger.error(f'[dashboard] 동기화 예외: {e}')
+                next_sync = time.time() + SYNC_INTERVAL
+            self.stop.wait(2)
+
+    def save_now(self):
+        self.sync()
+        return self.sync_note
 
     def flush(self):
         try:
+            if self.tick_hook:
+                self.tick_hook()
             self.persist_live()
-            if self.gh_enabled() and self.restored and self.io_lock.acquire(timeout=10):
+            if self.gh_enabled() and self.io_lock.acquire(timeout=15):
                 try:
                     for key in sorted(self.dirty):
                         self._push_key(key)
@@ -377,10 +432,7 @@ class DashStore:
             self.load_local()
         self.logger.info(f'[dashboard] 기록 저장소 시작(PID {pid}, boot {self.boot_id}): 로컬 {len(self.parts)}일, GitHub {"사용" if self.gh_enabled() else "미사용"}')
         threading.Thread(target=self._loop, daemon=True).start()
-        if self.gh_enabled():
-            atexit.register(self.flush)
-        else:
-            atexit.register(self.persist_live)
+        atexit.register(self.flush)
 
     def reset_after_fork(self):
         self.lock = threading.RLock()

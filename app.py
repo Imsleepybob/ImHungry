@@ -2049,14 +2049,6 @@ def admin_csrf_token():
 app.jinja_env.globals['admin_csrf_token'] = admin_csrf_token
 
 
-@app.context_processor
-def inject_ad_config():
-    return {'adfit': {
-        'rect_unit': os.environ.get('ADFIT_RECT_UNIT', '').strip(),
-        'bottom_unit': os.environ.get('ADFIT_BOTTOM_UNIT', '').strip(),
-    }}
-
-
 def _admin_login_page(message='', status=200):
     notice = f'<p class="err">{escape(message)}</p>' if message else ''
     response = make_response(LOGIN_PAGE_HTML.replace('__NOTICE__', notice), status)
@@ -2230,6 +2222,15 @@ def admin_watch_add():
     threading.Thread(target=_flush_dash_now, daemon=True).start()
     return redirect(f'/admin/ip/{ip}')
 
+
+
+@app.route('/admin/dashboard/save', methods=['POST'])
+def admin_dashboard_save():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    note = dash_store.save_now()
+    return redirect('/admin/dashboard?saved=' + ('1' if '성공' in note else '0'))
 
 
 @app.route('/admin/clear/meal-cache', methods=['POST'])

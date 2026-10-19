@@ -14,7 +14,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.3">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -28,7 +28,7 @@
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
 <script src="{{ url_for('static', filename='notification.js') }}"></script>
-<script src="{{ url_for('static', filename='haptics.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='haptics.js') }}"></script>
 <script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
@@ -191,15 +191,9 @@
     <div id="bodyad-desktop">
       <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
     </div>
-    {% if adfit.rect_unit %}
-    <div id="bodyad-mobile" class="ad-rect">
-      <ins class="kakao_ad_area" data-ad-unit="{{ adfit.rect_unit }}" data-ad-width="300" data-ad-height="250"></ins>
-    </div>
-    {% else %}
     <div id="bodyad-mobile">
       <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
     </div>
-    {% endif %}
 
     <div class="meal-card week-meal">
       <h3 class="meal-title">이번 주 급식 정보🍗</h3>
@@ -325,12 +319,6 @@
     <span class="allergy-info-item">⑲잣</span>
   </div>
 </div>
-
-{% if adfit.bottom_unit and school_name %}
-<div class="ad-bottom">
-  <ins class="kakao_ad_area" data-ad-unit="{{ adfit.bottom_unit }}" data-ad-width="300" data-ad-height="250"></ins>
-</div>
-{% endif %}
 
 <footer class="main-footer">
   <div class="footer-content">

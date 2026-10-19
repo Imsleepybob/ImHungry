@@ -862,6 +862,10 @@ body {
           {% for key, value in ip_debug.items() %}<div>{{ key }}: {{ value or '-' }}</div>{% endfor %}
           <div style="margin-top:4px;">CF-Connecting-IP가 비어 있으면 Cloudflare 헤더를 받지 못하는 환경이므로 X-Forwarded-For 첫 값을 사용합니다.</div>
         </details>{% endif %}
+        <form method="POST" action="/admin/dashboard/save" style="display:inline-block; margin:6px 0;">
+          <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
+          <button type="submit" class="btn-expand">지금 저장</button>
+        </form> <small>재배포 직전에 눌러 두면 최신 기록까지 안전하게 저장됩니다.</small><br>
         복원: {{ stats.persistence.restore_note }}<br>
         저장: {{ stats.persistence.sync_note }}
       </div>
