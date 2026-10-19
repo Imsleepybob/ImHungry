@@ -36480,3 +36480,4 @@
 35.230.50.135/32  # Auto-blocked: Rate limit exceeded - 2026-10-19 05:21:00.278111
 35.245.189.222/32  # Auto-blocked: High suspicion score: 15 - 2026-10-19 05:49:18.041987
 8.234.239.106/32  # Auto-blocked: High suspicion score: 15 - 2026-10-19 08:05:23.219144
+35.234.11.227/32  # Auto-blocked: High suspicion score: 15 - 2026-10-19 08:24:36.807443
