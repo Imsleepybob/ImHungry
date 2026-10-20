@@ -36491,3 +36491,5 @@
 111.225.148.140/32  # Auto-blocked: High suspicion score: 15 - 2026-10-20 21:42:09.940050
 111.225.148.220/32  # Auto-blocked: High suspicion score: 15 - 2026-10-20 21:42:34.670828
 111.225.148.160/32  # Auto-blocked: High suspicion score: 15 - 2026-10-20 21:43:00.022710
+111.225.148.143/32  # Auto-blocked: High suspicion score: 15 - 2026-10-20 21:43:30.280848
+111.225.149.134/32  # Auto-blocked: High suspicion score: 15 - 2026-10-20 21:43:48.709054
