@@ -36500,3 +36500,4 @@
 34.21.197.23/32  # Auto-blocked: Rate limit exceeded - 2026-10-21 15:25:36.752417
 35.196.63.0/32  # Auto-blocked: Rate limit exceeded - 2026-10-21 15:57:09.956640
 91.92.241.117/32  # Auto-blocked: Rate limit exceeded - 2026-10-21 17:41:41.071292
+193.142.147.111/32  # Auto-blocked: Rate limit exceeded - 2026-10-22 10:31:25.138361
