@@ -798,48 +798,27 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<div id="notification-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3100; align-items:center; justify-content:center;">
-  <div style="background:var(--bg-container); border-radius:16px; padding:24px; max-width:360px; width:90%; max-height:80vh; overflow-y:auto;">
-    <h3 style="margin:0 0 16px; color:var(--text-primary);">🔔 알림 설정</h3>
-    <p style="font-size:0.9em; color:var(--text-secondary); margin-bottom:16px;">설정한 시각에 급식 알림을 받을 수 있어요. 급식이 없는 날은 알림이 오지 않아요.</p>
-    <div style="margin-bottom:12px;">
-      <label style="font-weight:600; color:var(--text-primary);">알림 받을 식사</label>
-      <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="checkbox" id="noti-breakfast-enable">
-          <label for="noti-breakfast-enable" style="min-width:40px;">조식</label>
-          <input type="time" id="noti-breakfast-time" value="07:30" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
-        </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="checkbox" id="noti-lunch-enable">
-          <label for="noti-lunch-enable" style="min-width:40px;">중식</label>
-          <input type="time" id="noti-lunch-time" value="12:00" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
-        </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="checkbox" id="noti-dinner-enable">
-          <label for="noti-dinner-enable" style="min-width:40px;">석식</label>
-          <input type="time" id="noti-dinner-time" value="18:00" style="flex:1; padding:6px; border-radius:8px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary);">
-        </div>
+<div id="notification-modal" class="noti-modal-backdrop" role="presentation">
+  <section id="notification-sheet" class="noti-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="notification-title">
+    <div id="notification-drag-handle" class="noti-sheet-handle" aria-hidden="true"></div>
+    <header class="noti-sheet-header"><h3 id="notification-title">🔔 알림 설정</h3><button type="button" id="noti-close-btn" class="noti-modal-close" aria-label="닫기">×</button></header>
+    <p class="noti-settings-desc">설정한 시각에 급식 알림을 받을 수 있어요. 급식이 없는 날은 알림이 오지 않아요.</p>
+    <div class="noti-settings-section">
+      <label class="noti-settings-label">알림 받을 식사</label>
+      <div class="noti-meal-list">
+        <div class="noti-meal-row"><input type="checkbox" id="noti-breakfast-enable"><label for="noti-breakfast-enable">조식</label><input type="time" id="noti-breakfast-time" value="07:30"></div>
+        <div class="noti-meal-row"><input type="checkbox" id="noti-lunch-enable"><label for="noti-lunch-enable">중식</label><input type="time" id="noti-lunch-time" value="12:00"></div>
+        <div class="noti-meal-row"><input type="checkbox" id="noti-dinner-enable"><label for="noti-dinner-enable">석식</label><input type="time" id="noti-dinner-time" value="18:00"></div>
       </div>
     </div>
-    <div style="margin-bottom:20px;">
-      <label style="font-weight:600; color:var(--text-primary);">알림 요일</label>
-      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-        <label id="day-0" class="day-label">일</label>
-        <label id="day-1" class="day-label">월</label>
-        <label id="day-2" class="day-label">화</label>
-        <label id="day-3" class="day-label">수</label>
-        <label id="day-4" class="day-label">목</label>
-        <label id="day-5" class="day-label">금</label>
-        <label id="day-6" class="day-label">토</label>
-      </div>
+    <div class="noti-settings-section"><label class="noti-settings-label">알림 요일</label><div class="noti-days">
+      <label id="day-0" class="day-label">일</label><label id="day-1" class="day-label">월</label><label id="day-2" class="day-label">화</label><label id="day-3" class="day-label">수</label><label id="day-4" class="day-label">목</label><label id="day-5" class="day-label">금</label><label id="day-6" class="day-label">토</label>
+    </div></div>
+    <div class="noti-settings-actions">
+      <button type="button" id="noti-disable-btn" class="noti-guide-btn danger">알림 끄기</button>
+      <div class="noti-settings-primary-actions"><button type="button" id="noti-cancel-btn" class="noti-guide-btn secondary">취소</button><button type="button" id="noti-save-btn" class="noti-guide-btn primary">저장</button></div>
     </div>
-    <div style="display:flex; gap:10px;">
-      <button id="noti-cancel-btn" style="flex:1; padding:12px; border-radius:10px; border:1px solid var(--border-light); background:var(--bg-secondary); color:var(--text-primary); cursor:pointer;">취소</button>
-      <button id="noti-save-btn" style="flex:1; padding:12px; border-radius:10px; border:none; background:var(--primary-color); color:white; font-weight:600; cursor:pointer;">저장</button>
-      <button id="noti-disable-btn" style="flex:1; padding:12px; border-radius:10px; border:none; background:#e55; color:white; font-weight:600; cursor:pointer;">알림 끄기</button>
-    </div>
-  </div>
+  </section>
 </div>
 
 <style>
@@ -874,8 +853,28 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 .noti-guide-btn.primary { background: var(--primary-color); color: white; }
 .noti-guide-btn.secondary { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; }
-#notification-modal { display: none; }
-#notification-modal.show { display: flex; }
+.noti-modal-backdrop { position:fixed; inset:0; z-index:3100; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.4); }
+.noti-modal-backdrop.show { display:flex; }
+.noti-settings-sheet { width:100%; max-width:480px; max-height:90vh; max-height:90dvh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:12px 24px calc(24px + env(safe-area-inset-bottom)); border-radius:20px 20px 0 0; background:var(--bg-container); color:var(--text-primary); transform:translateY(100%); transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
+.noti-settings-sheet.show { transform:translateY(0); }
+.noti-sheet-handle { width:40px; height:4px; margin:0 auto 20px; border-radius:2px; background:var(--border-color); cursor:grab; touch-action:none; }
+.noti-sheet-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.noti-sheet-header h3 { margin:0; color:var(--text-primary); font-size:1.2rem; }
+.noti-modal-close { display:flex; align-items:center; justify-content:center; width:40px; height:40px; flex:0 0 40px; border:0; border-radius:50%; background:var(--bg-secondary); color:var(--text-secondary); font-size:26px; line-height:1; cursor:pointer; }
+.noti-settings-desc { margin:0 0 20px; color:var(--text-secondary); font-size:.9rem; line-height:1.55; }
+.noti-settings-section { margin-bottom:20px; }
+.noti-settings-label { display:block; color:var(--text-primary); font-weight:700; }
+.noti-meal-list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.noti-meal-row { display:grid; grid-template-columns:24px 48px minmax(0,1fr); align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); }
+.noti-meal-row input[type="checkbox"] { accent-color:var(--primary-color); }
+.noti-meal-row label { color:var(--text-primary); font-weight:600; }
+.noti-meal-row input[type="time"] { width:100%; min-width:0; box-sizing:border-box; padding:8px; border:1px solid var(--border-light); border-radius:8px; background:var(--bg-container); color:var(--text-primary); font:inherit; }
+.noti-days { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.noti-settings-actions { display:flex; flex-direction:column; gap:10px; }
+.noti-settings-actions .noti-guide-btn { min-height:48px; }
+.noti-settings-primary-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.noti-guide-btn.danger { background:var(--bg-secondary); color:#d94848; border:1px solid rgba(217,72,72,.35); }
+@media (max-width:380px) { .noti-settings-sheet { padding-right:16px; padding-left:16px; } .noti-meal-row { gap:8px; padding-right:8px; padding-left:8px; } }
 @keyframes iconPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
@@ -1032,10 +1031,72 @@ document.addEventListener('DOMContentLoaded', function() {
         const notiBtn = document.getElementById('notification-btn');
         if (!notiBtn) return;
 
+        const settingsModal = document.getElementById('notification-modal');
+        const settingsSheet = document.getElementById('notification-sheet');
+        const settingsHandle = document.getElementById('notification-drag-handle');
+        let settingsCloseTimer = null;
+
         const openNotificationModal = () => {
-            document.getElementById('notification-modal').classList.add('show');
+            clearTimeout(settingsCloseTimer);
+            settingsModal.classList.add('show');
+            settingsSheet.classList.remove('show');
+            settingsSheet.style.transform = '';
+            settingsSheet.style.transition = '';
             document.body.style.overflow = 'hidden';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                settingsSheet.classList.add('show');
+                document.getElementById('noti-close-btn').focus({ preventScroll: true });
+            }));
         };
+
+        const closeNotificationModal = () => {
+            if (!settingsModal.classList.contains('show')) return;
+            settingsSheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+            settingsSheet.style.transform = 'translateY(100%)';
+            document.body.style.overflow = '';
+            clearTimeout(settingsCloseTimer);
+            settingsCloseTimer = setTimeout(() => {
+                settingsModal.classList.remove('show');
+                settingsSheet.classList.remove('show');
+                settingsSheet.style.transform = '';
+                settingsSheet.style.transition = '';
+                notiBtn.focus({ preventScroll: true });
+            }, 400);
+        };
+
+        document.getElementById('noti-close-btn').addEventListener('click', closeNotificationModal);
+        settingsModal.addEventListener('click', (event) => {
+            if (event.target === settingsModal) closeNotificationModal();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && settingsModal.classList.contains('show')) closeNotificationModal();
+        });
+
+        (function initSettingsDrag() {
+            if (!settingsHandle || !settingsSheet) return;
+            let startY = 0, currentY = 0, isDragging = false;
+            settingsHandle.addEventListener('pointerdown', (event) => {
+                if (!event.isPrimary || (event.button !== undefined && event.button !== 0)) return;
+                isDragging = true; startY = event.clientY; currentY = 0;
+                settingsSheet.style.transition = 'none';
+                settingsHandle.setPointerCapture(event.pointerId);
+            });
+            settingsHandle.addEventListener('pointermove', (event) => {
+                if (!isDragging) return;
+                currentY = Math.max(0, event.clientY - startY);
+                settingsSheet.style.transform = `translateY(${currentY}px)`;
+            });
+            const endDrag = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                settingsSheet.style.transition = 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)';
+                if (currentY > 80) closeNotificationModal();
+                else settingsSheet.style.transform = 'translateY(0)';
+                currentY = 0;
+            };
+            settingsHandle.addEventListener('pointerup', endDrag);
+            settingsHandle.addEventListener('pointercancel', endDrag);
+        })();
 
         notiBtn.addEventListener('click', async () => {
             trackEvent('btn_notification', 'click');
@@ -1082,8 +1143,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('noti-cancel-btn').addEventListener('click', () => {
             NotificationManager.triggerHaptic('impact', 'LIGHT');
-            document.getElementById('notification-modal').classList.remove('show');
-            document.body.style.overflow = '';
+            closeNotificationModal();
         });
 
         document.getElementById('noti-disable-btn').addEventListener('click', async () => {
@@ -1091,8 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await NotificationManager.cancelAll();
             const s = NotificationManager.loadSettings();
             if (s) { s.enabled = false; NotificationManager.saveSettings(s); }
-            document.getElementById('notification-modal').classList.remove('show');
-            document.body.style.overflow = '';
+            closeNotificationModal();
             alert('알림이 비활성화되었습니다.');
         });
 
@@ -1115,9 +1174,8 @@ document.addEventListener('DOMContentLoaded', function() {
             NotificationManager.saveSettings(settings);
             if (NotificationManager.isWebPushSupported()) {
                 const ok = await NotificationManager.subscribeWebPush(settings);
-                document.getElementById('notification-modal').classList.remove('show');
-                document.body.style.overflow = '';
-                if (ok) {
+                closeNotificationModal();
+                    if (ok) {
                     NotificationManager.triggerHaptic('notification', 'SUCCESS');
                     alert('알림이 설정되었습니다.');
                 } else {
@@ -1128,8 +1186,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const mealData = {{ month_meals | tojson | safe }};
             const count = await NotificationManager.schedule(settings, mealData);
-            document.getElementById('notification-modal').classList.remove('show');
-            document.body.style.overflow = '';
+            closeNotificationModal();
             NotificationManager.triggerHaptic('notification', 'SUCCESS');
             alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
         });
