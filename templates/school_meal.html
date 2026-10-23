@@ -60,8 +60,11 @@
     {% if school_name and month_meals %}
     <div class="notification-anchor">
     <button id="notification-btn" class="theme-toggle-btn" aria-label="알림 설정">
-      <svg width="22" height="24" viewBox="3 2 22.1133 24.2227" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <svg class="noti-icon-off" width="22" height="24" viewBox="3 2 22.1133 24.2227" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M3 20.5508C3 21.4062 3.65625 21.9688 4.76953 21.9688H9.71484C9.80859 24.2305 11.5781 26.2109 14.0508 26.2109C16.5352 26.2109 18.3047 24.2422 18.3984 21.9688H23.3438C24.4453 21.9688 25.1133 21.4062 25.1133 20.5508C25.1133 19.3789 23.918 18.3242 22.9102 17.2812C22.1367 16.4727 21.9258 14.8086 21.832 13.4609C21.75 8.84375 20.5547 5.86719 17.4375 4.74219C17.0391 3.20703 15.7852 2 14.0508 2C12.3281 2 11.0625 3.20703 10.6758 4.74219C7.55859 5.86719 6.36328 8.84375 6.28125 13.4609C6.1875 14.8086 5.97656 16.4727 5.20312 17.2812C4.18359 18.3242 3 19.3789 3 20.5508ZM5.27344 20.1992V20.0586C5.48438 19.7188 6.1875 19.0273 6.79688 18.3477C7.64062 17.4102 8.03906 15.8984 8.14453 13.6133C8.23828 8.49219 9.76172 6.86328 11.7656 6.3125C12.0586 6.24219 12.2227 6.10156 12.2344 5.79688C12.2695 4.57812 12.9727 3.72266 14.0508 3.72266C15.1406 3.72266 15.832 4.57812 15.8789 5.79688C15.8906 6.10156 16.043 6.24219 16.3359 6.3125C18.3516 6.86328 19.875 8.49219 19.9688 13.6133C20.0742 15.8984 20.4727 17.4102 21.3047 18.3477C21.9258 19.0273 22.6172 19.7188 22.8281 20.0586V20.1992H5.27344ZM11.543 21.9688H16.5703C16.4766 23.5625 15.4688 24.5586 14.0508 24.5586C12.6445 24.5586 11.625 23.5625 11.543 21.9688Z"/>
+      </svg>
+      <svg class="noti-icon-on" width="22" height="24" viewBox="0 0 22.1133 24.668" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M1.76953 19.9688H20.3438C21.4453 19.9688 22.1133 19.4062 22.1133 18.5508C22.1133 17.3789 20.918 16.3242 19.9102 15.2812C19.1367 14.4727 18.9258 12.8086 18.832 11.4609C18.75 6.96094 17.5547 3.86719 14.4375 2.74219C13.9922 1.20703 12.7852 0 11.0508 0C9.32812 0 8.10938 1.20703 7.67578 2.74219C4.55859 3.86719 3.36328 6.96094 3.28125 11.4609C3.1875 12.8086 2.97656 14.4727 2.20312 15.2812C1.18359 16.3242 0 17.3789 0 18.5508C0 19.4062 0.65625 19.9688 1.76953 19.9688ZM11.0508 24.668C13.043 24.668 14.4961 23.2148 14.6484 21.5742H7.46484C7.61719 23.2148 9.07031 24.668 11.0508 24.668Z"/>
       </svg>
     </button>
     <aside id="noti-prompt" class="noti-prompt" hidden role="status" aria-live="polite">
@@ -801,7 +804,16 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="notification-modal" class="noti-modal-backdrop" role="presentation">
   <section id="notification-sheet" class="noti-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="notification-title">
     <div id="notification-drag-handle" class="noti-sheet-handle" aria-hidden="true"></div>
-    <header class="noti-sheet-header"><h3 id="notification-title" tabindex="-1">알림 설정</h3></header>
+    <header class="noti-sheet-header">
+      <h3 id="notification-title" tabindex="-1">알림 설정</h3>
+      <button type="button" id="noti-disable-btn" class="noti-modal-close" aria-label="알림 끄기" title="알림 끄기" hidden>
+        <svg width="22" height="22" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M1.32715 19.3682C1.32715 20.2237 1.99512 20.7862 3.09668 20.7862H8.04199C8.13574 23.0479 9.90527 25.0283 12.3896 25.0283C14.8623 25.0283 16.6318 23.0596 16.7256 20.7862H21.6709C22.7842 20.7862 23.4404 20.2237 23.4404 19.3682C23.4404 18.1963 22.2568 17.1416 21.2373 16.0987C20.4639 15.2901 20.2529 13.626 20.1709 12.2783C20.0771 7.66113 18.8936 4.68457 15.7764 3.55957C15.3779 2.02441 14.1123 0.817383 12.3896 0.817383C10.6553 0.817383 9.40137 2.02441 9.00293 3.55957C5.88574 4.68457 4.69043 7.66113 4.6084 12.2783C4.51465 13.626 4.31543 15.2901 3.54199 16.0987C2.52246 17.1416 1.32715 18.1963 1.32715 19.3682ZM3.6123 19.0166V18.876C3.82324 18.5362 4.51465 17.8448 5.13574 17.1651C5.96777 16.2276 6.37793 14.7158 6.47168 12.4307C6.56543 7.30957 8.08887 5.68066 10.1045 5.12988C10.3975 5.05957 10.5498 4.91894 10.5615 4.61426C10.6084 3.39551 11.2998 2.54004 12.3896 2.54004C13.4678 2.54004 14.1709 3.39551 14.2061 4.61426C14.2178 4.91894 14.3818 5.05957 14.6748 5.12988C16.6787 5.68066 18.2021 7.30957 18.3076 12.4307C18.4014 14.7158 18.7998 16.2276 19.6436 17.1651C20.2529 17.8448 20.9561 18.5362 21.167 18.876V19.0166H3.6123ZM9.87012 20.7862H14.8975C14.8154 22.3799 13.7959 23.376 12.3896 23.376C10.9717 23.376 9.96387 22.3799 9.87012 20.7862Z"/>
+          <path class="noti-slash-cut" d="M0.65918 4.16895L21.7061 25.1924C22.6084 26.083 24.0615 26.083 24.9404 25.169C25.8076 24.2783 25.7959 22.8604 24.9287 21.9815L3.88184 0.946297C3.00293 0.06739 1.56152 0.0556713 0.65918 0.946297C-0.219727 1.8252 -0.219727 3.29005 0.65918 4.16895Z"/>
+          <path d="M1.63184 3.19629L22.6787 24.2198C23.0303 24.583 23.6162 24.583 23.9561 24.2198C24.3076 23.8682 24.3076 23.3057 23.9561 22.9424L2.9209 1.91894C2.56934 1.56738 1.99512 1.56738 1.63184 1.91894C1.29199 2.25879 1.29199 2.85644 1.63184 3.19629Z"/>
+        </svg>
+      </button>
+    </header>
     <p class="noti-settings-desc">설정한 시각에 급식 안내를 받을 수 있어요. 급식이 없는 날은 안내가 오지 않아요.</p>
     <div class="noti-settings-section">
       <label class="noti-settings-label">안내 받을 급식</label>
@@ -815,7 +827,6 @@ document.addEventListener('DOMContentLoaded', function() {
       <label id="day-0" class="day-label">일</label><label id="day-1" class="day-label">월</label><label id="day-2" class="day-label">화</label><label id="day-3" class="day-label">수</label><label id="day-4" class="day-label">목</label><label id="day-5" class="day-label">금</label><label id="day-6" class="day-label">토</label>
     </div></div>
     <div class="noti-settings-actions">
-      <button type="button" id="noti-disable-btn" class="noti-guide-btn danger">알림 끄기</button>
       <div class="noti-settings-primary-actions"><button type="button" id="noti-cancel-btn" class="noti-guide-btn secondary">닫기</button><button type="button" id="noti-save-btn" class="noti-guide-btn primary">저장</button></div>
     </div>
   </section>
@@ -873,7 +884,12 @@ document.addEventListener('DOMContentLoaded', function() {
 .noti-settings-actions { display:flex; flex-direction:column; gap:10px; }
 .noti-settings-actions .noti-guide-btn { min-height:48px; }
 .noti-settings-primary-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.noti-guide-btn.danger { background:var(--bg-secondary); color:#d94848; border:1px solid rgba(217,72,72,.35); }
+.noti-modal-close[hidden] { display:none; }
+.noti-modal-close svg { fill:currentColor; }
+.noti-modal-close svg .noti-slash-cut { fill:var(--bg-secondary); }
+#notification-btn .noti-icon-on { display:none; }
+#notification-btn.is-on .noti-icon-on { display:block; }
+#notification-btn.is-on .noti-icon-off { display:none; }
 .notification-anchor { position:relative; display:flex; }
 #noti-prompt[hidden] { display:none; }
 .noti-prompt { position:absolute; z-index:1; top:calc(100% + 10px); right:0; width:max-content; max-width:min(260px, calc(100vw - 24px)); box-sizing:border-box; padding:12px 16px; border-radius:12px; background:#111; color:#fff; box-shadow:0 5px 18px rgba(0,0,0,.22); font-size:1rem; font-weight:700; line-height:1.35; white-space:nowrap; pointer-events:none; }
@@ -1044,7 +1060,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const settingsModal = document.getElementById('notification-modal');
         const settingsSheet = document.getElementById('notification-sheet');
         const notificationPrompt = document.getElementById('noti-prompt');
+        const disableBtn = document.getElementById('noti-disable-btn');
         let settingsCloseTimer = null;
+
+        const syncNotiState = () => {
+            const current = NotificationManager.loadSettings();
+            const on = !!(current && current.enabled);
+            notiBtn.classList.toggle('is-on', on);
+            disableBtn.hidden = !on;
+        };
 
         const openNotificationModal = () => {
             clearTimeout(settingsCloseTimer);
@@ -1150,6 +1174,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         const saved = NotificationManager.loadSettings();
+        syncNotiState();
         if (notificationPrompt && !saved) {
             let dismissed = false;
             try { dismissed = localStorage.getItem('noti_prompt_dismissed') === '1'; } catch (e) { dismissed = true; }
@@ -1190,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await NotificationManager.cancelAll();
             const s = NotificationManager.loadSettings();
             if (s) { s.enabled = false; NotificationManager.saveSettings(s); }
+            syncNotiState();
             closeNotificationModal();
             alert('알림이 비활성화되었습니다.');
         });
@@ -1210,12 +1236,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 school: { code: {{ school_code | tojson }}, region: {{ current_school.region_code | tojson }} }
             };
 
-            NotificationManager.saveSettings(settings);
             if (NotificationManager.isWebPushSupported()) {
                 const ok = await NotificationManager.subscribeWebPush(settings);
                 closeNotificationModal();
                     if (ok) {
+                    NotificationManager.saveSettings(settings);
                     NotificationManager.triggerHaptic('notification', 'SUCCESS');
+                    syncNotiState();
                     alert('알림이 설정되었습니다.');
                 } else {
                     NotificationManager.triggerHaptic('notification', 'ERROR');
@@ -1225,6 +1252,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const mealData = {{ month_meals | tojson | safe }};
             const count = await NotificationManager.schedule(settings, mealData);
+            NotificationManager.saveSettings(settings);
+            syncNotiState();
             closeNotificationModal();
             NotificationManager.triggerHaptic('notification', 'SUCCESS');
             alert(`알림이 설정되었습니다. (${count}개 예약됨)`);
