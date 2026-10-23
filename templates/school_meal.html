@@ -860,7 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .noti-guide-btn.secondary { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; }
 .noti-modal-backdrop { position:fixed; inset:0; z-index:3100; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.4); }
 .noti-modal-backdrop.show { display:flex; }
-.noti-settings-sheet { width:100%; max-width:480px; max-height:90vh; max-height:90dvh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:none; box-sizing:border-box; padding:12px 24px calc(24px + env(safe-area-inset-bottom)); border-radius:20px 20px 0 0; background:var(--bg-container); color:var(--text-primary); transform:translateY(100%); transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
+.noti-settings-sheet { width:100%; max-width:480px; max-height:90vh; max-height:90dvh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; box-sizing:border-box; padding:12px 24px calc(24px + env(safe-area-inset-bottom)); border-radius:20px 20px 0 0; background:var(--bg-container); color:var(--text-primary); transform:translateY(100%); transition:transform .4s cubic-bezier(.34,1.56,.64,1); }
 .noti-settings-sheet.show { transform:translateY(0); }
 .noti-sheet-handle { width:40px; height:4px; margin:0 auto 20px; border-radius:2px; background:var(--border-color); cursor:grab; touch-action:none; }
 .noti-sheet-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
@@ -873,7 +873,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .noti-meal-row { display:grid; grid-template-columns:24px 48px minmax(0,1fr); align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); }
 .noti-meal-row input[type="checkbox"] { accent-color:var(--primary-color); }
 .noti-meal-row label { color:var(--text-primary); font-weight:600; }
-.noti-meal-row input[type="time"] { width:100%; min-width:0; box-sizing:border-box; padding:8px; border:1px solid var(--border-light); border-radius:8px; background:var(--bg-container); color:var(--text-primary); font:inherit; }
+.noti-meal-row input[type="time"] { display:block; width:100%; min-width:0; max-width:100%; box-sizing:border-box; padding:8px; border:1px solid var(--border-light); border-radius:8px; background:var(--bg-container); color:var(--text-primary); font:inherit; }
 .noti-days { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
 .noti-settings-actions { display:flex; flex-direction:column; gap:10px; }
 .noti-settings-actions .noti-guide-btn { min-height:48px; }
@@ -881,11 +881,15 @@ document.addEventListener('DOMContentLoaded', function() {
 .noti-guide-btn.danger { background:var(--bg-secondary); color:#d94848; border:1px solid rgba(217,72,72,.35); }
 .notification-anchor { position:relative; display:flex; }
 #noti-prompt[hidden] { display:none; }
-.noti-prompt { position:absolute; z-index:3200; top:calc(100% + 10px); right:0; width:max-content; max-width:min(260px, calc(100vw - 24px)); box-sizing:border-box; padding:12px 16px; border-radius:12px; background:#111; color:#fff; box-shadow:0 5px 18px rgba(0,0,0,.22); font-size:1rem; font-weight:700; line-height:1.35; white-space:nowrap; pointer-events:none; }
+.noti-prompt { position:absolute; z-index:1; top:calc(100% + 10px); right:0; width:max-content; max-width:min(260px, calc(100vw - 24px)); box-sizing:border-box; padding:12px 16px; border-radius:12px; background:#111; color:#fff; box-shadow:0 5px 18px rgba(0,0,0,.22); font-size:1rem; font-weight:700; line-height:1.35; white-space:nowrap; pointer-events:none; }
 .noti-prompt::before { content:""; position:absolute; top:-6px; right:18px; width:12px; height:12px; transform:rotate(45deg); background:#111; }
 [data-theme="dark"] .noti-prompt { background:#fff; color:#111; }
 [data-theme="dark"] .noti-prompt::before { background:#fff; }
-@media (max-width:380px) { .noti-settings-sheet { padding-right:16px; padding-left:16px; } .noti-meal-row { gap:8px; padding-right:8px; padding-left:8px; } }
+@media (max-width:380px) {
+    .noti-settings-sheet { padding-right:16px; padding-left:16px; }
+    .noti-meal-row { grid-template-columns:20px 38px minmax(0,1fr); gap:6px; padding:8px 6px; }
+    .noti-meal-row input[type="time"] { padding:6px 2px; font-size:.85rem; }
+}
 @keyframes iconPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
@@ -1096,8 +1100,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             function onDragMove(event) {
                 if (!isDragging) return;
-                currentY = Math.max(0, (event.touches ? event.touches[0].clientY : event.clientY) - startY);
-                settingsSheet.style.transform = `translateY(${currentY}px)`;
+                const pointerY = event.touches ? event.touches[0].clientY : event.clientY;
+                const deltaY = pointerY - startY;
+
+                // Let the sheet scroll normally; only drag it down when it is already at the top.
+                if (deltaY > 0 && settingsSheet.scrollTop <= 0) {
+                    if (event.cancelable) event.preventDefault();
+                    currentY = deltaY;
+                    settingsSheet.style.transform = `translateY(${currentY}px)`;
+                } else {
+                    currentY = 0;
+                    settingsSheet.style.transform = 'translateY(0)';
+                }
             }
             function onDragEnd() {
                 if (!isDragging) return;
@@ -1109,7 +1123,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             settingsSheet.addEventListener('touchstart', onDragStart, { passive: true });
-            settingsSheet.addEventListener('touchmove', onDragMove, { passive: true });
+            settingsSheet.addEventListener('touchmove', onDragMove, { passive: false });
             settingsSheet.addEventListener('touchend', onDragEnd);
             settingsSheet.addEventListener('mousedown', onDragStart);
             document.addEventListener('mousemove', onDragMove);
