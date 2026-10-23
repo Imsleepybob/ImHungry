@@ -65,7 +65,7 @@
       </svg>
     </button>
     <aside id="noti-prompt" class="noti-prompt" hidden role="status" aria-live="polite">
-      <span>급식 알림을 받아보세요</span>
+      <span>급식 알림을 받아보세요!</span>
     </aside>
     </div>
     {% endif %}
@@ -81,7 +81,6 @@
 </header>
 
 <div id="ad-mobile">
-  <!-- [수정] ba.min.js 개별 script 태그 제거 → body 최하단에서 단일 로드로 통합 -->
   <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
 </div>
 <div id="ad-desktop">
@@ -141,24 +140,21 @@
       <ul style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
         <li>오늘 급식 · 이번 주 급식 · 월간 급식표 한눈에 보기</li>
         <li>같은 지역 학교끼리 급식 비교하기</li>
-        <li>Android 앱으로 원하는 시간에 급식 알림 받기(출시 예정!!)</li>
-        <li>다크모드 · 라이트모드 지원</li>
-        <li>지역별·학교급별 학교 목록 탐색</li>
+        <li>PWA 앱으로 급식 알림 받기</li>
       </ul>
       <h2 style="font-size:1rem; font-weight:700; color:var(--text-primary); margin:0 0 10px;">이용 방법</h2>
       <ol style="font-size:0.9rem; color:var(--text-secondary); line-height:1.8; margin:0 0 16px; padding-left:18px;">
-        <li>지역을 선택해요.</li>
-        <li>학교 이름을 입력하면 자동완성 목록이 나타나요.</li>
-        <li>학교를 선택하면 오늘의 급식 정보가 바로 표시돼요.</li>
-        <li>이후 방문부터는 학교 검색 없이 바로 급식 정보를 확인할 수 있어요.</li>
+        <li>지역을 선택한 후 학교를 검색하세요.</li>
+        <li>선택한 학교의 오늘, 이번 주, 이번 달 급식을 한 페이지에서 확인하세요! 주변 학교의 급식을 클릭 한번에 확인하실 수도 있어요!</li>
+        <li>수동으로 학교를 찾을 수도 있어요!.</li>
+        <li>우측 상단의 알림 버튼을 눌러 급식 알림을 매일 받아보세요.</li>
       </ol>
       <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
-        급식 데이터는 교육부 NEIS(나이스) 공공 API를 통해 제공돼요.
+        급식 데이터는 교육부 NEIS(나이스) 공공 API를 통해 제공됩니다.
       </p>
     </div>
   </div>
 
-  <!-- [수정] 초기 페이지 광고: 학교 미선택 상태에서도 노출 -->
   <div id="bodyad-desktop">
     <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
   </div>
@@ -192,7 +188,6 @@
       </div>
     </div>
 
-    <!-- [수정] CTR 최적화: 오늘 급식 카드와 주간 급식표 사이에 광고 배치 -->
     <div id="bodyad-desktop">
       <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
     </div>
@@ -806,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="notification-modal" class="noti-modal-backdrop" role="presentation">
   <section id="notification-sheet" class="noti-settings-sheet" role="dialog" aria-modal="true" aria-labelledby="notification-title">
     <div id="notification-drag-handle" class="noti-sheet-handle" aria-hidden="true"></div>
-    <header class="noti-sheet-header"><h3 id="notification-title" tabindex="-1">🔔 알림 설정</h3></header>
+    <header class="noti-sheet-header"><h3 id="notification-title" tabindex="-1">알림 설정</h3></header>
     <p class="noti-settings-desc">설정한 시각에 급식 안내를 받을 수 있어요. 급식이 없는 날은 안내가 오지 않아요.</p>
     <div class="noti-settings-section">
       <label class="noti-settings-label">안내 받을 급식</label>
@@ -1252,7 +1247,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {% endif %}
 
-<!-- [수정] ba.min.js 단일 로드: display:none 상태에서 초기화되지 않는 버그 방지를 위해 body 최하단에서 1회만 로드 -->
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </body>
 </html>
