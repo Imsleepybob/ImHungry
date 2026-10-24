@@ -21,7 +21,7 @@ import secrets
 import dashagg
 import dashstore
 import secwatch
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 app = Flask(__name__)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 86400
@@ -1112,23 +1112,86 @@ def _on_dash_restored():
 dash_store.on_restored.append(_on_dash_restored)
 
 
+IP_INFO_WAIT = 5
+_ip_info_pool = ThreadPoolExecutor(max_workers=10)
+_ip_info_lock = threading.Lock()
+_ip_info_pending = set()
+
+
+def _fetch_ip_info(ip):
+    global _ipinfo_dirty
+    try:
+        get_ip_info(ip)
+        _ipinfo_dirty = True
+    finally:
+        with _ip_info_lock:
+            _ip_info_pending.discard(ip)
+
+
+def _prefetch_ip_info(ips):
+    futures = []
+    with _ip_info_lock:
+        for ip in ips:
+            if ip in _ip_info_pending:
+                continue
+            _ip_info_pending.add(ip)
+            futures.append(_ip_info_pool.submit(_fetch_ip_info, ip))
+    if futures:
+        wait(futures, timeout=IP_INFO_WAIT)
+
+
+SCHOOL_NAME_WAIT = 8
+SCHOOL_NAME_RETRY = 600
+_school_name_pool = ThreadPoolExecutor(max_workers=8)
+_school_name_lock = threading.Lock()
+_school_name_pending = set()
+_school_name_failed = {}
+
+
+def _cached_school_name(code):
+    cached = school_code_cache.get(code)
+    return cached[1]['school_name'] if cached else None
+
+
+def _fetch_school_name(code):
+    try:
+        if not get_school_from_neis(code):
+            with _school_name_lock:
+                _school_name_failed[code] = time.time()
+    finally:
+        with _school_name_lock:
+            _school_name_pending.discard(code)
+
+
+def _collect_school_codes(aggs):
+    codes = set()
+    for agg in aggs.values():
+        codes.update(agg['schools'])
+        codes.update(agg['pwa']['schools'])
+        for entry in agg['pwa']['ips'].values():
+            codes.update(entry['s'])
+    return codes
+
+
+def _prefetch_school_names(codes):
+    now = time.time()
+    futures = []
+    with _school_name_lock:
+        for code in codes:
+            if code in _school_name_pending or _cached_school_name(code):
+                continue
+            if now - _school_name_failed.get(code, 0) < SCHOOL_NAME_RETRY:
+                continue
+            _school_name_pending.add(code)
+            futures.append(_school_name_pool.submit(_fetch_school_name, code))
+    if futures:
+        wait(futures, timeout=SCHOOL_NAME_WAIT)
+
+
 def parse_logs_for_dashboard(days=30):
     dash_store.start()
     tail_logs_into_store()
     today = datetime.now(KST).date()
-    school_names = {}
-
-    def school_name(code):
-        if code in school_names:
-            return school_names[code]
-        cached = school_code_cache.get(code)
-        if cached:
-            name = cached[1]['school_name']
-        else:
-            info = get_school_from_neis(code)
-            name = info['school_name'] if info else code
-        school_names[code] = name
-        return name
 
     cache_stats = {
         '급식 캐시': len(meal_cache),
@@ -1142,6 +1205,11 @@ def parse_logs_for_dashboard(days=30):
         'total_failed_attempts': sum(failed_attempts.values()),
     }
     aggs = dash_store.merged_days(today, days)
+    _prefetch_school_names(_collect_school_codes(aggs))
+
+    def school_name(code):
+        return _cached_school_name(code) or code
+
     result = dashagg.finalize(aggs, today, days, school_name, cache_stats, security_stats)
     result['persistence'] = {
         'github': dash_store.gh_enabled(),
@@ -1907,10 +1975,7 @@ def admin_dashboard():
         or not _ipinfo_fresh(*IP_INFO_CACHE[e['ip']])
     ]
     if missing_ips:
-        with ThreadPoolExecutor(max_workers=20) as pool:
-            futures = {pool.submit(get_ip_info, ip): ip for ip in missing_ips}
-            for f in as_completed(futures):
-                f.result()
+        _prefetch_ip_info(missing_ips)
         _save_ipinfo_cache()
 
     enriched_bot_ips = []
