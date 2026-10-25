@@ -88,30 +88,16 @@ SUSPICIOUS_PATTERNS = {
 }
 
 CRAWLER_NAME_MAP = [
-    ('googlebot',           'Googlebot'),
     ('googleother',         'GoogleOther'),
     ('google-extended',     'Google-Extended'),
     ('google-inspectiontool', 'Google Inspection'),
     ('compatible; google',  'Google (disguised)'),
-    ('bingbot',             'Bingbot'),
     ('bingpreview',         'BingPreview'),
-    ('yandexbot',           'YandexBot'),
     ('yandex/',             'Yandex'),
     ('baiduspider',         'Baiduspider'),
-    ('duckduckbot',         'DuckDuckBot'),
-    ('applebot',            'Applebot'),
-    ('semrushbot',          'SEMrushBot'),
-    ('ahrefsbot',           'AhrefsBot'),
-    ('mj12bot',             'MJ12bot'),
-    ('amazonbot',           'AmazonBot'),
-    ('petalbot',            'PetalBot'),
     ('bytespider',          'ByteSpider'),
     ('facebookexternalhit', 'FacebookBot'),
-    ('facebookbot',         'FacebookBot'),
-    ('twitterbot',          'TwitterBot'),
-    ('linkedinbot',         'LinkedInBot'),
     ('slurp',               'Yahoo Slurp'),
-    ('naverbot',            'NaverBot'),
     ('yeti/',               'Naver Yeti'),
     ('kakaotalk-scrap',     'KakaoTalk Scraper'),
     ('kakaostory',          'KakaoStory'),
@@ -707,7 +693,7 @@ def detect_client_type(raw_ua):
             return True, f"{name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
 
     bot_match = re.search(
-        r'(?<![a-z0-9])([a-z0-9][a-z0-9._+-]*?bot)(?=$|[/\\s;)(])',
+        r'(?<![a-z0-9])([a-z0-9][a-z0-9._+-]*?bot)(?=$|/|\\s|[;)])',
         ua_lower,
     )
     if bot_match:
