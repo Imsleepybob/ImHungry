@@ -3,6 +3,7 @@ from markupsafe import escape
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
 import calendar
+import glob
 import requests
 import logging
 from logging.handlers import RotatingFileHandler
@@ -1037,6 +1038,45 @@ def _classify_access_row(ip, device, os_name, browser, crawler_field, ua):
     return 'user', None, det_device, det_os, det_browser
 
 
+
+def _scan_historical_access_logs():
+    today = datetime.now(KST).date()
+    cutoff = today - timedelta(days=dashstore.RETENTION_DAYS)
+    log_paths = sorted(glob.glob(ACCESS_LOG_PATH + '*'))
+    daily = {}
+    scanned_lines = 0
+
+    for log_path in log_paths:
+        if not os.path.isfile(log_path):
+            continue
+        try:
+            with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+                for line in f:
+                    match = ACCESS_LOG_RE.match(line.strip())
+                    if not match:
+                        continue
+                    (date_str, ip, _device, _os_name, _browser,
+                     _crawler_field, ua, _method, path, status, referrer) = match.groups()
+                    try:
+                        log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        continue
+                    if not cutoff <= log_date < today:
+                        continue
+                    agg = daily.setdefault(date_str, dashagg.new_agg())
+                    kind, name, device, os_name, browser = _classify_access_row(
+                        ip, None, None, None, None, ua
+                    )
+                    dashagg.add_access(
+                        agg, ip, status, path, referrer,
+                        kind, name, device, os_name, browser
+                    )
+                    scanned_lines += 1
+        except OSError as e:
+            app.logger.warning(f"대시보드 과거 로그 읽기 실패 ({log_path}): {e}")
+
+    return daily, scanned_lines
+
 def _live_agg(date_str):
     agg = dash_store.live.get(date_str)
     if agg is None:
@@ -1988,6 +2028,95 @@ def admin_dashboard():
         '사용 중인 헤더 설정': ','.join(CLIENT_IP_HEADERS) or '(없음)',
     }
     return render_template('admin_dashboard.html', stats=stats, ip_debug=ip_debug)
+
+
+
+@app.route('/admin/dashboard/reclassify-crawlers', methods=['POST'])
+def admin_dashboard_reclassify_crawlers():
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+
+    data = request.get_json(silent=True) or request.form
+    action = str(data.get('action', 'preview')).strip().lower()
+    daily, scanned_lines = _scan_historical_access_logs()
+    if not daily:
+        return jsonify({
+            'success': False,
+            'message': '재분류 가능한 과거 접속 로그가 없습니다.',
+            'scanned_lines': 0,
+            'dates': [],
+        }), 404
+
+    dates = sorted(daily)
+    if action != 'apply':
+        return jsonify({
+            'success': True,
+            'mode': 'preview',
+            'scanned_lines': scanned_lines,
+            'dates': dates,
+            'message': f'{len(dates)}일의 과거 접속 로그를 찾았습니다. 반영하려면 action=apply로 POST하세요.',
+        })
+
+    if dash_store.gh_enabled() and not dash_store.restored:
+        return jsonify({
+            'success': False,
+            'message': 'GitHub 대시보드 기록 복원이 끝난 뒤 다시 시도해 주세요.',
+        }), 503
+
+    backup_dir = os.path.join(
+        LOG_DIR, 'dashboard',
+        'reclassify-backup-' + datetime.now(KST).strftime('%Y%m%d-%H%M%S')
+    )
+    try:
+        os.makedirs(backup_dir, exist_ok=False)
+        with dash_store.io_lock:
+            with dash_store.lock:
+                original = {
+                    day: {'date': day, 'parts': dict(dash_store.parts.get(day, {}))}
+                    for day in dates
+                }
+                with open(os.path.join(backup_dir, 'before.json'), 'w', encoding='utf-8') as f:
+                    json.dump(original, f, ensure_ascii=False)
+
+                access_fields = (
+                    'n', 'ips', 'status', 'crawlers', 'users', 'crawler_names',
+                    'bot_ips', 'bot_paths', 'user_ips', 'user_paths', 'schools',
+                    'referrers', 'devices', 'os', 'browsers',
+                )
+                for day in dates:
+                    combined = dashagg.new_agg()
+                    for part in dash_store.parts.get(day, {}).values():
+                        dashagg.merge(combined, part)
+                    if day in dash_store.live:
+                        dashagg.merge(combined, dash_store.live[day])
+                    for field in access_fields:
+                        combined[field] = daily[day][field]
+
+                    dash_store.parts[day] = {
+                        dash_store.boot_id: dashagg.compact(combined)
+                    }
+                    key = 'day:' + day
+                    dash_store.dirty.add(key)
+                    dash_store.write_local(key)
+    except Exception as e:
+        app.logger.exception(f'과거 대시보드 재분류 실패: {e}')
+        return jsonify({
+            'success': False,
+            'message': f'재분류 중 오류가 발생했습니다. 백업 위치: {backup_dir}',
+            'error': str(e),
+        }), 500
+
+    dash_store.sync()
+    return jsonify({
+        'success': True,
+        'mode': 'applied',
+        'scanned_lines': scanned_lines,
+        'updated_dates': dates,
+        'backup': backup_dir,
+        'sync_status': dash_store.sync_note,
+        'message': '원본 로그가 남아 있는 날짜의 접속 통계를 새 User-Agent 규칙으로 다시 만들었습니다. 이벤트와 PWA 통계는 보존했습니다.',
+    })
 
 
 @app.route('/stats', methods=['GET', 'POST'])
