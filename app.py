@@ -694,7 +694,7 @@ def detect_client_type(raw_ua):
             return True, f"{name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
 
     bot_match = re.search(
-        r'(?<![a-z0-9])([a-z0-9][a-z0-9._+-]*?bot)(?=$|/|\\s|[;)])',
+        r'(?<![a-z0-9])([a-z0-9][a-z0-9._+-]*?bot)(?=$|/|\s|[;)])',
         ua_lower,
     )
     if bot_match:
