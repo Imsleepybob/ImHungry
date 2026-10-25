@@ -868,7 +868,7 @@ body {
         </form> <small>재배포 직전에 눌러 두면 최신 기록까지 안전하게 저장됩니다.</small><br>
         <div style="margin:8px 0; padding:10px; border:1px solid var(--border); border-radius:8px;">
           <strong>과거 봇 통계 재분류</strong><br>
-          <small>보관된 접속 로그만 재분류합니다. 실행 전 현재 집계를 백업하고, 이벤트/PWA 통계는 보존합니다.</small><br>
+          <small>보관된 접속 로그만 재분류합니다. 실행 전 현재 집계를 백업하고, 이벤트/PWA 통계는 보존합니다. 로그가 일부만 남은 날짜는 집계가 줄어들 수 있으니 미리보기 후 실행하세요.</small><br>
           <input type="hidden" id="reclassify-csrf" value="{{ admin_csrf_token() }}">
           <button type="button" class="btn-expand" onclick="reclassifyDashboardBots('preview')">대상 미리보기</button>
           <button type="button" class="btn-expand" onclick="reclassifyDashboardBots('apply')">재분류 실행</button>
@@ -894,7 +894,7 @@ body {
               data.scanned_lines !== undefined ? '로그 행: ' + data.scanned_lines : '',
               data.backup ? '백업: ' + data.backup : '',
               data.sync_status ? '저장 상태: ' + data.sync_status : '',
-              data.error ? '오류: ' + data.error : ''].filter(Boolean).join('\\n');
+              data.error ? '오류: ' + data.error : ''].filter(Boolean).join('\n');
           } catch (error) {
             result.textContent = '요청 실패: ' + error.message;
           }
