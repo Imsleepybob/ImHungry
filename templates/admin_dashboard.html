@@ -866,6 +866,40 @@ body {
           <input type="hidden" name="csrf_token" value="{{ admin_csrf_token() }}">
           <button type="submit" class="btn-expand">지금 저장</button>
         </form> <small>재배포 직전에 눌러 두면 최신 기록까지 안전하게 저장됩니다.</small><br>
+        <div style="margin:8px 0; padding:10px; border:1px solid var(--border); border-radius:8px;">
+          <strong>과거 봇 통계 재분류</strong><br>
+          <small>보관된 접속 로그만 재분류합니다. 실행 전 현재 집계를 백업하고, 이벤트/PWA 통계는 보존합니다.</small><br>
+          <input type="hidden" id="reclassify-csrf" value="{{ admin_csrf_token() }}">
+          <button type="button" class="btn-expand" onclick="reclassifyDashboardBots('preview')">대상 미리보기</button>
+          <button type="button" class="btn-expand" onclick="reclassifyDashboardBots('apply')">재분류 실행</button>
+          <pre id="reclassify-result" style="white-space:pre-wrap; margin:8px 0 0;"></pre>
+        </div>
+        <script>
+        async function reclassifyDashboardBots(action) {
+          if (action === 'apply' && !confirm('기존 봇 통계를 보관된 접속 로그로 다시 계산할까요? 실행 전에 백업을 만듭니다.')) return;
+          const result = document.getElementById('reclassify-result');
+          result.textContent = '처리 중...';
+          try {
+            const response = await fetch('/admin/dashboard/reclassify-crawlers', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.getElementById('reclassify-csrf').value
+              },
+              body: JSON.stringify({action})
+            });
+            const data = await response.json();
+            result.textContent = [data.message, data.dates ? '날짜: ' + data.dates.join(', ') : '',
+              data.updated_dates ? '갱신: ' + data.updated_dates.join(', ') : '',
+              data.scanned_lines !== undefined ? '로그 행: ' + data.scanned_lines : '',
+              data.backup ? '백업: ' + data.backup : '',
+              data.sync_status ? '저장 상태: ' + data.sync_status : '',
+              data.error ? '오류: ' + data.error : ''].filter(Boolean).join('\\n');
+          } catch (error) {
+            result.textContent = '요청 실패: ' + error.message;
+          }
+        }
+        </script>
         복원: {{ stats.persistence.restore_note }}<br>
         저장: {{ stats.persistence.sync_note }}
       </div>
