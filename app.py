@@ -131,7 +131,6 @@ CRAWLER_NAME_MAP = [
     ('crawler',             'Crawler'),
     ('scanner',             'Scanner'),
     ('scraper',             'Scraper'),
-    ('bot',                 'Bot'),
 ]
 
 KR_CORP_CRAWLER_PATTERNS = [
@@ -706,6 +705,16 @@ def detect_client_type(raw_ua):
     for pattern, name in CRAWLER_NAME_MAP:
         if pattern in ua_lower:
             return True, f"{name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
+
+    bot_match = re.search(
+        r'(?<![a-z0-9])([a-z0-9][a-z0-9._+-]*?bot)(?=$|[/\\s;)(])',
+        ua_lower,
+    )
+    if bot_match:
+        bot_name = bot_match.group(1)
+        original_match = re.search(re.escape(bot_name), raw_ua, re.IGNORECASE)
+        bot_name = original_match.group(0) if original_match else bot_name
+        return True, f"{bot_name} ({ua_snippet})", 'Crawler', 'Crawler', 'Crawler'
 
     if 'windows nt' in ua_lower:
         nt_ver_map = {'10.0': 'Windows 10/11', '6.3': 'Windows 8.1',
