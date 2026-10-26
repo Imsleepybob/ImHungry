@@ -28,6 +28,7 @@
 <meta name="google-site-verification" content="GRRIx4avFvJIDmHDr9Vrdpok6YN7yNeYTZiPThb6XAM" />
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
 <script src="{{ url_for('static', filename='notification.js') }}"></script>
+<script src="{{ url_for('static', filename='announcements.js') }}" defer></script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
 <script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
@@ -48,6 +49,13 @@
         }
     })();
 </script>
+<style>
+#site-announcements{max-width:900px;margin:12px auto;padding:0 16px}
+.site-announcement{display:flex;align-items:flex-start;gap:12px;text-align:left}
+.announcement-content{flex:1;min-width:0}
+.announcement-close{flex:none;border:0;background:transparent;color:inherit;font-size:24px;line-height:1;cursor:pointer;padding:0 3px}
+@media(max-width:600px){#site-announcements{padding:0 12px}.site-announcement{padding:12px}}
+</style>
 </head>
 <body>
 <header class="main-header">
@@ -82,6 +90,7 @@
     </button>
   </div>
 </header>
+<div id="site-announcements" aria-live="polite" aria-label="사이트 공지"></div>
 
 <div id="ad-mobile">
   <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>

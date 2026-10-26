@@ -1932,6 +1932,7 @@ def admin_index():
         return auth
     return (
         '<h2>관리자 메뉴</h2><ul>'
+        '<li><a href="/admin/announcements">📣 사이트 공지 관리</a></li>'
         '<li><a href="/admin/dashboard">📊 대시보드</a></li>'
         '<li><a href="/admin/dashboard?days=7">📊 대시보드 (최근 7일)</a></li>'
         '<li><a href="/admin/dashboard?days=90">📊 대시보드 (최근 90일)</a></li>'
@@ -2621,6 +2622,9 @@ threading.Thread(target=ensure_asn_db, daemon=True).start()
 
 from push import init_push
 init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'), _admin_auth_check, admin_csrf_token)
+
+from announcements import init_announcements
+init_announcements(app, _admin_auth_check)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
