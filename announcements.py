@@ -16,13 +16,13 @@ def pastel_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
  return '#'+''.join(f'{round(255*0.86+v*0.14):02x}' for v in rgb)
-def darken_color(c):
+def brighten_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
- return '#'+''.join(f'{round(v*0.8):02x}' for v in rgb)
+ return '#'+''.join(f'{round(v+(255-v)*0.2):02x}' for v in rgb)
 def dark_mode_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
- return {'#007bff':'#4da3ff','#4da3ff':'#007bff'}.get(c.lower(),darken_color(c))
+ return {'#007bff':'#4da3ff'}.get(c.lower(),brighten_color(c))
 def dark_pastel_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
