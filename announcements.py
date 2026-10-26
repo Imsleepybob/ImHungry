@@ -10,8 +10,12 @@ repo=(os.environ.get('PUSH_GITHUB_REPO') or os.environ.get('GITHUB_REPO','')).st
 branch=os.environ.get('PUSH_GITHUB_BRANCH',os.environ.get('GITHUB_BRANCH','main'))
 path=os.environ.get('ANNOUNCEMENTS_GITHUB_PATH','announcements.json')
 local=os.environ.get('ANNOUNCEMENTS_FILE',os.path.join(os.getcwd(),'announcements.json'))
-palette=['#fee2e2','#ffedd5','#fef3c7','#dcfce7','#dbeafe','#e0e7ff','#f3e8ff','#fce7f3','#f3f4f6','#1f2937']
+palette=['#4f7ef0','#007bff','#0056b3','#1a73e8','#4da3ff','#faa41a','#e8930f','#ff8c00','#d32f2f']
 allowed={'b','strong','i','em','u','s','del','mark','small','p','br','ul','ol','li','blockquote','code','a'}
+def pastel_color(c):
+ c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#4f7ef0'
+ rgb=[int(c[i:i+2],16) for i in (1,3,5)]
+ return '#'+''.join(f'{round(255*0.86+v*0.14):02x}' for v in rgb)
 class Clean(HTMLParser):
  def __init__(self): super().__init__(convert_charrefs=True); self.out=[]; self.stack=[]; self.skip=0
  def handle_starttag(self,t,attrs):
@@ -79,7 +83,7 @@ def init_announcements(app,admin_check):
  load()
  @bp.route('/api/announcements')
  def public_list():
-  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'color':x['color'],'text_color':x.get('text_color','')} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
+  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'accent_color':x.get('accent_color','#4f7ef0'),'background_color':pastel_color(x.get('accent_color','#4f7ef0'))} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
  @bp.route('/admin/announcements',methods=['GET','POST'])
  def admin_page():
   auth=admin_check()
@@ -94,7 +98,7 @@ def init_announcements(app,admin_check):
      content=clean(request.form.get('content',''))
      if not content.strip():return render_template('admin_announcements.html',items=items,palette=palette,edit=None,saved=False)
      if not item:item={'id':uuid.uuid4().hex,'active':True,'order':len(items)};items.append(item)
-     c=request.form.get('color','');t=request.form.get('text_color','');item.update({'html':content,'color':c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#dbeafe','text_color':t if re.fullmatch(r'#[0-9a-fA-F]{6}',t) else '#174ea6','revision':datetime.now(timezone.utc).isoformat()})
+     c=request.form.get('accent_color','');item.update({'html':content,'accent_color':c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#4f7ef0','revision':datetime.now(timezone.utc).isoformat()})
     items.sort(key=lambda x:x.get('order',0));save()
    return redirect(url_for('announcements.admin_page',saved='1'))
   return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,saved=request.args.get('saved'))
