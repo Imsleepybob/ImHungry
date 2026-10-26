@@ -1,4 +1,4 @@
-# I welcome all robots!
-
 User-agent: *
 Allow: /
+
+Sitemap: https://geupsikalimi.com/sitemap.xml
