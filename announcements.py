@@ -79,7 +79,7 @@ def init_announcements(app,admin_check):
  load()
  @bp.route('/api/announcements')
  def public_list():
-  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'color':x['color']} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
+  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'color':x['color'],'text_color':x.get('text_color','')} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
  @bp.route('/admin/announcements',methods=['GET','POST'])
  def admin_page():
   auth=admin_check()
@@ -94,7 +94,7 @@ def init_announcements(app,admin_check):
      content=clean(request.form.get('content',''))
      if not content.strip():return render_template('admin_announcements.html',items=items,palette=palette,edit=None,saved=False)
      if not item:item={'id':uuid.uuid4().hex,'active':True,'order':len(items)};items.append(item)
-     c=request.form.get('color','');item.update({'html':content,'color':c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#dbeafe','revision':datetime.now(timezone.utc).isoformat()})
+     c=request.form.get('color','');t=request.form.get('text_color','');item.update({'html':content,'color':c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#dbeafe','text_color':t if re.fullmatch(r'#[0-9a-fA-F]{6}',t) else '#174ea6','revision':datetime.now(timezone.utc).isoformat()})
     items.sort(key=lambda x:x.get('order',0));save()
    return redirect(url_for('announcements.admin_page',saved='1'))
   return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,saved=request.args.get('saved'))
