@@ -1183,6 +1183,36 @@ def _prefetch_school_names(codes):
         wait(futures, timeout=SCHOOL_NAME_WAIT)
 
 
+def _announcement_stats(raw):
+    import html as html_lib
+    import announcements as ann_mod
+    ann_mod.load()
+    rows = []
+    seen = set()
+    for item in ann_mod.items:
+        key = str(item.get('id', ''))
+        seen.add(key)
+        counts = raw.get(key, {'views': 0, 'closes': 0})
+        text = html_lib.unescape(re.sub(r'<[^>]+>', ' ', str(item.get('html', ''))))
+        rows.append({'label': ' '.join(text.split())[:40] or key[:8], 'deleted': False, **counts})
+    for key, counts in raw.items():
+        if key not in seen:
+            rows.append({'label': key[:8] + ' (삭제됨)', 'deleted': True, **counts})
+    for row in rows:
+        row['rate'] = round(row['closes'] / row['views'] * 100, 1) if row['views'] else None
+    return rows
+
+
+def announcement_stats_by_id(days=30):
+    dash_store.start()
+    tail_logs_into_store()
+    aggs = dash_store.merged_days(datetime.now(KST).date(), days)
+    total = dashagg.new_agg()
+    for agg in aggs.values():
+        dashagg.merge(total, agg)
+    return {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()}
+
+
 def parse_logs_for_dashboard(days=30):
     dash_store.start()
     tail_logs_into_store()
@@ -1206,6 +1236,7 @@ def parse_logs_for_dashboard(days=30):
         return _cached_school_name(code) or code
 
     result = dashagg.finalize(aggs, today, days, school_name, cache_stats, security_stats)
+    result['ann_stats'] = _announcement_stats(result['events'].get('ann', {}))
     result['persistence'] = {
         'github': dash_store.gh_enabled(),
         'restored': dash_store.restored,
@@ -1758,9 +1789,15 @@ def track_event():
         return '', 204
     event = data.get('event', '')
     value = str(data.get('value', ''))[:50]
-    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit'}
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close'}
     if event not in allowed:
         return '', 204
+    if event in ('ann_view', 'ann_close'):
+        if is_admin_ip(get_client_ip()) or admin_sessions.valid(request.cookies.get(ADMIN_SESSION_COOKIE, '')):
+            return '', 204
+        value = re.sub(r'[^0-9a-fA-F]', '', value)[:32]
+        if not value:
+            return '', 204
     record = {
         'ts': datetime.now(KST).isoformat(),
         'ip': get_client_ip(),
@@ -1933,6 +1970,7 @@ def admin_index():
     return (
         '<h2>관리자 메뉴</h2><ul>'
         '<li><a href="/admin/announcements">📣 사이트 공지 관리</a></li>'
+        '<li><a href="/admin/push">🔔 푸시알림 설정</a></li>'
         '<li><a href="/admin/dashboard">📊 대시보드</a></li>'
         '<li><a href="/admin/dashboard?days=7">📊 대시보드 (최근 7일)</a></li>'
         '<li><a href="/admin/dashboard?days=90">📊 대시보드 (최근 90일)</a></li>'
@@ -2624,7 +2662,7 @@ from push import init_push
 init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscriptions.json'), _admin_auth_check, admin_csrf_token)
 
 from announcements import init_announcements
-init_announcements(app, _admin_auth_check)
+init_announcements(app, _admin_auth_check, announcement_stats_by_id)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")

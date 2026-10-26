@@ -1,5 +1,5 @@
 import html,json,os,re,threading,uuid,base64
-from datetime import datetime,timezone
+from datetime import datetime,timedelta,timezone
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 import requests
@@ -10,6 +10,7 @@ repo=(os.environ.get('PUSH_GITHUB_REPO') or os.environ.get('GITHUB_REPO','')).st
 branch=os.environ.get('PUSH_GITHUB_BRANCH',os.environ.get('GITHUB_BRANCH','main'))
 path=os.environ.get('ANNOUNCEMENTS_GITHUB_PATH','announcements.json')
 local=os.environ.get('ANNOUNCEMENTS_FILE',os.path.join(os.getcwd(),'announcements.json'))
+kst=timezone(timedelta(hours=9)); fmt='%Y-%m-%dT%H:%M'
 palette=['#007bff','#4da3ff','#faa41a','#e8930f','#ff8c00','#d32f2f']
 allowed={'b','strong','i','em','u','s','del','mark','small','p','br','ul','ol','li','blockquote','code','a'}
 def pastel_color(c):
@@ -54,6 +55,19 @@ class Clean(HTMLParser):
   self.close()
   while self.stack:self.out.append('</'+self.stack.pop()+'>')
   return ''.join(self.out)
+def stats_for(provider):
+ try:raw=provider() if provider else {}
+ except Exception:raw={}
+ out={}
+ for k,v in raw.items():out[k]={'views':v['views'],'closes':v['closes'],'rate':round(v['closes']/v['views']*100,1) if v['views'] else None}
+ return out
+def now_kst():return datetime.now(kst).strftime(fmt)
+def valid_time(v):
+ try:datetime.strptime(v,fmt);return True
+ except ValueError:return False
+def visible(x,now):
+ s=x.get('start_at') or '';e=x.get('end_at') or ''
+ return not(s and s>now) and not(e and e<=now)
 def clean(v):
  p=Clean();p.feed(str(v or '')[:10000]);return p.result()
 def url():return 'https://api.github.com/repos/'+repo+'/contents/'+path
@@ -94,11 +108,11 @@ def save():
  r=requests.put(url(),headers=headers(),json=body,timeout=15)
  if not r.ok:raise RuntimeError('GitHub 공지 저장 실패 HTTP '+str(r.status_code))
  sha=r.json()['content']['sha']
-def init_announcements(app,admin_check):
+def init_announcements(app,admin_check,stats_provider=None):
  load()
  @bp.route('/api/announcements')
  def public_list():
-  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'accent_color':x.get('accent_color','#007bff'),'background_color':pastel_color(x.get('accent_color','#007bff')),'dark_accent_color':x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')),'dark_background_color':dark_pastel_color(x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')))} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
+  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'accent_color':x.get('accent_color','#007bff'),'background_color':pastel_color(x.get('accent_color','#007bff')),'dark_accent_color':x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')),'dark_background_color':dark_pastel_color(x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')))} for x in items if x.get('active') and visible(x,now_kst())]);r.headers['Cache-Control']='no-store';return r
  @bp.route('/admin/announcements',methods=['GET','POST'])
  def admin_page():
   auth=admin_check()
@@ -111,10 +125,16 @@ def init_announcements(app,admin_check):
     elif action=='toggle' and item:item['active']=not item.get('active',True);item['revision']=datetime.now(timezone.utc).isoformat()
     elif action=='save':
      content=clean(request.form.get('content',''))
-     if not content.strip():return render_template('admin_announcements.html',items=items,palette=palette,edit=None,saved=False)
+     if not content.strip():return render_template('admin_announcements.html',items=items,palette=palette,edit=None,saved=False,now=now_kst(),stats=stats_for(stats_provider))
+     start=request.form.get('start_at','').strip();end=request.form.get('end_at','').strip()
+     start=start if valid_time(start) else '';end=end if valid_time(end) else ''
+     if start and end and end<=start:
+      c=request.form.get('accent_color','');c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#007bff';d=request.form.get('dark_accent_color','');d=d if re.fullmatch(r'#[0-9a-fA-F]{6}',d) else dark_mode_color(c)
+      draft={'id':request.form.get('id',''),'html':content,'accent_color':c,'dark_accent_color':d,'start_at':start,'end_at':end}
+      return render_template('admin_announcements.html',items=items,palette=palette,edit=draft,saved=False,now=now_kst(),stats=stats_for(stats_provider),error='종료 시각은 시작 시각보다 늦어야 합니다.',dark_accent_color=d)
      if not item:item={'id':uuid.uuid4().hex,'active':True,'order':len(items)};items.append(item)
-     c=request.form.get('accent_color','');c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#007bff';d=request.form.get('dark_accent_color','');item.update({'html':content,'accent_color':c,'dark_accent_color':d if re.fullmatch(r'#[0-9a-fA-F]{6}',d) else dark_mode_color(c),'revision':datetime.now(timezone.utc).isoformat()})
+     c=request.form.get('accent_color','');c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#007bff';d=request.form.get('dark_accent_color','');item.update({'html':content,'start_at':start,'end_at':end,'accent_color':c,'dark_accent_color':d if re.fullmatch(r'#[0-9a-fA-F]{6}',d) else dark_mode_color(c),'revision':datetime.now(timezone.utc).isoformat()})
     items.sort(key=lambda x:x.get('order',0));save()
    return redirect(url_for('announcements.admin_page',saved='1'))
-  return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,dark_accent_color=dark_mode_color(edit.get('accent_color') if edit else '#007bff'),saved=request.args.get('saved'))
+  return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,dark_accent_color=dark_mode_color(edit.get('accent_color') if edit else '#007bff'),saved=request.args.get('saved'),now=now_kst(),stats=stats_for(stats_provider))
  app.register_blueprint(bp)

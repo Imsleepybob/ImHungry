@@ -367,6 +367,8 @@ body {
       <a href="?days=90" class="day-btn {% if stats.days == 90 %}active{% endif %}">90일</a>
     </div>
     <a href="/admin/blocklist" class="day-btn">🚫 IP 차단 관리</a>
+    <a href="/admin/push" class="day-btn">🔔 푸시알림 설정</a>
+    <a href="/admin/announcements" class="day-btn">📣 사이트 공지 설정</a>
     <button class="theme-btn" onclick="toggleTheme()">🌓</button>
   </div>
 </div>
@@ -722,6 +724,27 @@ body {
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 사이트 공지 통계 -->
+  <div class="card" style="margin-top:12px;">
+    <div class="chart-title">📣 사이트 공지 닫힘 통계 <small style="color:var(--text3);font-weight:400;">(일반 사용자 기준, 관리자 제외)</small></div>
+    {% if stats.ann_stats %}
+    <table class="data-table">
+      <thead><tr><th>공지</th><th>노출</th><th>닫힘 클릭</th><th>클릭률</th></tr></thead>
+      <tbody>
+      {% for row in stats.ann_stats %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ "{:,}".format(row.views) }}</td>
+        <td>{{ "{:,}".format(row.closes) }}</td>
+        <td>{% if row.rate is not none %}{{ row.rate }}%{% else %}-{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3);">노출은 세션당 공지 1회, 클릭률은 닫힘 클릭 수 ÷ 노출 수입니다.</div>
+    {% else %}<div class="empty-state">데이터 없음</div>{% endif %}
   </div>
 
   <!-- PWA 사용자 -->

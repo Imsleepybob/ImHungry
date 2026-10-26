@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 SCHOOL_PATH_RE = re.compile(r'^/meal/(\w+)$')
 REFERRER_RE = re.compile(r'https?://([^/]+)')
 EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification')
+ANN_EVENTS = {'ann_view': 0, 'ann_close': 1}
 
 CAPS = {
     'ips': 20000,
@@ -40,7 +41,7 @@ def new_agg():
         'devices': {},
         'os': {},
         'browsers': {},
-        'ev': {'theme': {}, 'search_method': {}, 'btn_month': 0, 'btn_nearby': 0, 'btn_share': 0, 'btn_notification': 0},
+        'ev': {'theme': {}, 'search_method': {}, 'btn_month': 0, 'btn_nearby': 0, 'btn_share': 0, 'btn_notification': 0, 'ann': {}},
         'pwa': {'visits': 0, 'ips': {}, 'schools': {}, 'uid_visits': {}},
     }
 
@@ -85,6 +86,11 @@ def add_event(agg, event, value):
         _inc(ev['search_method'], value)
     elif event in EVENT_COUNTERS:
         ev[event] += 1
+    elif event in ANN_EVENTS:
+        key = re.sub(r'[^0-9a-fA-F]', '', str(value))[:32]
+        if key:
+            entry = ev.setdefault('ann', {}).setdefault(key, [0, 0])
+            entry[ANN_EVENTS[event]] += 1
 
 
 def add_pwa(agg, ip, uid, code, ts):
@@ -126,6 +132,10 @@ def merge(target, source):
         _merge_counts(target['ev'][key], source['ev'][key])
     for key in EVENT_COUNTERS:
         target['ev'][key] += source['ev'][key]
+    for key, counts in source['ev'].get('ann', {}).items():
+        mine = target['ev'].setdefault('ann', {}).setdefault(key, [0, 0])
+        mine[0] += counts[0]
+        mine[1] += counts[1]
     target_pwa, source_pwa = target['pwa'], source['pwa']
     target_pwa['visits'] += source_pwa['visits']
     _merge_counts(target_pwa['uid_visits'], source_pwa['uid_visits'])
@@ -258,6 +268,7 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
             'btn_nearby': total['ev']['btn_nearby'],
             'btn_share': total['ev']['btn_share'],
             'btn_notification': total['ev']['btn_notification'],
+            'ann': {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()},
         },
         'cache_stats': cache_stats,
         'security': security_stats,
