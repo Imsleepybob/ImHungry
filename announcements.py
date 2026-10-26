@@ -16,10 +16,13 @@ def pastel_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
  return '#'+''.join(f'{round(255*0.86+v*0.14):02x}' for v in rgb)
-def darken_color(c):
+def brighten_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
- return '#'+''.join(f'{round(v*0.8):02x}' for v in rgb)
+ return '#'+''.join(f'{round(v+(255-v)*0.2):02x}' for v in rgb)
+def dark_mode_color(c):
+ c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
+ return {'#007bff':'#4da3ff'}.get(c.lower(),brighten_color(c))
 def dark_pastel_color(c):
  c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',str(c or '')) else '#007bff'
  rgb=[int(c[i:i+2],16) for i in (1,3,5)]
@@ -77,7 +80,8 @@ def load():
    except Exception:pass
   for x in items:
    if str(x.get('accent_color','')).lower()=='#4f7ef0':x['accent_color']='#007bff'
-   if not re.fullmatch(r'#[0-9a-fA-F]{6}',str(x.get('dark_accent_color',''))):x['dark_accent_color']=darken_color(x.get('accent_color'))
+   if not re.fullmatch(r'#[0-9a-fA-F]{6}',str(x.get('dark_accent_color',''))):x['dark_accent_color']=dark_mode_color(x.get('accent_color'))
+   elif str(x.get('accent_color','')).lower()=='#007bff' and str(x.get('dark_accent_color','')).lower()=='#0062cc':x['dark_accent_color']='#4da3ff'
   loaded=True
 def save():
  global sha
@@ -94,7 +98,7 @@ def init_announcements(app,admin_check):
  load()
  @bp.route('/api/announcements')
  def public_list():
-  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'accent_color':x.get('accent_color','#007bff'),'background_color':pastel_color(x.get('accent_color','#007bff')),'dark_accent_color':x.get('dark_accent_color') or darken_color(x.get('accent_color')),'dark_background_color':dark_pastel_color(x.get('dark_accent_color') or darken_color(x.get('accent_color')))} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
+  load();r=jsonify([{'id':x['id'],'revision':x['revision'],'html':x['html'],'accent_color':x.get('accent_color','#007bff'),'background_color':pastel_color(x.get('accent_color','#007bff')),'dark_accent_color':x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')),'dark_background_color':dark_pastel_color(x.get('dark_accent_color') or dark_mode_color(x.get('accent_color')))} for x in items if x.get('active')]);r.headers['Cache-Control']='no-store';return r
  @bp.route('/admin/announcements',methods=['GET','POST'])
  def admin_page():
   auth=admin_check()
@@ -109,8 +113,8 @@ def init_announcements(app,admin_check):
      content=clean(request.form.get('content',''))
      if not content.strip():return render_template('admin_announcements.html',items=items,palette=palette,edit=None,saved=False)
      if not item:item={'id':uuid.uuid4().hex,'active':True,'order':len(items)};items.append(item)
-     c=request.form.get('accent_color','');c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#007bff';d=request.form.get('dark_accent_color','');item.update({'html':content,'accent_color':c,'dark_accent_color':d if re.fullmatch(r'#[0-9a-fA-F]{6}',d) else darken_color(c),'revision':datetime.now(timezone.utc).isoformat()})
+     c=request.form.get('accent_color','');c=c if re.fullmatch(r'#[0-9a-fA-F]{6}',c) else '#007bff';d=request.form.get('dark_accent_color','');item.update({'html':content,'accent_color':c,'dark_accent_color':d if re.fullmatch(r'#[0-9a-fA-F]{6}',d) else dark_mode_color(c),'revision':datetime.now(timezone.utc).isoformat()})
     items.sort(key=lambda x:x.get('order',0));save()
    return redirect(url_for('announcements.admin_page',saved='1'))
-  return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,dark_accent_color=darken_color(edit.get('accent_color') if edit else '#007bff'),saved=request.args.get('saved'))
+  return render_template('admin_announcements.html',items=items,palette=palette,edit=edit,dark_accent_color=dark_mode_color(edit.get('accent_color') if edit else '#007bff'),saved=request.args.get('saved'))
  app.register_blueprint(bp)
