@@ -57,7 +57,7 @@ NO_LOG_PATHS = [
     '/wp-', '/wp/', 'wordpress', '.php', '/userfiles', '/upload', '/assets',
     'xmlrpc.php', 'wp-admin', 'wp-content', 'wp-includes',
     '/logs/', '/stats', '/security/',
-    '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml',
+    '/favicon', '/robots.txt', '/manifest.json', '/sitemap.xml', '/sitemap-',
     '/health', '/api/track', '/admin',
 ]
 
@@ -1892,16 +1892,6 @@ def manifest():
 def namufile1():
     return send_file("It's Christmas Time Again.mp3", mimetype="audio/mpeg")
 
-@app.route('/sitemap.xml')
-def sitemap():
-    try:
-        with open('static/sitemap.xml', 'r', encoding='utf-8') as f:
-            content = f.read()
-        response = make_response(content)
-        response.headers['Content-Type'] = 'application/xml; charset=utf-8'
-        return response
-    except FileNotFoundError:
-        abort(404)
 
 STATIC_DIR = app.root_path
 
@@ -2663,6 +2653,9 @@ init_push(app, get_month_meals_from_api, KST, os.path.join(LOG_DIR, 'push_subscr
 
 from announcements import init_announcements
 init_announcements(app, _admin_auth_check, announcement_stats_by_id)
+
+from sitemap import init_sitemap
+init_sitemap(app, API_KEY, regions)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
