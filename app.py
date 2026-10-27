@@ -1600,6 +1600,17 @@ def format_date(value):
 def inject_today_date():
     return dict(today_date=datetime.now(KST).strftime("%Y%m%d"))
 
+@app.context_processor
+def inject_versioned_url_for():
+    def versioned_url_for(endpoint, **values):
+        if endpoint == 'static' and values.get('filename'):
+            try:
+                values['v'] = int(os.stat(os.path.join(app.static_folder, values['filename'])).st_mtime)
+            except OSError:
+                pass
+        return url_for(endpoint, **values)
+    return dict(url_for=versioned_url_for)
+
 @app.route('/wp-<path:filename>')
 @app.route('/wp/<path:filename>')
 @app.route('/<filename>.php')
