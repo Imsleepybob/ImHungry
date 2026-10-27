@@ -12,8 +12,9 @@ SITE_URL = os.environ.get('SITE_URL', 'https://geupsikalimi.com').strip().rstrip
 NEIS_SCHOOL_URL = 'https://open.neis.go.kr/hub/schoolInfo'
 SCHOOL_KINDS = {'초등학교', '중학교', '고등학교', '특수학교'}
 REFRESH_SECONDS = 30 * 86400
-RETRY_SECONDS = 3600
+RETRY_SECONDS = 300
 CHECK_SECONDS = 6 * 3600
+MISSING_CHECK_SECONDS = 300
 PAGE_SIZE = 1000
 MAX_PAGES = 50
 KST = timezone(timedelta(hours=9))
@@ -43,10 +44,12 @@ class SitemapStore:
             }
             response = requests.get(NEIS_SCHOOL_URL, params=params, timeout=20)
             response.raise_for_status()
-            block = response.json().get('schoolInfo')
+            payload = response.json()
+            block = payload.get('schoolInfo')
             if not block or len(block) < 2:
                 if page == 1:
-                    raise RuntimeError('NEIS 응답에 학교 정보가 없습니다')
+                    result = payload.get('RESULT') or {}
+                    raise RuntimeError(f'NEIS 응답에 학교 정보가 없습니다 ({result.get("CODE")} {result.get("MESSAGE")})')
                 break
             rows = block[1].get('row', [])
             if not rows:
@@ -133,12 +136,14 @@ class SitemapStore:
                 time.sleep(1)
 
     def run(self):
+        self.logger.info('[sitemap] 갱신 스레드 시작')
         while True:
             try:
                 self.run_once()
             except Exception as e:
                 self.logger.error(f'[sitemap] 갱신 루프 오류: {e}')
-            time.sleep(CHECK_SECONDS)
+            missing = any(self.get(code) is None for code in self.region_codes)
+            time.sleep(MISSING_CHECK_SECONDS if missing else CHECK_SECONDS)
 
 
 def init_sitemap(app, api_key, regions):
