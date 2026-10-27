@@ -110,6 +110,32 @@ const NotificationManager = {
         return choice.outcome;
     },
 
+    hasChosenWebNotification() {
+        try {
+            return localStorage.getItem('imhungry_install_choice') === 'web';
+        } catch (e) {
+            return false;
+        }
+    },
+
+    saveWebNotificationChoice() {
+        try { localStorage.setItem('imhungry_install_choice', 'web'); } catch (e) {}
+    },
+
+    canNotifyWithoutInstall() {
+        const env = this.getEnvironment();
+        return env.platform !== 'ios' && !env.inApp && this.isWebPushSupported();
+    },
+
+    getInstallChoiceGuide() {
+        return {
+            title: '앱으로 설치할까요?',
+            desc: '앱으로 설치하면 알림을 편하게 받을 수 있어요. 설치하지 않고 이 브라우저에서 바로 알림을 받을 수도 있어요.',
+            steps: [],
+            actions: [{ id: 'install-yes', label: '예', primary: true }, { id: 'install-no', label: '아니오' }]
+        };
+    },
+
     getInstallGuide() {
         const env = this.getEnvironment();
         const closeAction = { id: 'close', label: '닫기' };

@@ -840,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <label id="day-0" class="day-label">일</label><label id="day-1" class="day-label">월</label><label id="day-2" class="day-label">화</label><label id="day-3" class="day-label">수</label><label id="day-4" class="day-label">목</label><label id="day-5" class="day-label">금</label><label id="day-6" class="day-label">토</label>
     </div></div>
     <div class="noti-settings-actions">
+      <button type="button" id="noti-install-btn" class="noti-guide-btn secondary" hidden>앱으로 설치</button>
       <div class="noti-settings-primary-actions"><button type="button" id="noti-cancel-btn" class="noti-guide-btn secondary">닫기</button><button type="button" id="noti-save-btn" class="noti-guide-btn primary">저장</button></div>
     </div>
   </section>
@@ -960,6 +961,15 @@ document.addEventListener('DOMContentLoaded', function() {
         NotificationManager.triggerHaptic('impact', 'LIGHT');
         if (id === 'close') { closeNotiGuide(); return; }
         if (id === 'copy') { copyCurrentLink(button); return; }
+        if (id === 'install-yes') { renderNotiGuide(NotificationManager.getInstallGuide()); return; }
+        if (id === 'install-no') {
+            NotificationManager.saveWebNotificationChoice();
+            const permission = await NotificationManager.requestWebPermission();
+            if (permission === 'granted') { closeNotiGuide(); window.openNotificationModal(); }
+            else if (permission === 'denied') renderNotiGuide(NotificationManager.getDeniedGuide());
+            else renderNotiGuide(NotificationManager.getPermissionDismissedGuide());
+            return;
+        }
         if (id === 'install') {
             const outcome = await NotificationManager.promptInstall();
             renderNotiGuide(outcome === 'accepted' ? NotificationManager.getInstalledGuide() : NotificationManager.getInstallGuide());
@@ -1076,6 +1086,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const settingsSheet = document.getElementById('notification-sheet');
         const notificationPrompt = document.getElementById('noti-prompt');
         const disableBtn = document.getElementById('noti-disable-btn');
+        const installBtn = document.getElementById('noti-install-btn');
+        installBtn.hidden = NotificationManager.isAppEnvironment() || NotificationManager.isPWA();
+        installBtn.addEventListener('click', () => {
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
+            closeNotificationModal();
+            showNotiGuide(NotificationManager.getInstallGuide());
+        });
         let settingsCloseTimer = null;
 
         const syncNotiState = () => {
@@ -1097,6 +1114,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('notification-title').focus({ preventScroll: true });
             }));
         };
+
+        window.openNotificationModal = openNotificationModal;
 
         const closeNotificationModal = () => {
             if (!settingsModal.classList.contains('show')) return;
@@ -1175,8 +1194,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (!NotificationManager.isPWA()) {
-                showNotiGuide(NotificationManager.getInstallGuide());
-                return;
+                if (!NotificationManager.canNotifyWithoutInstall()) {
+                    showNotiGuide(NotificationManager.getInstallGuide());
+                    return;
+                }
+                if (Notification.permission === 'default' && !NotificationManager.hasChosenWebNotification()) {
+                    showNotiGuide(NotificationManager.getInstallChoiceGuide());
+                    return;
+                }
             }
             if (!NotificationManager.isWebPushSupported()) {
                 showNotiGuide(NotificationManager.getUnsupportedGuide());
