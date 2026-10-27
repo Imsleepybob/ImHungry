@@ -14,7 +14,9 @@
 
     const CLOSE_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5l11 11M14.5 3.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     const CSS = `
-.egg-emoji { cursor: default; display: inline-block; -webkit-tap-highlight-color: transparent; user-select: none; }
+.egg-emoji { cursor: pointer; display: inline-block; -webkit-tap-highlight-color: transparent; user-select: none; transition: transform 0.15s ease; }
+@media (hover: hover) { .egg-emoji:hover { transform: scale(1.25); } }
+.egg-emoji:active { transform: scale(1.25); }
 .egg-emoji.egg-pop { animation: eggPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes eggPop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
 .egg-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; touch-action: none; overscroll-behavior: contain; background: color-mix(in srgb, var(--bg-container, #fff) 78%, transparent); -webkit-backdrop-filter: blur(26px) saturate(1.4); backdrop-filter: blur(26px) saturate(1.4); }
@@ -37,7 +39,7 @@
 .egg-title { font-size: 22px; font-weight: 750; letter-spacing: -0.04em; color: var(--text-primary, #202124); }
 .egg-hint { margin-top: 6px; font-size: 14px; color: var(--text-secondary, #77777d); }
 .egg-overlay.intro-1 .egg-title, .egg-overlay.intro-2 .egg-hint { opacity: 1; transform: translateY(0); }
-@media (prefers-reduced-motion: reduce) { .egg-overlay, .egg-title, .egg-hint, .egg-preview, .egg-roller { transition: none; } .egg-emoji.egg-pop, .egg-preview-emoji.bump { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .egg-emoji { transition: none; } .egg-overlay, .egg-title, .egg-hint, .egg-preview, .egg-roller { transition: none; } .egg-emoji.egg-pop, .egg-preview-emoji.bump { animation: none; } }
 `;
 
     let overlay = null;
@@ -94,10 +96,16 @@
         });
     }
 
-    function buildOverlay() {
+    function injectStyle() {
+        if (document.getElementById('egg-style')) return;
         const style = document.createElement('style');
+        style.id = 'egg-style';
         style.textContent = CSS;
         document.head.appendChild(style);
+    }
+
+    function buildOverlay() {
+        injectStyle();
 
         overlay = document.createElement('div');
         overlay.className = 'egg-overlay';
@@ -289,6 +297,7 @@
     }
 
     function init() {
+        injectStyle();
         document.querySelectorAll(TARGETS).forEach(wrapEmojis);
         let taps = [];
         document.addEventListener('click', (event) => {
