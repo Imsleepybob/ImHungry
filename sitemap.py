@@ -1,5 +1,8 @@
+import json
 import os
 import re
+import socket
+import tempfile
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -19,16 +22,20 @@ PAGE_SIZE = 1000
 MAX_PAGES = 50
 KST = timezone(timedelta(hours=9))
 XML_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+WHO = f'{socket.gethostname()}/{os.getpid()}'
+DEFAULT_CACHE_DIR = os.environ.get('SITEMAP_CACHE_DIR') or os.path.join(tempfile.gettempdir(), 'imhungry_sitemap')
 SCHOOL_CODE_PATTERN = re.compile(r'^[0-9A-Za-z]+$')
 
 
 class SitemapStore:
-    def __init__(self, api_key, regions, logger):
+    def __init__(self, api_key, regions, logger, cache_dir=DEFAULT_CACHE_DIR):
         self.api_key = api_key
         self.region_codes = list(regions.values())
         self.logger = logger
+        self.cache_dir = cache_dir
         self.lock = threading.Lock()
         self.entries = {}
+        self.disk_entries = {}
         self.last_try = {}
 
     # NEIS 조회
@@ -88,10 +95,8 @@ class SitemapStore:
     def index_xml(self):
         lines = ['<?xml version="1.0" encoding="UTF-8"?>', f'<sitemapindex xmlns="{XML_NS}">',
                  f'  <sitemap><loc>{SITE_URL}/sitemap-main.xml</loc></sitemap>']
-        with self.lock:
-            entries = dict(self.entries)
         for code in self.region_codes:
-            entry = entries.get(code)
+            entry = self.get(code)
             lastmod = f'<lastmod>{entry["lastmod"]}</lastmod>' if entry else ''
             lines.append(f'  <sitemap><loc>{SITE_URL}/sitemap-{code}.xml</loc>{lastmod}</sitemap>')
         lines.append('</sitemapindex>')
@@ -110,18 +115,59 @@ class SitemapStore:
             'xml': self.build_urlset(codes, lastmod), 'count': len(codes),
             'codes': frozenset(codes), 'updated': time.time(), 'lastmod': lastmod,
         }
+        old = self.get(region_code)
         with self.lock:
-            old = self.entries.get(region_code)
             self.entries[region_code] = entry
-        if old:
+        self.save(region_code, entry)
+        if old and old.get('codes') is not None:
             self.logger.info(f'[sitemap] {region_code} 갱신: {len(codes)}개 (추가 {len(entry["codes"] - old["codes"])}, 제거 {len(old["codes"] - entry["codes"])})')
+        elif old:
+            self.logger.info(f'[sitemap] {region_code} 갱신: {len(codes)}개 (이전 {old["count"]}개)')
         else:
             self.logger.info(f'[sitemap] {region_code} 생성: {len(codes)}개')
         return True
 
+    # 프로세스 간 공유 저장소
+    def cache_paths(self, region_code):
+        base = os.path.join(self.cache_dir, f'sitemap-{region_code}')
+        return base + '.xml', base + '.json'
+
+    def save(self, region_code, entry):
+        xml_path, meta_path = self.cache_paths(region_code)
+        meta = {'lastmod': entry['lastmod'], 'updated': entry['updated'], 'count': entry['count']}
+        try:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            for path, text in ((xml_path, entry['xml']), (meta_path, json.dumps(meta))):
+                tmp_path = f'{path}.{os.getpid()}.tmp'
+                with open(tmp_path, 'w', encoding='utf-8') as f:
+                    f.write(text)
+                os.replace(tmp_path, path)
+        except OSError as e:
+            self.logger.error(f'[sitemap] {region_code} 파일 저장 실패: {e}')
+
+    def load(self, region_code):
+        xml_path, meta_path = self.cache_paths(region_code)
+        try:
+            with open(meta_path, encoding='utf-8') as f:
+                meta = json.load(f)
+            cached = self.disk_entries.get(region_code)
+            if cached and cached['updated'] == meta['updated']:
+                return cached
+            with open(xml_path, encoding='utf-8') as f:
+                xml = f.read()
+            entry = {'xml': xml, 'count': meta['count'], 'codes': None, 'updated': meta['updated'], 'lastmod': meta['lastmod']}
+        except (OSError, ValueError, KeyError):
+            return None
+        self.disk_entries[region_code] = entry
+        return entry
+
     def get(self, region_code):
         with self.lock:
-            return self.entries.get(region_code)
+            memory = self.entries.get(region_code)
+        disk = self.load(region_code)
+        if memory and (not disk or memory['updated'] >= disk['updated']):
+            return memory
+        return disk
 
     def is_due(self, region_code, now):
         entry = self.get(region_code)
@@ -136,7 +182,7 @@ class SitemapStore:
                 time.sleep(1)
 
     def run(self):
-        self.logger.info('[sitemap] 갱신 스레드 시작')
+        self.logger.info(f'[sitemap] 갱신 스레드 시작 ({WHO})')
         while True:
             try:
                 self.run_once()
@@ -146,12 +192,13 @@ class SitemapStore:
             time.sleep(MISSING_CHECK_SECONDS if missing else CHECK_SECONDS)
 
 
-def init_sitemap(app, api_key, regions):
-    store = SitemapStore(api_key, regions, app.logger)
+def init_sitemap(app, api_key, regions, cache_dir=DEFAULT_CACHE_DIR):
+    store = SitemapStore(api_key, regions, app.logger, cache_dir)
 
     def xml_response(body):
         response = Response(body, mimetype='application/xml')
         response.headers['Cache-Control'] = 'public, max-age=3600'
+        response.headers['X-Sitemap-Source'] = WHO
         return response
 
     @app.route('/sitemap.xml')
@@ -168,8 +215,10 @@ def init_sitemap(app, api_key, regions):
             abort(404)
         entry = store.get(region_code)
         if not entry:
+            app.logger.warning(f'[sitemap] {region_code} 아직 준비되지 않음 ({WHO})')
             response = Response('', status=503)
             response.headers['Retry-After'] = '300'
+            response.headers['X-Sitemap-Source'] = WHO
             return response
         return xml_response(entry['xml'])
 
