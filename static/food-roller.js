@@ -9,8 +9,6 @@
     const CYCLE = FOODS.length * ROW;
     const TARGETS = '.today-meal-type, .today-meal-title, .meal-title';
     const EMOJI = /\p{Extended_Pictographic}\uFE0F?/gu;
-    const TAPS_NEEDED = 3;
-    const TAP_WINDOW = 1000;
 
     const CLOSE_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5l11 11M14.5 3.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     const CSS = `
@@ -299,17 +297,10 @@
     function init() {
         injectStyle();
         document.querySelectorAll(TARGETS).forEach(wrapEmojis);
-        let taps = [];
         document.addEventListener('click', (event) => {
             const target = event.target.closest ? event.target.closest('.egg-emoji') : null;
             if (!target) return;
-            const now = Date.now();
-            taps = taps.filter((t) => now - t.time < TAP_WINDOW && t.target === target);
-            taps.push({ time: now, target });
-            if (taps.length >= TAPS_NEEDED) {
-                taps = [];
-                open(target);
-            }
+            open(target);
         });
     }
 

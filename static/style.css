@@ -198,6 +198,8 @@ body {
     flex-direction: column;
     gap: 10px;
     margin-top: 10px;
+    position: relative;
+    z-index: 10;
 }
 
 input[type="text"] {
