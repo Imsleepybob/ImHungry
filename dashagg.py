@@ -1,4 +1,7 @@
 import copy
+import hashlib
+import ipaddress
+import os
 import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -21,7 +24,19 @@ CAPS = {
     'pwa_ips': 2000,
     'pwa_schools': 2000,
     'pwa_uids': 4000,
+    'rel_ips': 5000,
+    'rel_paths': 30,
+    'rel_uas': 5,
 }
+
+try:
+    REL_RETENTION_DAYS = max(1, int(os.environ.get('DASH_REL_DAYS') or 30))
+except ValueError:
+    REL_RETENTION_DAYS = 30
+REL_LIVE_LIMIT = 10000
+REL_LIVE_PATHS = 120
+REL_LIVE_UAS = 12
+REL_LIVE_UA_NAMES = 5000
 
 
 def new_agg():
@@ -41,6 +56,8 @@ def new_agg():
         'devices': {},
         'os': {},
         'browsers': {},
+        'rel': {},
+        'ua_names': {},
         'ev': {'theme': {}, 'search_method': {}, 'btn_month': 0, 'btn_nearby': 0, 'btn_share': 0, 'btn_notification': 0, 'ann': {}},
         'pwa': {'visits': 0, 'ips': {}, 'schools': {}, 'uid_visits': {}},
     }
@@ -50,7 +67,71 @@ def _inc(mapping, key, amount=1):
     mapping[key] = mapping.get(key, 0) + amount
 
 
-def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name=None, browser=None):
+def group_key(ip):
+    if ':' in ip:
+        try:
+            addr = ipaddress.IPv6Address(ip)
+        except ValueError:
+            return ip
+        if addr.ipv4_mapped:
+            return group_key(str(addr.ipv4_mapped))
+        return str(ipaddress.IPv6Address((int(addr) >> 64) << 64))
+    parts = ip.split('.')
+    if len(parts) == 4 and all(part.isdigit() for part in parts):
+        return '.'.join(parts[:3]) + '.0'
+    return ip
+
+
+def group_label(key):
+    if ':' in key:
+        return key + '/64'
+    parts = key.split('.')
+    if len(parts) == 4 and all(part.isdigit() for part in parts):
+        return key + '/24'
+    return key
+
+
+def group_matcher(key):
+    if ':' in key:
+        head = key.split(':', 1)[0].lower().lstrip('0')
+        return lambda ip: ':' in ip and ip.split(':', 1)[0].lower().lstrip('0') == head and group_key(ip) == key
+    prefix = key[:key.rfind('.') + 1]
+    return lambda ip: ip.startswith(prefix) and group_key(ip) == key
+
+
+def ua_id(ua):
+    return hashlib.blake2s(ua.encode('utf-8', 'replace'), digest_size=5).hexdigest()
+
+
+def _add_rel(agg, ip, path, ua, clock):
+    rel = agg['rel']
+    key = group_key(ip)
+    entry = rel.get(key)
+    if entry is None:
+        if len(rel) >= REL_LIVE_LIMIT:
+            return
+        entry = {'n': 0, 'f': clock, 'l': clock, 'p': {}, 'u': {}}
+        rel[key] = entry
+    entry['n'] += 1
+    if clock:
+        if not entry['f'] or clock < entry['f']:
+            entry['f'] = clock
+        if clock > entry['l']:
+            entry['l'] = clock
+    paths = entry['p']
+    if path in paths or len(paths) < REL_LIVE_PATHS:
+        paths[path] = paths.get(path, 0) + 1
+    if ua:
+        uid = ua_id(ua)
+        uas = entry['u']
+        names = agg['ua_names']
+        if uid in uas or len(uas) < REL_LIVE_UAS:
+            if uid in names or len(names) < REL_LIVE_UA_NAMES:
+                names.setdefault(uid, ua[:200])
+                uas[uid] = uas.get(uid, 0) + 1
+
+
+def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name=None, browser=None, ua='', clock='')
     agg['n'] += 1
     _inc(agg['ips'], ip)
     _inc(agg['status'], status)
@@ -65,6 +146,7 @@ def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name
         return
     _inc(agg['user_ips'], ip)
     _inc(agg['user_paths'], path)
+    _add_rel(agg, ip, path[:200], ua, clock)
     school = SCHOOL_PATH_RE.match(path)
     if school:
         _inc(agg['schools'], school.group(1))
@@ -117,7 +199,27 @@ def _merge_counts(target, source):
         target[key] = target.get(key, 0) + value
 
 
-def merge(target, source):
+def _merge_rel(target, source):
+    mine_rel = target.setdefault('rel', {})
+    for ip, entry in (source.get('rel') or {}).items():
+        mine = mine_rel.get(ip)
+        if mine is None:
+            mine_rel[ip] = {'n': entry['n'], 'f': entry['f'], 'l': entry['l'], 'p': dict(entry['p']), 'u': dict(entry['u'])}
+            continue
+        mine['n'] += entry['n']
+        if entry['f'] and (not mine['f'] or entry['f'] < mine['f']):
+            mine['f'] = entry['f']
+        mine['l'] = max(mine['l'], entry['l'])
+        _merge_counts(mine['p'], entry['p'])
+        _merge_counts(mine['u'], entry['u'])
+    names = target.setdefault('ua_names', {})
+    for uid, name in (source.get('ua_names') or {}).items():
+        names.setdefault(uid, name)
+
+
+def merge(target, source, with_rel=True):
+    if with_rel:
+        _merge_rel(target, source)
     target['n'] += source['n']
     target['crawlers'] += source['crawlers']
     target['users'] += source['users']
@@ -171,6 +273,17 @@ def compact(agg):
         out['bot_ips'] = dict(sorted(out['bot_ips'].items(), key=lambda item: item[1]['t'], reverse=True)[:CAPS['bot_ips']])
     for entry in out['bot_ips'].values():
         entry['p'] = _top(entry['p'], CAPS['bot_ip_paths'])
+    if 'rel' in out:
+        rel = out['rel']
+        if len(rel) > CAPS['rel_ips']:
+            rel = dict(sorted(rel.items(), key=lambda item: item[1]['n'], reverse=True)[:CAPS['rel_ips']])
+            out['rel'] = rel
+        used = set()
+        for entry in rel.values():
+            entry['p'] = _top(entry['p'], CAPS['rel_paths'])
+            entry['u'] = _top(entry['u'], CAPS['rel_uas'])
+            used.update(entry['u'])
+        out['ua_names'] = {uid: name for uid, name in out.get('ua_names', {}).items() if uid in used}
     pwa = out['pwa']
     if len(pwa['ips']) > CAPS['pwa_ips']:
         pwa['ips'] = dict(sorted(pwa['ips'].items(), key=lambda item: item[1]['v'], reverse=True)[:CAPS['pwa_ips']])
@@ -197,7 +310,7 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
     today_requests = 0
     pwa_today = 0
     for day, agg in sorted(day_aggs.items()):
-        merge(total, agg)
+        merge(total, agg, with_rel=False)
         if agg['n']:
             requests_by_day[day] = agg['n']
         if agg['pwa']['visits']:
@@ -211,7 +324,15 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
         names[code] = school_name(code)
 
     pwa = total['pwa']
+    uid_ips = defaultdict(set)
+    for ip, entry in pwa['ips'].items():
+        for uid in entry['u']:
+            uid_ips[uid].add(group_key(ip))
+    multi_ip_devices = sorted(
+        ({'uid': uid, 'ips': len(ips), 'visits': pwa['uid_visits'].get(uid, 0)} for uid, ips in uid_ips.items() if len(ips) >= 2),
+        key=lambda row: (row['ips'], row['visits']), reverse=True)
     pwa_stats = {
+        'multi_ip_devices': multi_ip_devices,
         'devices': len(pwa['uid_visits']),
         'returning_devices': sum(1 for count in pwa['uid_visits'].values() if count >= 2),
         'ips': len(pwa['ips']),
@@ -228,7 +349,7 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
             for ip, entry in sorted(pwa['ips'].items(), key=lambda item: item[1]['v'], reverse=True)
         ],
         'school_list': [
-            (school_name(code), entry['v'], len(entry['u']))
+            (school_name(code), entry['v'], len(entry['u']), code)
             for code, entry in sorted(pwa['schools'].items(), key=lambda item: item[1]['v'], reverse=True)
         ],
         'by_day': dict(sorted(pwa_by_day.items())[-14:]),
@@ -246,8 +367,8 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
         'all_user_paths': _sorted(total['user_paths']),
         'top_bot_paths': _sorted(total['bot_paths'], 15),
         'all_bot_paths': _sorted(total['bot_paths']),
-        'top_schools': [(names.get(c, c), v) for c, v in _sorted(total['schools'], 10)],
-        'all_schools': [(names.get(c, c), v) for c, v in _sorted(total['schools'])],
+        'top_schools': [(names.get(c, c), v, c) for c, v in _sorted(total['schools'], 10)],
+        'all_schools': [(names.get(c, c), v, c) for c, v in _sorted(total['schools'])],
         'top_ips': _sorted(total['user_ips'], 10),
         'all_ips': _sorted(total['user_ips']),
         'top_referrers': _sorted(total['referrers'], 10),
@@ -275,3 +396,164 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
         'pwa': pwa_stats,
         'days': days,
     }
+
+
+def _stamp(day, clock):
+    return f'{day} {clock}'.strip()
+
+
+def ip_profile(raw, ip):
+    key = group_key(ip)
+    match = group_matcher(key)
+    out = {'ip': ip, 'key': key, 'label': group_label(key), 'total': 0, 'days': [], 'paths': {}, 'uas': {}, 'schools': {},
+           'first': '', 'last': '', 'partial': False, 'pwa_visits': 0, 'pwa_last': '', 'uids': {}}
+    for day, aggs in sorted(raw.items()):
+        day_total = 0
+        for agg in aggs:
+            rel = agg.get('rel')
+            entry = rel.get(key) if rel is not None else None
+            if entry:
+                day_total += entry['n']
+                _merge_counts(out['paths'], entry['p'])
+                names = agg.get('ua_names') or {}
+                for uid, count in entry['u'].items():
+                    row = out['uas'].setdefault(uid, {'name': names.get(uid, ''), 'n': 0})
+                    row['n'] += count
+                    if not row['name']:
+                        row['name'] = names.get(uid, '')
+                if entry['f'] and (not out['first'] or _stamp(day, entry['f']) < out['first']):
+                    out['first'] = _stamp(day, entry['f'])
+                if entry['l'] and _stamp(day, entry['l']) > out['last']:
+                    out['last'] = _stamp(day, entry['l'])
+            else:
+                legacy = sum(count for other, count in agg['user_ips'].items() if match(other))
+                day_total += legacy
+                if legacy and rel is not None:
+                    out['partial'] = True
+            for other, pwa in agg['pwa']['ips'].items():
+                if not match(other):
+                    continue
+                out['pwa_visits'] += pwa['v']
+                out['pwa_last'] = max(out['pwa_last'], pwa['l'])
+                for uid in pwa['u']:
+                    out['uids'].setdefault(uid, {'visits': 0, 'ips': {}})
+                for code, count in pwa['s'].items():
+                    out['schools'].setdefault(code, {'web': 0, 'pwa': 0})['pwa'] += count
+        if day_total:
+            out['days'].append({'day': day, 'total': day_total})
+            out['total'] += day_total
+            if not out['first'] or day < out['first'][:10]:
+                out['first'] = day
+            if day > out['last'][:10]:
+                out['last'] = day
+    for path, count in out['paths'].items():
+        found = SCHOOL_PATH_RE.match(path)
+        if found:
+            out['schools'].setdefault(found.group(1), {'web': 0, 'pwa': 0})['web'] += count
+    if out['uids']:
+        for aggs in raw.values():
+            for agg in aggs:
+                for uid in out['uids']:
+                    out['uids'][uid]['visits'] += agg['pwa']['uid_visits'].get(uid, 0)
+                for other, entry in agg['pwa']['ips'].items():
+                    other_key = group_key(other)
+                    if other_key == key:
+                        continue
+                    for uid in entry['u']:
+                        if uid in out['uids']:
+                            ips = out['uids'][uid]['ips']
+                            ips[other_key] = max(ips.get(other_key, ''), entry['l'])
+    return out
+
+
+def school_profile(raw, code):
+    path_key = '/meal/' + code
+    out = {'code': code, 'web_visits': 0, 'ips': [], 'pwa_visits': 0, 'pwa_devices': set(), 'pwa_ips': {}, 'tracked': False}
+    ips = {}
+    for day, aggs in sorted(raw.items()):
+        for agg in aggs:
+            out['web_visits'] += agg['schools'].get(code, 0)
+            rel = agg.get('rel')
+            if rel is not None:
+                out['tracked'] = True
+                for key, entry in rel.items():
+                    count = entry['p'].get(path_key)
+                    if not count:
+                        continue
+                    row = ips.setdefault(key, {'ip': key, 'n': 0, 'last': ''})
+                    row['n'] += count
+                    row['last'] = max(row['last'], _stamp(day, entry['l']))
+            school = agg['pwa']['schools'].get(code)
+            if school:
+                out['pwa_visits'] += school['v']
+                out['pwa_devices'].update(school['u'])
+            for ip, entry in agg['pwa']['ips'].items():
+                count = entry['s'].get(code)
+                if count:
+                    key = group_key(ip)
+                    out['pwa_ips'][key] = out['pwa_ips'].get(key, 0) + count
+    out['ips'] = sorted(ips.values(), key=lambda row: row['n'], reverse=True)
+    out['pwa_devices'] = sorted(out['pwa_devices'])
+    return out
+
+
+def ua_profile(raw, uid):
+    out = {'uid': uid, 'name': '', 'total': 0, 'ips': [], 'tracked': False}
+    ips = {}
+    for day, aggs in sorted(raw.items()):
+        for agg in aggs:
+            rel = agg.get('rel')
+            if rel is None:
+                continue
+            out['tracked'] = True
+            name = (agg.get('ua_names') or {}).get(uid)
+            if name and not out['name']:
+                out['name'] = name
+            for key, entry in rel.items():
+                count = entry['u'].get(uid)
+                if not count:
+                    continue
+                row = ips.setdefault(key, {'ip': key, 'n': 0, 'last': ''})
+                row['n'] += count
+                row['last'] = max(row['last'], _stamp(day, entry['l']))
+                out['total'] += count
+    out['ips'] = sorted(ips.values(), key=lambda row: row['n'], reverse=True)
+    return out
+
+
+def ua_index(raw, limit=None):
+    names, counts = {}, {}
+    ips = defaultdict(set)
+    for aggs in raw.values():
+        for agg in aggs:
+            for uid, name in (agg.get('ua_names') or {}).items():
+                names.setdefault(uid, name)
+            for key, entry in (agg.get('rel') or {}).items():
+                for uid, count in entry['u'].items():
+                    counts[uid] = counts.get(uid, 0) + count
+                    ips[uid].add(key)
+    rows = [{'uid': uid, 'name': names.get(uid, ''), 'n': count, 'ips': len(ips[uid])} for uid, count in counts.items()]
+    rows.sort(key=lambda row: row['n'], reverse=True)
+    return rows[:limit] if limit else rows
+
+
+def device_profile(raw, uid):
+    out = {'uid': uid, 'visits': 0, 'days': [], 'ips': {}, 'schools': {}}
+    for day, aggs in sorted(raw.items()):
+        day_visits = 0
+        for agg in aggs:
+            day_visits += agg['pwa']['uid_visits'].get(uid, 0)
+            for ip, entry in agg['pwa']['ips'].items():
+                if uid in entry['u']:
+                    row = out['ips'].setdefault(group_key(ip), {'last': '', 'days': set()})
+                    row['last'] = max(row['last'], entry['l'])
+                    row['days'].add(day)
+            for code, entry in agg['pwa']['schools'].items():
+                if uid in entry['u']:
+                    out['schools'][code] = out['schools'].get(code, 0) + 1
+        if day_visits:
+            out['days'].append({'day': day, 'visits': day_visits})
+            out['visits'] += day_visits
+    for row in out['ips'].values():
+        row['days'] = len(row['days'])
+    return out

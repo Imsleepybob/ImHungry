@@ -961,7 +961,7 @@ def asn_db_lookup_networks(asn):
 
 
 ACCESS_LOG_RE = re.compile(
-    r'(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}[,.\d]* - '
+    r'(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[, .\d]* - '
     r'IP: (\S+) - '
     r'(?:Device: (\S+) - (?:OS: (.*?) - )?Browser: ([^-]+?) - (?:Crawler: (.*?) - )?)?'
     r'UA: (.*?) - '
@@ -1054,9 +1054,9 @@ def tail_logs_into_store():
                 m = ACCESS_LOG_RE.match(line.strip())
                 if not m:
                     continue
-                (date_str, ip, device, os_name, browser, crawler_field, ua, method, path, status, referrer) = m.groups()
+                (date_str, clock, ip, device, os_name, browser, crawler_field, ua, method, path, status, referrer) = m.groups()
                 kind, name, dev, os_final, browser_final = _classify_access_row(ip, device, os_name, browser, crawler_field, ua)
-                dashagg.add_access(_live_agg(date_str), ip, status, path, referrer, kind, name, dev, os_final, browser_final)
+                dashagg.add_access(_live_agg(date_str), ip, status, path, referrer, kind, name, dev, os_final, browser_final, ua.strip(), clock)
             for line in event_lines:
                 line = line.strip()
                 if not line:
@@ -1206,10 +1206,10 @@ def _announcement_stats(raw):
 def announcement_stats_by_id(days=30):
     dash_store.start()
     tail_logs_into_store()
-    aggs = dash_store.merged_days(datetime.now(KST).date(), days)
+    aggs = dash_store.merged_days(datetime.now(KST).date(), days, with_rel=False)
     total = dashagg.new_agg()
     for agg in aggs.values():
-        dashagg.merge(total, agg)
+        dashagg.merge(total, agg, with_rel=False)
     return {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()}
 
 
@@ -1229,7 +1229,7 @@ def parse_logs_for_dashboard(days=30):
         'temp_blocked_ips': len(blocked_ips),
         'total_failed_attempts': sum(failed_attempts.values()),
     }
-    aggs = dash_store.merged_days(today, days)
+    aggs = dash_store.merged_days(today, days, with_rel=False)
     _prefetch_school_names(_collect_school_codes(aggs))
 
     def school_name(code):
@@ -1237,6 +1237,8 @@ def parse_logs_for_dashboard(days=30):
 
     result = dashagg.finalize(aggs, today, days, school_name, cache_stats, security_stats)
     result['ann_stats'] = _announcement_stats(result['events'].get('ann', {}))
+    result['ua_list'] = dash_store.with_days(today, days, lambda raw: dashagg.ua_index(raw, 200))
+    result['rel_days'] = dashagg.REL_RETENTION_DAYS
     result['persistence'] = {
         'github': dash_store.gh_enabled(),
         'restored': dash_store.restored,
@@ -2147,6 +2149,7 @@ def admin_csrf_token():
 
 
 app.jinja_env.globals['admin_csrf_token'] = admin_csrf_token
+app.jinja_env.globals['ip_group_label'] = dashagg.group_label
 
 
 def _admin_login_page(message='', status=200):
@@ -2156,18 +2159,27 @@ def _admin_login_page(message='', status=200):
     return response
 
 
-def _collect_prior_trail(ip, limit=200):
+def _collect_prior_trail(ip, limit=200, group=False):
     items = []
+    matcher = dashagg.group_matcher(dashagg.group_key(ip))
     try:
         with open(ACCESS_LOG_PATH, 'r', encoding='utf-8', errors='replace') as f:
             for line in f:
-                if ip not in line:
-                    continue
-                m = TRAIL_LOG_RE.match(line.strip())
-                if not m or m.group(3) != ip:
-                    continue
-                day, clock, _, ua, method, path, status, ref = m.groups()
-                items.append({'t': f'{day}T{clock}+09:00', 'm': method, 'p': path[:300], 's': int(status), 'u': ua[:160], 'r': ref[:160]})
+                if group:
+                    m = ACCESS_LOG_RE.match(line.strip())
+                    if not m:
+                        continue
+                    day, clock, line_ip, device, os_name, browser, crawler_field, ua, method, path, status, ref = m.groups()
+                    if not matcher(line_ip) or _classify_access_row(line_ip, device, os_name, browser, crawler_field, ua)[0] == 'bot':
+                        continue
+                else:
+                    if ip not in line:
+                        continue
+                    m = TRAIL_LOG_RE.match(line.strip())
+                    if not m or m.group(3) != ip:
+                        continue
+                    day, clock, _, ua, method, path, status, ref = m.groups()
+                items.append({'t': f'{day}T{clock}+09:00', 'm': method, 'p': path[:300], 's': int(status), 'u': ua[:160], 'r': ref[:160], 'i': line_ip if group else ip})
     except OSError:
         return []
     return items[-limit:]
@@ -2263,22 +2275,89 @@ def blocked_page():
 
 
 @app.route('/admin/ip/<ip>')
+def _detail_days():
+    try:
+        return max(1, min(int(request.args.get('days', 30)), 90))
+    except (ValueError, TypeError):
+        return 30
+
+
+def _profile_for(builder):
+    dash_store.start()
+    tail_logs_into_store()
+    return dash_store.with_days(datetime.now(KST).date(), _detail_days(), builder)
+
+
+def _school_label_map(codes):
+    codes = set(codes)
+    _prefetch_school_names(codes)
+    return {code: _cached_school_name(code) or code for code in codes}
+
+
 def admin_ip_detail(ip):
     auth = _admin_auth_check()
     if auth is not None:
         return auth
     if not _valid_ip(ip):
         return make_response('올바른 IP 주소가 아닙니다.', 400)
+    profile = _profile_for(lambda raw: dashagg.ip_profile(raw, ip))
     detail = security_watch.detail(ip)
-    trail = list(reversed(detail['trail'])) if detail else []
+    trail = list(reversed(detail['trail'])) if detail else list(reversed(_collect_prior_trail(ip, group=True)))
     page_counts = defaultdict(lambda: {'count': 0, 'last': ''})
     for item in (detail['trail'] if detail else []):
         entry = page_counts[item['p'].split('?')[0]]
         entry['count'] += 1
         entry['last'] = max(entry['last'], item['t'])
     pages = sorted(page_counts.items(), key=lambda kv: kv[1]['count'], reverse=True)
+    school_names = _school_label_map(profile['schools'])
+    schools = sorted(
+        ({'code': code, 'name': school_names[code], **row} for code, row in profile['schools'].items()),
+        key=lambda row: row['web'] + row['pwa'], reverse=True)
+    uas = sorted(({'uid': uid, **row} for uid, row in profile['uas'].items()), key=lambda row: row['n'], reverse=True)
+    paths = sorted(profile['paths'].items(), key=lambda kv: kv[1], reverse=True)[:100]
     return render_template('admin_ip_detail.html', ip=ip, detail=detail, trail=trail, pages=pages,
-                           info=get_ip_info(ip) or {}, blocked=is_ip_blocked(ip), notice=request.args.get('notice', ''))
+                           info=get_ip_info(ip) or {}, blocked=is_ip_blocked(ip), notice=request.args.get('notice', ''),
+                           profile=profile, schools=schools, uas=uas, paths=paths, days=_detail_days(),
+                           rel_days=dashagg.REL_RETENTION_DAYS)
+
+
+@app.route('/admin/school/<code>')
+def admin_school_detail(code):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not re.fullmatch(r'\w{1,20}', code, re.ASCII):
+        return make_response('올바른 학교 코드가 아닙니다.', 400)
+    profile = _profile_for(lambda raw: dashagg.school_profile(raw, code))
+    return render_template('admin_rel_detail.html', kind='school', title=_school_label_map([code])[code], profile=profile,
+                           days=_detail_days(), rel_days=dashagg.REL_RETENTION_DAYS)
+
+
+@app.route('/admin/ua/<uid>')
+def admin_ua_detail(uid):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not re.fullmatch(r'[0-9a-f]{10}', uid):
+        return make_response('올바른 User-Agent 식별값이 아닙니다.', 400)
+    profile = _profile_for(lambda raw: dashagg.ua_profile(raw, uid))
+    return render_template('admin_rel_detail.html', kind='ua', title='User-Agent', profile=profile,
+                           days=_detail_days(), rel_days=dashagg.REL_RETENTION_DAYS)
+
+
+@app.route('/admin/device/<uid>')
+def admin_device_detail(uid):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    if not re.fullmatch(r'[0-9a-f]{1,32}', uid):
+        return make_response('올바른 기기 식별값이 아닙니다.', 400)
+    profile = _profile_for(lambda raw: dashagg.device_profile(raw, uid))
+    school_names = _school_label_map(profile['schools'])
+    profile['schools'] = sorted(({'code': code, 'name': school_names[code], 'days': days} for code, days in profile['schools'].items()),
+                                key=lambda row: row['days'], reverse=True)
+    return render_template('admin_rel_detail.html', kind='device', title='PWA 기기 ' + uid, profile=profile,
+                           days=_detail_days(), rel_days=dashagg.REL_RETENTION_DAYS)
 
 
 @app.route('/admin/ip/<ip>/unblock', methods=['POST'])

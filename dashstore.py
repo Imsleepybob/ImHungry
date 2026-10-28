@@ -20,6 +20,7 @@ GITHUB_BRANCH = os.environ.get('PUSH_GITHUB_BRANCH', 'main').strip()
 GITHUB_DIR = os.environ.get('DASH_GITHUB_DIR', 'dashboard').strip().strip('/')
 GITHUB_API = 'https://api.github.com'
 SYNC_INTERVAL = 600
+PUSH_INTERVAL = 21600
 REFRESH_INTERVAL = 120
 RETENTION_DAYS = 90
 DAY_FILE_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})\.json$')
@@ -114,7 +115,15 @@ class DashStore:
             except (OSError, ValueError):
                 continue
 
+    def _rel_cutoff(self):
+        return (datetime.now(self.tz).date() - timedelta(days=dashagg.REL_RETENTION_DAYS)).isoformat()
+
     def _merge_day(self, date_str, parts):
+        if date_str < self._rel_cutoff():
+            for agg in parts.values():
+                if isinstance(agg, dict):
+                    agg.pop('rel', None)
+                    agg.pop('ua_names', None)
         with self.lock:
             mine = self.parts.setdefault(date_str, {})
             for boot, agg in parts.items():
@@ -141,7 +150,36 @@ class DashStore:
         with self.lock:
             return [agg for boot, agg in self.parts.get(date_str, {}).items() if boot != self.boot_id]
 
-    def merged_days(self, today, days):
+    def prune_rel(self):
+        cutoff = self._rel_cutoff()
+        with self.lock:
+            for date_str, parts in self.parts.items():
+                if date_str >= cutoff:
+                    continue
+                changed = False
+                for agg in parts.values():
+                    if isinstance(agg, dict) and ('rel' in agg or 'ua_names' in agg):
+                        agg.pop('rel', None)
+                        agg.pop('ua_names', None)
+                        changed = True
+                if changed:
+                    key = 'day:' + date_str
+                    self.dirty.add(key)
+                    self.write_local(key)
+
+    def with_days(self, today, days, fn):
+        _, dates = dashagg.window_dates(today, days)
+        with self.lock:
+            raw = {}
+            for date_str in dates:
+                aggs = self.stored_parts(date_str)
+                if date_str in self.live:
+                    aggs = aggs + [self.live[date_str]]
+                if aggs:
+                    raw[date_str] = aggs
+            return fn(raw)
+
+    def merged_days(self, today, days, with_rel=True):
         _, dates = dashagg.window_dates(today, days)
         out = {}
         with self.lock:
@@ -153,7 +191,7 @@ class DashStore:
                     continue
                 total = dashagg.new_agg()
                 for agg in aggs:
-                    dashagg.merge(total, agg)
+                    dashagg.merge(total, agg, with_rel=with_rel)
                 out[date_str] = total
         return out
 
@@ -342,14 +380,15 @@ class DashStore:
             return False
         return False
 
-    def sync(self):
+    def sync(self, push=True):
         if self.tick_hook:
             try:
                 self.tick_hook()
             except Exception as e:
                 self.logger.error(f'[dashboard] 로그 집계 실패: {e}')
+        self.prune_rel()
         self.persist_live()
-        if not self.gh_enabled():
+        if not push or not self.gh_enabled():
             return
         with self.io_lock:
             with self.lock:
@@ -377,6 +416,7 @@ class DashStore:
         next_restore = 0
         next_refresh = time.time() + REFRESH_INTERVAL
         next_sync = 0
+        next_push = time.time() + PUSH_INTERVAL
         while not self.stop.is_set():
             now = time.time()
             if self.gh_enabled() and not self.restored and now >= next_restore:
@@ -395,10 +435,13 @@ class DashStore:
                     self.logger.error(f'[dashboard] GitHub 병합 실패: {e}')
                 next_refresh = time.time() + REFRESH_INTERVAL
             if now >= next_sync:
+                push = now >= next_push
                 try:
-                    self.sync()
+                    self.sync(push=push)
                 except Exception as e:
                     self.logger.error(f'[dashboard] 동기화 예외: {e}')
+                if push:
+                    next_push = time.time() + PUSH_INTERVAL
                 next_sync = time.time() + SYNC_INTERVAL
             self.stop.wait(2)
 
