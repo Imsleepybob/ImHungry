@@ -131,7 +131,7 @@ def _add_rel(agg, ip, path, ua, clock):
                 uas[uid] = uas.get(uid, 0) + 1
 
 
-def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name=None, browser=None, ua='', clock='')
+def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name=None, browser=None, ua='', clock=''):
     agg['n'] += 1
     _inc(agg['ips'], ip)
     _inc(agg['status'], status)
