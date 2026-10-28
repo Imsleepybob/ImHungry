@@ -961,7 +961,7 @@ def asn_db_lookup_networks(asn):
 
 
 ACCESS_LOG_RE = re.compile(
-    r'(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[, .\d]* - '
+    r'(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})[,\.\d]* - '
     r'IP: (\S+) - '
     r'(?:Device: (\S+) - (?:OS: (.*?) - )?Browser: ([^-]+?) - (?:Crawler: (.*?) - )?)?'
     r'UA: (.*?) - '
