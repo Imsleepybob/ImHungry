@@ -172,7 +172,7 @@ class DashStore:
         with self.lock:
             raw = {}
             for date_str in dates:
-                aggs = self.stored_parts(date_str)
+                aggs = [agg for boot, agg in self.parts.get(date_str, {}).items() if boot != self.boot_id]
                 if date_str in self.live:
                     aggs = aggs + [self.live[date_str]]
                 if aggs:

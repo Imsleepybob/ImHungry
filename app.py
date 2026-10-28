@@ -2274,7 +2274,6 @@ def blocked_page():
     return response
 
 
-@app.route('/admin/ip/<ip>')
 def _detail_days():
     try:
         return max(1, min(int(request.args.get('days', 30)), 90))
@@ -2294,6 +2293,7 @@ def _school_label_map(codes):
     return {code: _cached_school_name(code) or code for code in codes}
 
 
+@app.route('/admin/ip/<ip>')
 def admin_ip_detail(ip):
     auth = _admin_auth_check()
     if auth is not None:
