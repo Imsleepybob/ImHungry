@@ -8,6 +8,8 @@
     const ANDROID = {
         tap: 10,
         select: 6,
+        tick: 12,
+        land: [10, 36, 22],
         toggle: 14,
         heavy: 24,
         success: [12, 40, 22],
@@ -22,7 +24,7 @@
     let tapptPromise = null;
     let lastPulse = 0;
     let lastKind = '';
-    const PATTERN_KINDS = new Set(['success', 'warning', 'error', 'heavy']);
+    const PATTERN_KINDS = new Set(['success', 'warning', 'error', 'heavy', 'land']);
     const attached = new WeakMap();
 
     function reducedMotion() {
@@ -65,6 +67,7 @@
         if (!tappt || !allowed(minGap, kind)) return false;
         try {
             if (kind === 'success' || kind === 'warning' || kind === 'error') tappt.haptic.notify(kind);
+            else if (kind === 'land') tappt.haptic.notify('success');
             else tappt.haptic.selection();
             return true;
         } catch (e) {
@@ -77,7 +80,8 @@
         if (!plugin) return false;
         try {
             if (kind === 'success' || kind === 'warning' || kind === 'error') plugin.notification({ type: kind.toUpperCase() });
-            else if (kind === 'select') plugin.selectionChanged();
+            else if (kind === 'land') plugin.notification({ type: 'SUCCESS' });
+            else if (kind === 'select' || kind === 'tick') plugin.selectionChanged();
             else plugin.impact({ style: kind === 'heavy' ? 'HEAVY' : 'LIGHT' });
             return true;
         } catch (e) {
@@ -141,6 +145,8 @@
     const Haptics = {
         tap() { return fire('tap', 30); },
         select() { return fire('select', 22); },
+        tick() { return fire('tick', 26); },
+        land() { return fire('land', 60); },
         toggle() { return fire('toggle', 30); },
         heavy() { return fire('heavy', 30); },
         success() { return fire('success', 60); },
