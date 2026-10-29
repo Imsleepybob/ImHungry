@@ -402,6 +402,9 @@ def is_admin_ip(ip_address):
     except ValueError:
         return False
 
+def is_rate_limit_exempt():
+    return request.path.startswith('/static/') or (request.method == 'POST' and request.path == '/')
+
 def is_rate_limited(ip_address):
     now = time.time()
     window_start = now - SECURITY_CONFIG['rate_limit_window']
@@ -469,7 +472,36 @@ def block_ip_now(ip, reason):
     return True
 
 
+_incident_seen = {}
+INCIDENT_DEDUP_SECONDS = 300
+
+
+def _note_incident(ip, kind, detail):
+    now = time.time()
+    key = (ip, kind)
+    if now - _incident_seen.get(key, 0) < INCIDENT_DEDUP_SECONDS:
+        return
+    if len(_incident_seen) > 5000:
+        _incident_seen.clear()
+    _incident_seen[key] = now
+    security_watch.incident(ip, kind, detail)
+
+
+def _is_kr_ip(ip):
+    cached = IP_INFO_CACHE.get(ip)
+    if cached and cached[1].get('country'):
+        return cached[1]['country'] == 'KR'
+    try:
+        info = asn_db_lookup_ip(ip)
+    except Exception:
+        return False
+    return bool(info and info.get('country_code') == 'KR')
+
+
 def auto_block_ip(ip, reason, duration=None):
+    if _is_kr_ip(ip):
+        _note_incident(ip, 'AUTO_BLOCK_SKIP', f'{reason} (국내 IP라 자동 차단하지 않음)')
+        return False
     if duration is None:
         duration = SECURITY_CONFIG['auto_block_duration']
     blocked_ips.add(ip)
@@ -483,6 +515,8 @@ def auto_block_ip(ip, reason, duration=None):
             schedule_github_sync()
         if security_watch.is_watched(ip):
             security_watch.mark_blocked(ip)
+    _note_incident(ip, 'AUTO_BLOCK', reason)
+    return True
 
 
 def _wants_html():
@@ -516,9 +550,9 @@ def security_check():
     if is_ip_blocked(client_ip):
         log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
         return _blocked_response()
-    if is_rate_limited(client_ip):
+    if not is_rate_limit_exempt() and is_rate_limited(client_ip):
         log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
-        auto_block_ip(client_ip, "Rate limit exceeded", 864000)
+        _note_incident(client_ip, 'RATE_LIMIT', f"{SECURITY_CONFIG['rate_limit_window']}초 동안 {SECURITY_CONFIG['rate_limit_requests']}회 초과 (자동 차단하지 않음)")
         response = make_response('', 444)
         response.headers['Connection'] = 'close'
         return response
@@ -538,7 +572,7 @@ def security_check():
     if SECURITY_CONFIG['path_traversal_protection']:
         if '../' in request.path or '..\\' in request.path:
             log_security_incident(client_ip, "PATH_TRAVERSAL", request.path)
-            auto_block_ip(client_ip, "Path traversal attempt")
+            _note_incident(client_ip, 'PATH_TRAVERSAL', f'경로 조작 시도 (자동 차단하지 않음): {request.path[:100]}')
             response = make_response('', 444)
             response.headers['Connection'] = 'close'
             return response
