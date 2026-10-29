@@ -7,15 +7,20 @@
     ];
     const ROW = 76;
     const CYCLE = FOODS.length * ROW;
+    const DECAY = 0.003;
+    const SETTLE = 0.014;
+    const MIN_V = 0.05;
+    const MAX_V = 5;
     const TARGETS = '.today-meal-type, .today-meal-title, .meal-title';
     const EMOJI = /\p{Extended_Pictographic}\uFE0F?/gu;
 
     const CLOSE_ICON = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M3.5 3.5l11 11M14.5 3.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
     const CSS = `
-.egg-emoji { cursor: pointer; display: inline-block; -webkit-tap-highlight-color: transparent; user-select: none; transition: transform 0.15s ease; }
-@media (hover: hover) { .egg-emoji:hover { transform: scale(1.25); } }
-.egg-emoji:active { transform: scale(1.25); }
-.egg-emoji.egg-pop { animation: eggPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.egg-emoji { cursor: pointer; display: inline-block; -webkit-tap-highlight-color: transparent; user-select: none; transition: scale 0.15s ease; animation: eggHint 3.6s ease-in-out var(--egg-delay, 0s) infinite; }
+@media (hover: hover) { .egg-emoji:hover { scale: 1.25; } }
+.egg-emoji:active { scale: 1.25; }
+.egg-emoji.egg-pop { animation: eggPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), eggHint 3.6s ease-in-out calc(0.45s + var(--egg-delay, 0s)) infinite; }
+@keyframes eggHint { 0%, 58%, 90%, 100% { transform: none; } 64% { transform: scale(1.2) rotate(-10deg); } 70% { transform: scale(1.2) rotate(10deg); } 76% { transform: scale(1.15) rotate(-7deg); } 83% { transform: scale(1.1) rotate(5deg); } }
 @keyframes eggPop { 0% { transform: scale(0.4); } 100% { transform: scale(1); } }
 .egg-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; touch-action: none; overscroll-behavior: contain; background: color-mix(in srgb, var(--bg-container, #fff) 78%, transparent); -webkit-backdrop-filter: blur(26px) saturate(1.4); backdrop-filter: blur(26px) saturate(1.4); }
 .egg-overlay.show { opacity: 1; visibility: visible; }
@@ -24,8 +29,10 @@
 .egg-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 130px; opacity: 0; transform: scale(0.9); transition: opacity 0.4s ease, transform 0.4s ease; }
 .egg-overlay.intro-3 .egg-preview { opacity: 1; transform: scale(1); }
 .egg-preview-emoji { font-size: 84px; line-height: 1.1; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.12)); }
-.egg-preview-emoji.bump { animation: eggBump 0.22s ease; }
-@keyframes eggBump { 0% { transform: scale(0.82); } 100% { transform: scale(1); } }
+.egg-preview-emoji.bump { animation: eggBump 0.18s ease-out; }
+@keyframes eggBump { 0% { transform: scale(0.84); } 55% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.egg-preview-emoji.land { animation: eggLand 0.28s ease-out; }
+@keyframes eggLand { 0% { transform: scale(1); } 10% { transform: scale(1.22); } 22% { transform: scale(0.95); } 38% { transform: scale(1.14); } 60% { transform: scale(0.99); } 100% { transform: scale(1); } }
 .egg-preview-name { font-size: 17px; font-weight: 700; color: var(--text-primary, #202124); letter-spacing: -0.02em; }
 .egg-roller { position: relative; width: 100%; height: min(46vh, 340px); margin: 10px 0 18px; overflow: hidden; cursor: grab; user-select: none; touch-action: none; outline: none; -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); opacity: 0; transition: opacity 0.4s ease; }
 .egg-overlay.intro-3 .egg-roller { opacity: 1; }
@@ -37,7 +44,7 @@
 .egg-title { font-size: 22px; font-weight: 750; letter-spacing: -0.04em; color: var(--text-primary, #202124); }
 .egg-hint { margin-top: 6px; font-size: 14px; color: var(--text-secondary, #77777d); }
 .egg-overlay.intro-1 .egg-title, .egg-overlay.intro-2 .egg-hint { opacity: 1; transform: translateY(0); }
-@media (prefers-reduced-motion: reduce) { .egg-emoji { transition: none; } .egg-overlay, .egg-title, .egg-hint, .egg-preview, .egg-roller { transition: none; } .egg-emoji.egg-pop, .egg-preview-emoji.bump { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .egg-emoji { transition: none; } .egg-overlay, .egg-title, .egg-hint, .egg-preview, .egg-roller { transition: none; } .egg-emoji, .egg-emoji.egg-pop, .egg-preview-emoji.bump, .egg-preview-emoji.land { animation: none; } }
 `;
 
     let overlay = null;
@@ -57,9 +64,16 @@
     let lastTime = 0;
     let introTimers = [];
     let releaseAttach = null;
+    let landTimer = 0;
+    let moved = false;
+
+    const HAPTIC_FALLBACK = { tick: 'select', land: 'success' };
 
     function haptic(name, arg) {
-        if (window.Haptics && typeof window.Haptics[name] === 'function') window.Haptics[name](arg);
+        const api = window.Haptics;
+        if (!api) return;
+        const fn = typeof api[name] === 'function' ? api[name] : api[HAPTIC_FALLBACK[name]];
+        if (typeof fn === 'function') fn.call(api, arg);
     }
 
     function wrap(n) {
@@ -84,6 +98,7 @@
                 if (offset > last) fragment.appendChild(document.createTextNode(node.nodeValue.slice(last, offset)));
                 const span = document.createElement('span');
                 span.className = 'egg-emoji';
+                span.style.setProperty('--egg-delay', (Math.random() * 3).toFixed(2) + 's');
                 span.textContent = match;
                 fragment.appendChild(span);
                 last = offset + match.length;
@@ -115,7 +130,7 @@
             '<div class="egg-stage">' +
             '<div class="egg-preview" aria-live="polite"><span class="egg-preview-emoji"></span><span class="egg-preview-name"></span></div>' +
             '<div class="egg-roller" tabindex="0" role="listbox" aria-label="음식 선택 롤러"><div class="egg-selection"></div><div class="egg-items"></div></div>' +
-            '<p class="egg-title">오늘은 뭐 먹지?</p>' +
+            '<p class="egg-title">점메추 ㄱㄱ</p>' +
             '<p class="egg-hint">위아래로 드래그하거나 스크롤해 보세요</p>' +
             '</div>';
         document.body.appendChild(overlay);
@@ -159,42 +174,73 @@
         const next = wrap(Math.round(position / ROW));
         if (next !== active) {
             active = next;
+            moved = true;
             showPreview();
-            haptic('select');
+            haptic('tick');
         }
     }
 
     function showPreview() {
         previewEmoji.textContent = FOODS[active][0];
         previewName.textContent = FOODS[active][1];
-        previewEmoji.classList.remove('bump');
+        previewEmoji.classList.remove('bump', 'land');
         void previewEmoji.offsetWidth;
         if (!reduced()) previewEmoji.classList.add('bump');
     }
 
+    function land() {
+        if (!moved) return;
+        moved = false;
+        previewEmoji.classList.remove('bump', 'land');
+        void previewEmoji.offsetWidth;
+        if (!reduced()) previewEmoji.classList.add('land');
+        haptic('land');
+    }
+
     function animate() {
         cancelAnimationFrame(frame);
-        let previous = performance.now();
-        const tick = (now) => {
-            const dt = Math.min(32, now - previous);
-            previous = now;
-            if (!dragging) {
-                velocity *= Math.pow(0.965, dt / 16.67);
-                velocity *= Math.pow(0.982, dt / 16.67);
-                position += velocity * (dt / 16.67);
-                if (Math.abs(velocity) < 0.18) {
-                    const target = Math.round(position / ROW) * ROW;
-                    position += (target - position) * Math.min(1, 0.18 * (dt / 16.67));
-                    if (Math.abs(target - position) < 0.15) {
-                        position = target;
-                        velocity = 0;
-                    }
-                }
-            }
+        clearTimeout(landTimer);
+        const v0 = Math.max(-MAX_V, Math.min(MAX_V, velocity / 16.67));
+        const x0 = position;
+        const flick = Math.abs(v0) >= MIN_V;
+        let target = Math.round(x0 / ROW) * ROW;
+        if (flick) {
+            const dir = Math.sign(v0);
+            let ahead = dir > 0 ? Math.ceil(x0 / ROW) * ROW : Math.floor(x0 / ROW) * ROW;
+            if (Math.abs(ahead - x0) < 1) ahead += dir * ROW;
+            target = Math.round((x0 + v0 / DECAY) / ROW) * ROW;
+            if ((target - ahead) * dir < 0) target = ahead;
+        }
+        const A = x0 - target;
+        if (Math.abs(A) < 0.01) {
+            position = target;
+            velocity = 0;
             paint();
-            if (dragging || Math.abs(velocity) > 0.12 || Math.abs(position / ROW - Math.round(position / ROW)) > 0.002) frame = requestAnimationFrame(tick);
+            land();
+            return;
+        }
+        const omega = Math.max(flick ? DECAY : SETTLE, Math.abs(v0) / Math.abs(A), Math.log(Math.max(Math.abs(A), 1) / 0.5) / 1600);
+        const B = v0 + omega * A;
+        let end = 0;
+        while (end < 4000 && Math.abs((A + B * end) * Math.exp(-omega * end)) > 0.5) end += 8;
+        const start = performance.now();
+        const tick = (now) => {
+            const t = Math.min(now - start, end);
+            if (t >= end) {
+                position = target;
+                velocity = 0;
+                paint();
+                land();
+                return;
+            }
+            const e = Math.exp(-omega * t);
+            position = target + (A + B * t) * e;
+            velocity = (B - omega * (A + B * t)) * e * 16.67;
+            paint();
+            frame = requestAnimationFrame(tick);
         };
         frame = requestAnimationFrame(tick);
+        if (end <= 900 && window.Haptics && typeof window.Haptics.backend === 'function' && window.Haptics.backend() === 'ios-switch') landTimer = setTimeout(land, end);
     }
 
     function onPointerDown(event) {
@@ -205,6 +251,7 @@
         lastTime = performance.now();
         velocity = 0;
         cancelAnimationFrame(frame);
+        clearTimeout(landTimer);
     }
 
     function onPointerMove(event) {
@@ -223,6 +270,7 @@
         if (!dragging) return;
         dragging = false;
         rollerEl.classList.remove('dragging');
+        if (performance.now() - lastTime > 80) velocity = 0;
         animate();
     }
 
@@ -252,7 +300,7 @@
         steps.forEach(([delay, step], index) => {
             const run = () => {
                 overlay.classList.add('intro-' + step);
-                haptic('intro', index);
+                if (index > 0) haptic('intro', index);
             };
             if (reduced()) run();
             else introTimers.push(setTimeout(run, delay));
@@ -266,9 +314,11 @@
         const current = FOODS.findIndex(([emoji]) => emoji === emojiElement.textContent);
         position = (current >= 0 ? current : Math.floor(Math.random() * FOODS.length)) * ROW;
         velocity = 0;
+        moved = false;
         active = wrap(Math.round(position / ROW));
         showPreview();
         paint();
+        haptic('tap');
         document.body.style.overflow = 'hidden';
         overlay.classList.add('show');
         if (window.Haptics && typeof window.Haptics.attach === 'function') releaseAttach = window.Haptics.attach(rollerEl);
@@ -279,6 +329,7 @@
     function close() {
         if (!overlay || !overlay.classList.contains('show')) return;
         cancelAnimationFrame(frame);
+        clearTimeout(landTimer);
         dragging = false;
         clearIntro();
         overlay.classList.remove('show');
