@@ -10,6 +10,7 @@ SCHOOL_PATH_RE = re.compile(r'^/meal/(\w+)$')
 REFERRER_RE = re.compile(r'https?://([^/]+)')
 EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification')
 ANN_EVENTS = {'ann_view': 0, 'ann_close': 1}
+EGG_MAPS = ('devices', 'os', 'browsers', 'haptics', 'input', 'mode')
 
 CAPS = {
     'ips': 20000,
@@ -27,6 +28,7 @@ CAPS = {
     'rel_ips': 5000,
     'rel_paths': 30,
     'rel_uas': 5,
+    'egg_ips': 5000,
 }
 
 try:
@@ -175,6 +177,27 @@ def add_event(agg, event, value):
             entry[ANN_EVENTS[event]] += 1
 
 
+def _new_egg():
+    egg = {'n': 0, 'ips': {}}
+    for key in EGG_MAPS:
+        egg[key] = {}
+    return egg
+
+
+def add_egg(agg, ip, value, device, os_name, browser):
+    egg = agg['ev'].setdefault('egg', _new_egg())
+    parts = (str(value).split('|') + ['', '', ''])[:3]
+    egg['n'] += 1
+    if ip in egg['ips'] or len(egg['ips']) < CAPS['egg_ips']:
+        _inc(egg['ips'], ip)
+    _inc(egg['devices'], str(device or 'Unknown')[:30])
+    _inc(egg['os'], str(os_name or 'Unknown')[:30])
+    _inc(egg['browsers'], str(browser or 'Unknown')[:30])
+    _inc(egg['haptics'], parts[0] or 'unknown')
+    _inc(egg['input'], parts[1] or 'unknown')
+    _inc(egg['mode'], parts[2] or 'unknown')
+
+
 def add_pwa(agg, ip, uid, code, ts):
     pwa = agg['pwa']
     pwa['visits'] += 1
@@ -238,6 +261,13 @@ def merge(target, source, with_rel=True):
         mine = target['ev'].setdefault('ann', {}).setdefault(key, [0, 0])
         mine[0] += counts[0]
         mine[1] += counts[1]
+    source_egg = source['ev'].get('egg')
+    if source_egg:
+        mine_egg = target['ev'].setdefault('egg', _new_egg())
+        mine_egg['n'] += source_egg['n']
+        _merge_counts(mine_egg['ips'], source_egg['ips'])
+        for key in EGG_MAPS:
+            _merge_counts(mine_egg[key], source_egg[key])
     target_pwa, source_pwa = target['pwa'], source['pwa']
     target_pwa['visits'] += source_pwa['visits']
     _merge_counts(target_pwa['uid_visits'], source_pwa['uid_visits'])
@@ -284,6 +314,9 @@ def compact(agg):
             entry['u'] = _top(entry['u'], CAPS['rel_uas'])
             used.update(entry['u'])
         out['ua_names'] = {uid: name for uid, name in out.get('ua_names', {}).items() if uid in used}
+    egg = out['ev'].get('egg')
+    if egg:
+        egg['ips'] = _top(egg['ips'], CAPS['egg_ips'])
     pwa = out['pwa']
     if len(pwa['ips']) > CAPS['pwa_ips']:
         pwa['ips'] = dict(sorted(pwa['ips'].items(), key=lambda item: item[1]['v'], reverse=True)[:CAPS['pwa_ips']])
@@ -301,6 +334,14 @@ def window_dates(today, days):
 def _sorted(mapping, limit=None):
     items = sorted(mapping.items(), key=lambda item: item[1], reverse=True)
     return items[:limit] if limit else items
+
+
+def _egg_stats(egg):
+    egg = egg or _new_egg()
+    out = {'runs': egg['n'], 'users': len(egg['ips'])}
+    for key in EGG_MAPS:
+        out[key] = dict(_sorted(egg[key]))
+    return out
 
 
 def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
@@ -390,6 +431,7 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
             'btn_share': total['ev']['btn_share'],
             'btn_notification': total['ev']['btn_notification'],
             'ann': {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()},
+            'egg': _egg_stats(total['ev'].get('egg')),
         },
         'cache_stats': cache_stats,
         'security': security_stats,
