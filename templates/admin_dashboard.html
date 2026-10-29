@@ -739,6 +739,48 @@ body {
     </div>
   </div>
 
+  <!-- 이스터에그 -->
+  <div class="card" style="margin-top:12px;">
+    <div class="chart-title">🥚 이스터에그 (음식 롤러)</div>
+    {% set egg = stats.events.egg %}
+    {% if egg.runs > 0 %}
+    {% set egg_labels = {'vibration': '진동 (Android 등)', 'ios-switch': 'iOS 햅틱', 'capacitor': '앱 햅틱', 'noop': '미지원', 'pending': '확인 전', 'touch': '터치', 'mouse': '마우스', 'web': '웹 브라우저', 'pwa': 'PWA (홈 화면)', 'unknown': '알 수 없음'} %}
+    <div class="btn-row">
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🥚</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">실행 횟수</div>
+          <div class="btn-stat-count">{{ "{:,}".format(egg.runs) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">👤</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">실행한 사용자 (IP)</div>
+          <div class="btn-stat-count">{{ "{:,}".format(egg.users) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="event-grid" style="margin-top:12px;">
+      {% for title, key in [('기기', 'devices'), ('OS', 'os'), ('브라우저', 'browsers'), ('햅틱 방식', 'haptics'), ('입력 방식', 'input'), ('실행 형태', 'mode')] %}
+      {% set data = egg[key] %}
+      {% set data_total = data.values() | sum %}
+      <div>
+        <div class="stat-sub" style="margin-bottom:2px; color:var(--text3);">{{ title }}</div>
+        {% for label, val in data.items() %}
+        <div class="event-row">
+          <div class="event-label">{{ egg_labels.get(label, label) }}</div>
+          <div class="event-bar-wrap"><div class="event-bar" style="width:{{ (val / data_total * 100)|int }}%; background:#f59e0b;"></div></div>
+          <div class="event-count">{{ val }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3);">룰렛이 열린 횟수이며, 한 페이지를 불러온 뒤 처음 열 때 한 번만 기록합니다. 관리자 접속도 포함됩니다.</div>
+    {% else %}<div class="empty-state">데이터 없음</div>{% endif %}
+  </div>
+
   <!-- 사이트 공지 통계 -->
   <div class="card" style="margin-top:12px;">
     <div class="chart-title">📣 사이트 공지 닫힘 통계 <small style="color:var(--text3);font-weight:400;">(일반 사용자 기준, 관리자 제외)</small></div>
