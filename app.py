@@ -1101,8 +1101,12 @@ def tail_logs_into_store():
                     date_str = ts[:10]
                     datetime.strptime(date_str, '%Y-%m-%d')
                     event = data.get('event', '')
-                    if event == 'pwa_visit':
+                    if egg_env:
+        record.update(egg_env)
+    if event == 'pwa_visit':
                         dashagg.add_pwa(_live_agg(date_str), str(data.get('ip', '')) or 'Unknown', str(data.get('uid', '')), str(data.get('value', '')), ts)
+                    elif event == 'egg_open':
+                        dashagg.add_egg(_live_agg(date_str), str(data.get('ip', '')) or 'Unknown', str(data.get('value', '')), data.get('device'), data.get('os'), data.get('browser'))
                     else:
                         dashagg.add_event(_live_agg(date_str), event, data.get('value', ''))
                 except Exception:
@@ -1836,7 +1840,7 @@ def track_event():
         return '', 204
     event = data.get('event', '')
     value = str(data.get('value', ''))[:50]
-    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close'}
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close', 'egg_open'}
     if event not in allowed:
         return '', 204
     if event in ('ann_view', 'ann_close'):
@@ -1845,6 +1849,15 @@ def track_event():
         value = re.sub(r'[^0-9a-fA-F]', '', value)[:32]
         if not value:
             return '', 204
+    egg_env = None
+    if event == 'egg_open':
+        is_bot, _, device, os_name, browser = detect_client_type(request.headers.get('User-Agent', ''))
+        if is_bot:
+            return '', 204
+        parts = (value.split('|') + ['', '', ''])[:3]
+        haptics = re.sub(r'[^a-z-]', '', parts[0])[:20] or 'unknown'
+        value = '|'.join([haptics, parts[1] if parts[1] in ('touch', 'mouse') else 'unknown', parts[2] if parts[2] in ('web', 'pwa') else 'unknown'])
+        egg_env = {'device': device, 'os': os_name, 'browser': browser}
     record = {
         'ts': datetime.now(KST).isoformat(),
         'ip': get_client_ip(),
