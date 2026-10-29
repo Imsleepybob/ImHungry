@@ -10,7 +10,12 @@
     const DECAY = 0.002;
     const SETTLE = 0.014;
     const MIN_V = 0.05;
-    const MAX_V = 7;
+    const MAX_V = 5;
+    const FRICTION = 0.0004;
+    const DRAG = 0.0005;
+    const RAMP = 0.25;
+    const STEP = 4;
+    const STOP_V = 0.02;
     const TARGETS = '.today-meal-type, .today-meal-title, .meal-title';
     const EMOJI = /\p{Extended_Pictographic}\uFE0F?/gu;
 
@@ -66,6 +71,7 @@
     let releaseAttach = null;
     let landTimer = 0;
     let moved = false;
+    let reported = false;
 
     const HAPTIC_FALLBACK = { tick: 'select', land: 'success' };
 
@@ -197,11 +203,53 @@
         haptic('land');
     }
 
-    function animate() {
-        cancelAnimationFrame(frame);
-        clearTimeout(landTimer);
-        const v0 = Math.max(-MAX_V, Math.min(MAX_V, velocity / 16.67));
-        const x0 = position;
+    function simulate(speed, mult) {
+        const pos = [0];
+        const vel = [speed];
+        let v = speed;
+        let x = 0;
+        while (v > STOP_V && pos.length < 3000) {
+            v = Math.max(0, v - mult * (FRICTION * v + DRAG * Math.min(1, v / RAMP)) * STEP);
+            x += v * STEP;
+            pos.push(x);
+            vel.push(v);
+        }
+        return { pos, vel };
+    }
+
+    function flickPlan(v0, x0) {
+        const dir = Math.sign(v0);
+        const speed = Math.abs(v0);
+        const natural = simulate(speed, 1).pos;
+        let target = Math.round((x0 + dir * natural[natural.length - 1]) / ROW) * ROW;
+        let ahead = dir > 0 ? Math.ceil(x0 / ROW) * ROW : Math.floor(x0 / ROW) * ROW;
+        if (Math.abs(ahead - x0) < 1) ahead += dir * ROW;
+        if ((target - ahead) * dir < 0) target = ahead;
+        const dist = Math.abs(target - x0);
+        let lo = 0.3;
+        let hi = 3;
+        for (let n = 0; n < 16; n++) {
+            const mid = (lo + hi) / 2;
+            const pos = simulate(speed, mid).pos;
+            if (pos[pos.length - 1] > dist) lo = mid; else hi = mid;
+        }
+        const mult = (lo + hi) / 2;
+        const run = simulate(speed, mult);
+        const reach = run.pos[run.pos.length - 1];
+        if (mult < 0.32 || mult > 2.9 || Math.abs(reach - dist) > 1) return null;
+        return {
+            target,
+            end: (run.pos.length - 1) * STEP,
+            at(t) {
+                const f = t / STEP;
+                const i = Math.min(Math.floor(f), run.pos.length - 2);
+                const r = f - i;
+                return [x0 + dir * (run.pos[i] + (run.pos[i + 1] - run.pos[i]) * r), dir * (run.vel[i] + (run.vel[i + 1] - run.vel[i]) * r)];
+            }
+        };
+    }
+
+    function springPlan(v0, x0) {
         const flick = Math.abs(v0) >= MIN_V;
         let target = Math.round(x0 / ROW) * ROW;
         if (flick) {
@@ -212,35 +260,61 @@
             if ((target - ahead) * dir < 0) target = ahead;
         }
         const A = x0 - target;
-        if (Math.abs(A) < 0.01) {
-            position = target;
+        if (Math.abs(A) < 0.01) return { target, end: 0 };
+        const omega = Math.max(flick ? DECAY : SETTLE, Math.abs(v0) / Math.abs(A), Math.log(Math.max(Math.abs(A), 1) / 0.5) / 3000);
+        const B = v0 + omega * A;
+        let end = 0;
+        while (end < 4000 && Math.abs((A + B * end) * Math.exp(-omega * end)) > 0.5) end += 8;
+        return {
+            target,
+            end,
+            at(t) {
+                const e = Math.exp(-omega * t);
+                return [target + (A + B * t) * e, (B - omega * (A + B * t)) * e];
+            }
+        };
+    }
+
+    function animate() {
+        cancelAnimationFrame(frame);
+        clearTimeout(landTimer);
+        const v0 = Math.max(-MAX_V, Math.min(MAX_V, velocity / 16.67));
+        const plan = (Math.abs(v0) >= MIN_V && flickPlan(v0, position)) || springPlan(v0, position);
+        if (!plan.end) {
+            position = plan.target;
             velocity = 0;
             paint();
             land();
             return;
         }
-        const omega = Math.max(flick ? DECAY : SETTLE, Math.abs(v0) / Math.abs(A), Math.log(Math.max(Math.abs(A), 1) / 0.5) / 3000);
-        const B = v0 + omega * A;
-        let end = 0;
-        while (end < 4000 && Math.abs((A + B * end) * Math.exp(-omega * end)) > 0.5) end += 8;
         const start = performance.now();
         const tick = (now) => {
-            const t = Math.min(now - start, end);
-            if (t >= end) {
-                position = target;
+            const t = Math.max(0, now - start);
+            if (t >= plan.end) {
+                position = plan.target;
                 velocity = 0;
                 paint();
                 land();
                 return;
             }
-            const e = Math.exp(-omega * t);
-            position = target + (A + B * t) * e;
-            velocity = (B - omega * (A + B * t)) * e * 16.67;
+            const state = plan.at(t);
+            position = state[0];
+            velocity = state[1] * 16.67;
             paint();
             frame = requestAnimationFrame(tick);
         };
         frame = requestAnimationFrame(tick);
-        if (end <= 900 && window.Haptics && typeof window.Haptics.backend === 'function' && window.Haptics.backend() === 'ios-switch') landTimer = setTimeout(land, end);
+        if (plan.end <= 900 && window.Haptics && typeof window.Haptics.backend === 'function' && window.Haptics.backend() === 'ios-switch') landTimer = setTimeout(land, plan.end);
+    }
+
+    function report() {
+        if (reported || typeof window.trackEvent !== 'function') return;
+        reported = true;
+        const api = window.Haptics;
+        const haptics = api && typeof api.backend === 'function' ? api.backend() : 'none';
+        const input = window.matchMedia && window.matchMedia('(pointer: coarse)').matches ? 'touch' : 'mouse';
+        const mode = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone ? 'pwa' : 'web';
+        try { window.trackEvent('egg_open', [haptics, input, mode].join('|')); } catch (e) {}
     }
 
     function onPointerDown(event) {
@@ -319,6 +393,7 @@
         showPreview();
         paint();
         haptic('tap');
+        report();
         document.body.style.overflow = 'hidden';
         overlay.classList.add('show');
         if (window.Haptics && typeof window.Haptics.attach === 'function') releaseAttach = window.Haptics.attach(rollerEl);
