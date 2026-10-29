@@ -1101,9 +1101,7 @@ def tail_logs_into_store():
                     date_str = ts[:10]
                     datetime.strptime(date_str, '%Y-%m-%d')
                     event = data.get('event', '')
-                    if egg_env:
-        record.update(egg_env)
-    if event == 'pwa_visit':
+                    if event == 'pwa_visit':
                         dashagg.add_pwa(_live_agg(date_str), str(data.get('ip', '')) or 'Unknown', str(data.get('uid', '')), str(data.get('value', '')), ts)
                     elif event == 'egg_open':
                         dashagg.add_egg(_live_agg(date_str), str(data.get('ip', '')) or 'Unknown', str(data.get('value', '')), data.get('device'), data.get('os'), data.get('browser'))
@@ -1864,6 +1862,8 @@ def track_event():
         'event': event,
         'value': value
     }
+    if egg_env:
+        record.update(egg_env)
     if event == 'pwa_visit':
         record['value'] = re.sub(r'\D', '', value)[:10]
         record['uid'] = re.sub(r'[^0-9a-fA-F]', '', str(data.get('uid', '')))[:32]
