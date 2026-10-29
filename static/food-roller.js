@@ -7,10 +7,10 @@
     ];
     const ROW = 76;
     const CYCLE = FOODS.length * ROW;
-    const DECAY = 0.003;
+    const DECAY = 0.002;
     const SETTLE = 0.014;
     const MIN_V = 0.05;
-    const MAX_V = 5;
+    const MAX_V = 7;
     const TARGETS = '.today-meal-type, .today-meal-title, .meal-title';
     const EMOJI = /\p{Extended_Pictographic}\uFE0F?/gu;
 
@@ -219,7 +219,7 @@
             land();
             return;
         }
-        const omega = Math.max(flick ? DECAY : SETTLE, Math.abs(v0) / Math.abs(A), Math.log(Math.max(Math.abs(A), 1) / 0.5) / 1600);
+        const omega = Math.max(flick ? DECAY : SETTLE, Math.abs(v0) / Math.abs(A), Math.log(Math.max(Math.abs(A), 1) / 0.5) / 3000);
         const B = v0 + omega * A;
         let end = 0;
         while (end < 4000 && Math.abs((A + B * end) * Math.exp(-omega * end)) > 0.5) end += 8;
