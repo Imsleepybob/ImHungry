@@ -36474,4 +36474,3 @@
 45.45.237.77/32  # Auto-blocked: High suspicion score: 15 - 2026-10-27 13:25:05.156941
 185.218.86.21/32  # Auto-blocked: High suspicion score: 15 - 2026-10-30 06:57:57.025364
 103.59.161.219/32  # Auto-blocked: High suspicion score: 15 - 2026-10-30 07:43:11.305549
-180.70.60.2  # Test - 2026-10-30 11:50:05.814747
