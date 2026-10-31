@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %} - 급식알리미</title>
+<meta name="robots" content="index, follow">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script>
+    (function() {
+        const savedTheme = localStorage.getItem('theme') || 'system';
+        if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    })();
+</script>
+<style>
+.legal { max-width: 860px; margin: 28px auto; padding: 28px 28px 36px; background: var(--bg-container); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: var(--shadow-sm); line-height: 1.75; word-break: keep-all; }
+.legal h1 { margin: 0 0 6px; font-size: 1.7rem; letter-spacing: -0.02em; }
+.legal .legal-meta { margin: 0 0 22px; color: var(--text-muted); font-size: 0.9rem; }
+.legal h2 { margin: 30px 0 10px; font-size: 1.15rem; padding-top: 6px; }
+.legal h3 { margin: 18px 0 6px; font-size: 1rem; }
+.legal p, .legal li { color: var(--text-secondary); }
+.legal ul, .legal ol { padding-left: 22px; margin: 8px 0; }
+.legal a { color: var(--link-color); }
+.legal .legal-table-wrap { overflow-x: auto; margin: 10px 0 14px; }
+.legal table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 560px; }
+.legal th, .legal td { border: 1px solid var(--table-border); padding: 8px 10px; text-align: left; vertical-align: top; color: var(--text-secondary); }
+.legal th { background: var(--table-header-bg); color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+.legal .legal-note { margin-top: 12px; padding: 12px 14px; background: var(--bg-secondary); border-radius: 10px; font-size: 0.92rem; }
+@media (max-width: 600px) { .legal { margin: 14px 10px; padding: 20px 16px 28px; } }
+</style>
+</head>
+<body>
+<header class="main-header">
+  <div class="logo">
+    <a href="/"><img src="{{ url_for('static', filename='favicon.svg') }}" alt="급식알리미" style="height:28px;"></a>
+  </div>
+</header>
+
+<main class="legal">
+  <h1>{% block heading %}{% endblock %}</h1>
+  <p class="legal-meta">시행일자: {{ legal_effective_date }}</p>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="main-footer">
+  <div class="footer-content">
+    <div class="footer-links">
+      <a href="/">급식알리미 홈</a>
+      <a href="/terms">이용약관</a>
+      <a href="/privacy">개인정보처리방침</a>
+      <a href="mailto:{{ contact_email }}">문의하기</a>
+    </div>
+    <p>&copy; 2026 급식알리미. All rights reserved.</p>
+  </div>
+</footer>
+</body>
+</html>
