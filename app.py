@@ -21,6 +21,7 @@ import secrets
 import dashagg
 import dashstore
 import secwatch
+import mailer
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 
 app = Flask(__name__)
@@ -285,6 +286,8 @@ ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"
 
 KST = timezone(timedelta(hours=9))
 ADMIN_LOGIN_FAIL_LIMIT = 3
+CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'admin@geupsikalimi.com').strip()
+LEGAL_EFFECTIVE_DATE = '2026년 10월 31일'
 ADMIN_SESSION_COOKIE = 'admin_session'
 CLIENT_IP_HEADERS = [h.strip() for h in os.environ.get('CLIENT_IP_HEADERS', 'CF-Connecting-IP').split(',') if h.strip()]
 security_watch = secwatch.SecurityWatch(KST)
@@ -1936,6 +1939,14 @@ def schools_by_region_and_level(region_name, school_level):
 def robots_txt():
     return send_from_directory(app.static_folder, 'robots.txt')
 
+@app.route('/terms')
+def terms_page():
+    return render_template('terms.html')
+
+@app.route('/privacy')
+def privacy_page():
+    return render_template('privacy.html')
+
 @app.route('/favicon.svg')
 def favicon():
     return send_from_directory(app.static_folder, 'favicon.svg')
@@ -2196,6 +2207,8 @@ def admin_csrf_token():
 
 
 app.jinja_env.globals['admin_csrf_token'] = admin_csrf_token
+app.jinja_env.globals['contact_email'] = CONTACT_EMAIL
+app.jinja_env.globals['legal_effective_date'] = LEGAL_EFFECTIVE_DATE
 app.jinja_env.globals['ip_group_label'] = dashagg.group_label
 
 
@@ -2241,11 +2254,21 @@ def _flush_dash_now():
         app.logger.error(f"대시보드 즉시 저장 실패: {e}")
 
 
+def _alert_admin_event(subject, ip, key, detail=None, dedupe_seconds=600):
+    fields = {'IP': ip}
+    if detail:
+        fields['내용'] = detail
+    fields['경로'] = f'{request.method} {request.path}'
+    fields['User-Agent'] = request.headers.get('User-Agent', 'N/A')
+    mailer.send_alert(subject, fields, key=key, dedupe_seconds=dedupe_seconds)
+
+
 def _block_for_login_failures(ip, count):
     security_watch.watch(ip, '관리자 로그인 연속 실패', seed_trail=_collect_prior_trail(ip))
     block_ip_now(ip, f'Admin login failed {count} times')
     security_watch.mark_blocked(ip)
     security_watch.incident(ip, 'BLOCK', f'관리자 로그인 {count}회 실패로 차단')
+    _alert_admin_event('[급식알리미] 관리자 로그인 실패로 IP 차단', ip, ('ADMIN_BLOCK', ip), f'{count}회 실패로 차단됨', dedupe_seconds=3600)
     threading.Thread(target=_flush_dash_now, daemon=True).start()
 
 
@@ -2294,6 +2317,7 @@ def _admin_auth_check():
     if request.method == 'POST' and ADMIN_PASSWORD_HASH:
         if secwatch.verify_password(request.form.get('password', ''), ADMIN_PASSWORD_HASH):
             login_guard.success(client_ip)
+            _alert_admin_event('[급식알리미] 관리자 로그인 성공', client_ip, None, '화이트리스트 외 IP에서 비밀번호 로그인')
             response = make_response(redirect(request.url))
             response.set_cookie(ADMIN_SESSION_COOKIE, admin_sessions.create(), max_age=8 * 3600, httponly=True,
                                 secure=_is_https_request(), samesite='Strict')
@@ -2306,6 +2330,7 @@ def _admin_auth_check():
             _block_for_login_failures(client_ip, count)
             return _blocked_response(force_redirect=True)
         remaining = ADMIN_LOGIN_FAIL_LIMIT - count
+        _alert_admin_event('[급식알리미] 관리자 로그인 실패', client_ip, ('ADMIN_FAIL', client_ip), f'{count}회째 실패 (남은 기회 {remaining}회)')
         return _admin_login_page(f'비밀번호가 맞지 않습니다. {remaining}번 더 틀리면 접근이 차단됩니다.', 401)
     return _admin_login_page()
 
