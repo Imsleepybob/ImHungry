@@ -36475,3 +36475,6 @@
 185.218.86.21/32  # Auto-blocked: High suspicion score: 15 - 2026-10-30 06:57:57.025364
 103.59.161.219/32  # Auto-blocked: High suspicion score: 15 - 2026-10-30 07:43:11.305549
 223.38.178.175/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:51:21.418455
+223.62.145.213/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:52:27.094831
+223.38.178.222/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:52:51.563558
+223.38.178.167/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:53:13.991211
