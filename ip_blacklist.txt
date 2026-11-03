@@ -36478,3 +36478,4 @@
 223.62.145.213/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:52:27.094831
 223.38.178.222/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:52:51.563558
 223.38.178.167/32  # Blocked: Admin login failed 3 times - 2026-10-31 04:53:13.991211
+113.24.225.180/32  # Auto-blocked: High suspicion score: 15 - 2026-11-03 03:06:30.502639
