@@ -1,3 +1,16 @@
+{% macro chip_group(key, label, options, labels=None) %}
+{% if options|length > 1 %}
+<div class="filter-group">
+    <div class="filter-label">{{ label }}</div>
+    <div class="chip-row" data-filter="{{ key }}">
+        <button type="button" class="chip active" data-value="" aria-pressed="true">전체</button>
+        {% for o in options %}
+        <button type="button" class="chip" data-value="{{ o.value }}" aria-pressed="false">{{ labels[o.value] if labels else o.value }}<span class="count">{{ o.count }}</span></button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endmacro -%}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -6,10 +19,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="급식알리미">
-    <meta name="description" content="{{ region_name }} 지역 {{ school_level }} 목록이에요. 원하는 학교를 선택해서 급식 정보를 확인해 보세요.">
+    <meta name="description" content="{{ region_name }} 지역 {{ school_level }}를 검색하고 유형별로 골라 급식 정보를 확인해 보세요.">
     <title>{{ region_name }} {{ school_level }} 목록 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -40,31 +53,68 @@
     </header>
 
     <div class="container">
-        <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="back-btn">← {{ region_name }} 지역으로 돌아가기</a>
-        <div class="breadcrumb">
-            <a href="/">홈</a> > <a href="{{ url_for('schools_by_region', region_name=region_name) }}">{{ region_name }}</a> > {{ school_level }}
-        </div>
-        <div class="level-header">
-            <h1>{{ region_name }} {{ school_level }} 목록</h1>
-            <p style="color: white;">원하는 학교를 선택하여 급식 정보를 확인하세요</p>
-        </div>
-        {% if schools %}
-        <div class="school-count-info">
-            총 <strong>{{ schools|length }}개</strong>의 {{ school_level }}가 있어요.
-        </div>
-        <div class="schools-grid">
-            {% for school in schools %}
-            <div class="school-card">
-                <div class="school-name">{{ school.name }}</div>
-                <a href="/meal/{{ school.code }}" class="view-meal-btn">급식 정보 보기</a>
+        <div class="finder-page">
+            <h1 class="finder-title">{{ region_name }} {{ school_level }}</h1>
+            <div class="finder-panel">
+                <div class="finder-row">
+                    <select id="regionSwitch" class="step-select" data-level="{{ school_level }}" aria-label="지역 선택">
+                        {% for name in regions %}
+                        <option value="{{ name }}" {% if name == region_name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="schoolQuery" placeholder="학교명이나 동네로 검색" autocomplete="off" enterkeyhint="search" aria-label="학교 검색">
+                </div>
+                <div class="level-tabs">
+                    <a class="level-tab" href="{{ url_for('schools_by_region', region_name=region_name) }}">전체<span class="count">{{ total_count }}</span></a>
+                    {% for level, count in level_counts.items() %}
+                    <a class="level-tab{% if level == school_level %} active{% endif %}" href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=level) }}">{{ level }}<span class="count">{{ count }}</span></a>
+                    {% endfor %}
+                </div>
+                {% if district_options|length > 1 %}
+                <div class="filter-group">
+                    <label class="filter-label" for="districtSelect">세부 지역</label>
+                    <select id="districtSelect">
+                        <option value="">전체</option>
+                        {% for o in district_options %}
+                        <option value="{{ o.value }}">{{ o.value }} ({{ o.count }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                {{ chip_group('gender', '남녀 구분', gender_options, gender_labels) }}
+                {{ chip_group('found', '설립', founded_options) }}
+                {{ chip_group('type', '고등학교 유형', type_options) }}
+                {% if gender_options|length > 1 %}
+                <div class="finder-legend">
+                    <span><span class="legend-swatch boys"></span>남학교</span>
+                    <span><span class="legend-swatch girls"></span>여학교</span>
+                </div>
+                {% endif %}
             </div>
-            {% endfor %}
+            {% if schools %}
+            <div class="finder-meta">
+                <p class="finder-result-info" id="resultInfo"></p>
+                <button type="button" class="chip" id="resetFilters" hidden>필터 초기화</button>
+            </div>
+            <div class="school-list">
+                {% for s in schools %}
+                <a class="school-item{% if s.gender %} {{ s.gender }}{% endif %}" href="{{ url_for('school_meal_view', school_code=s.code) }}" data-search="{{ (s.name ~ ' ' ~ s.location)|lower }}" data-district="{{ s.district }}" data-gender="{{ s.gender }}" data-found="{{ s.founded }}" data-type="{{ s.hs_type }}">
+                    <div class="school-item-head">
+                        <span class="school-item-name">{{ s.name }}</span>
+                        <span class="school-item-go">급식 보기</span>
+                    </div>
+                    <div class="school-item-loc">{{ s.location }}</div>
+                    <div class="school-item-tags">
+                        {% for t in s.tags %}<span class="school-tag">{{ t }}</span>{% endfor %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            <div class="finder-empty" id="finderEmpty" hidden>조건에 맞는 학교가 없어요.</div>
+            {% else %}
+            <div class="finder-empty">이 지역에는 등록된 {{ school_level }}가 없어요.</div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="no-schools">
-            {{ region_name }} 지역에는 해당하는 {{ school_level }}가 없습니다.
-        </div>
-        {% endif %}
     </div>
 
     <footer class="main-footer">
@@ -171,6 +221,112 @@
                 updateIcon();
             }
         });
+    </script>
+    <script>
+        (function () {
+            const regionSwitch = document.getElementById('regionSwitch');
+            regionSwitch.addEventListener('change', function () {
+                window.location.href = '/schools/' + encodeURIComponent(regionSwitch.value) + '/' + encodeURIComponent(regionSwitch.dataset.level);
+            });
+
+            const items = Array.prototype.slice.call(document.querySelectorAll('.school-item'));
+            if (!items.length) return;
+
+            const input = document.getElementById('schoolQuery');
+            const districtSelect = document.getElementById('districtSelect');
+            const info = document.getElementById('resultInfo');
+            const empty = document.getElementById('finderEmpty');
+            const resetBtn = document.getElementById('resetFilters');
+            const rows = Array.prototype.slice.call(document.querySelectorAll('.chip-row[data-filter]'));
+            const state = { q: '', district: '', gender: '', found: '', type: '' };
+
+            function syncChips(row) {
+                Array.prototype.forEach.call(row.querySelectorAll('.chip'), function (button) {
+                    const on = button.dataset.value === state[row.dataset.filter];
+                    button.classList.toggle('active', on);
+                    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+                });
+            }
+
+            function syncUrl() {
+                const params = new URLSearchParams();
+                Object.keys(state).forEach(function (key) {
+                    const value = state[key].trim();
+                    if (value) params.set(key, value);
+                });
+                const query = params.toString();
+                window.history.replaceState(null, '', window.location.pathname + (query ? '?' + query : ''));
+            }
+
+            function apply() {
+                const q = state.q.trim().toLowerCase();
+                let shown = 0;
+                items.forEach(function (el) {
+                    const d = el.dataset;
+                    const ok = (!q || d.search.indexOf(q) !== -1)
+                        && (!state.district || d.district === state.district)
+                        && (!state.gender || d.gender === state.gender)
+                        && (!state.found || d.found === state.found)
+                        && (!state.type || d.type === state.type);
+                    el.hidden = !ok;
+                    if (ok) shown++;
+                });
+                const active = q || state.district || state.gender || state.found || state.type;
+                info.textContent = active ? '전체 ' + items.length + '개교 중 ' + shown + '개교' : '전체 ' + items.length + '개교';
+                empty.hidden = shown !== 0;
+                resetBtn.hidden = !active;
+                syncUrl();
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            state.q = params.get('q') || '';
+            input.value = state.q;
+            if (districtSelect) {
+                const wanted = params.get('district') || '';
+                districtSelect.value = wanted;
+                if (districtSelect.value !== wanted) districtSelect.value = '';
+                state.district = districtSelect.value;
+            }
+            rows.forEach(function (row) {
+                const wanted = params.get(row.dataset.filter) || '';
+                const exists = Array.prototype.some.call(row.querySelectorAll('.chip'), function (button) {
+                    return button.dataset.value === wanted;
+                });
+                if (exists) state[row.dataset.filter] = wanted;
+                syncChips(row);
+                row.addEventListener('click', function (event) {
+                    const button = event.target.closest('.chip');
+                    if (!button) return;
+                    state[row.dataset.filter] = button.dataset.value;
+                    syncChips(row);
+                    apply();
+                });
+            });
+
+            input.addEventListener('input', function () {
+                state.q = input.value;
+                apply();
+            });
+            if (districtSelect) {
+                districtSelect.addEventListener('change', function () {
+                    state.district = districtSelect.value;
+                    apply();
+                });
+            }
+            resetBtn.addEventListener('click', function () {
+                state.q = '';
+                state.district = '';
+                state.gender = '';
+                state.found = '';
+                state.type = '';
+                input.value = '';
+                if (districtSelect) districtSelect.value = '';
+                rows.forEach(syncChips);
+                apply();
+            });
+
+            apply();
+        })();
     </script>
 </body>
 </html>
