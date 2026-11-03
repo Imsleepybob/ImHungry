@@ -1,0 +1,7 @@
+{% macro school_card(s, filterable=False) -%}
+<a class="school-item{% if s.gender %} {{ s.gender }}{% endif %}" href="{{ url_for('school_meal_view', school_code=s.code) }}"{% if filterable %} data-search="{{ (s.name ~ ' ' ~ s.location)|lower }}" data-district="{{ s.district }}" data-gender="{{ s.gender }}" data-found="{{ s.founded }}" data-type="{{ s.hs_type }}"{% endif %}>
+<div class="school-item-head"><span class="school-item-name">{{ s.name }}</span><span class="school-item-go">급식 보기</span></div>
+<div class="school-item-loc">{{ s.location }}</div>
+<div class="school-item-tags">{% for t in s.tags %}<span class="school-tag">{{ t }}</span>{% endfor %}</div>
+</a>
+{%- endmacro %}
