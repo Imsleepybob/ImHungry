@@ -6,6 +6,7 @@ import tempfile
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 from xml.sax.saxutils import escape
 
 import requests
@@ -14,6 +15,7 @@ from flask import Response, abort
 SITE_URL = os.environ.get('SITE_URL', 'https://geupsikalimi.com').strip().rstrip('/')
 NEIS_SCHOOL_URL = 'https://open.neis.go.kr/hub/schoolInfo'
 SCHOOL_KINDS = {'초등학교', '중학교', '고등학교', '특수학교'}
+DEFAULT_LEVELS = ['초등학교', '중학교', '고등학교', '특수학교']
 REFRESH_SECONDS = 30 * 86400
 RETRY_SECONDS = 300
 CHECK_SECONDS = 6 * 3600
@@ -28,8 +30,10 @@ SCHOOL_CODE_PATTERN = re.compile(r'^[0-9A-Za-z]+$')
 
 
 class SitemapStore:
-    def __init__(self, api_key, regions, logger, cache_dir=DEFAULT_CACHE_DIR):
+    def __init__(self, api_key, regions, logger, cache_dir=DEFAULT_CACHE_DIR, level_lookup=None):
         self.api_key = api_key
+        self.regions = dict(regions)
+        self.level_lookup = level_lookup
         self.region_codes = list(regions.values())
         self.logger = logger
         self.cache_dir = cache_dir
@@ -88,9 +92,27 @@ class SitemapStore:
         lines.append('</urlset>')
         return '\n'.join(lines) + '\n'
 
+    def main_urls(self):
+        urls = [f'{SITE_URL}/', f'{SITE_URL}/schools']
+        for name in self.regions:
+            base = f'{SITE_URL}/schools/{quote(name)}'
+            urls.append(base)
+            levels = None
+            if self.level_lookup:
+                try:
+                    levels = self.level_lookup(name)
+                except Exception as e:
+                    self.logger.error(f'[sitemap] {name} 학교급 조회 실패: {e}')
+            for level in levels or DEFAULT_LEVELS:
+                urls.append(f'{base}/{quote(level)}')
+        return urls
+
     def main_xml(self):
-        return (f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="{XML_NS}">\n'
-                f'  <url><loc>{SITE_URL}/</loc></url>\n</urlset>\n')
+        lines = ['<?xml version="1.0" encoding="UTF-8"?>', f'<urlset xmlns="{XML_NS}">']
+        for url in self.main_urls():
+            lines.append(f'  <url><loc>{escape(url)}</loc></url>')
+        lines.append('</urlset>')
+        return '\n'.join(lines) + '\n'
 
     def index_xml(self):
         lines = ['<?xml version="1.0" encoding="UTF-8"?>', f'<sitemapindex xmlns="{XML_NS}">',
@@ -192,8 +214,8 @@ class SitemapStore:
             time.sleep(MISSING_CHECK_SECONDS if missing else CHECK_SECONDS)
 
 
-def init_sitemap(app, api_key, regions, cache_dir=DEFAULT_CACHE_DIR):
-    store = SitemapStore(api_key, regions, app.logger, cache_dir)
+def init_sitemap(app, api_key, regions, cache_dir=DEFAULT_CACHE_DIR, level_lookup=None):
+    store = SitemapStore(api_key, regions, app.logger, cache_dir, level_lookup)
 
     def xml_response(body):
         response = Response(body, mimetype='application/xml')
