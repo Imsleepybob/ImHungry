@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, send_file, make_response, jso
 from markupsafe import escape
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
+from sitemap import SITE_URL
 import calendar
 import requests
 import logging
@@ -1300,6 +1301,17 @@ regions = {
     "경남": "S10", "제주": "T10"
 }
 
+REGION_FULL_NAMES = {
+    "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시", "인천": "인천광역시", "광주": "광주광역시",
+    "대전": "대전광역시", "울산": "울산광역시", "세종": "세종특별자치시", "경기": "경기도", "강원": "강원특별자치도",
+    "충북": "충청북도", "충남": "충청남도", "전북": "전북특별자치도", "전남": "전라남도", "경북": "경상북도",
+    "경남": "경상남도", "제주": "제주특별자치도"
+}
+
+@app.template_filter('region_full')
+def region_full_name(name):
+    return REGION_FULL_NAMES.get(name, name)
+
 school_levels = {
     "초등학교": ["초등학교"],
     "중학교": ["중학교", "중등학교"],
@@ -1374,12 +1386,20 @@ def _clean_field(value):
     text = str(value).strip()
     return "" if text in ("None", "null") else text
 
-GENDER_LABELS = {"boys": "남학교", "girls": "여학교", "co": "남녀공학"}
 GENDER_ORDER = ["boys", "girls", "co"]
 FOUNDED_ORDER = ["공립", "사립", "국립"]
 HS_TYPE_ORDER = ["일반고", "특성화고", "특목고", "자율형 사립고", "자율형 공립고", "자율고"]
 
-def _gender_key(coedu):
+def _gender_labels(level):
+    if level == "중학교":
+        return {"boys": "남중", "girls": "여중", "co": "남녀공학"}
+    if level == "고등학교":
+        return {"boys": "남고", "girls": "여고", "co": "남녀공학"}
+    return {"boys": "남학교", "girls": "여학교", "co": "남녀공학"}
+
+def _gender_key(coedu, level=None):
+    if level == "초등학교":
+        return "co"
     if not coedu:
         return ""
     if "공학" in coedu or "남여" in coedu or "남녀" in coedu:
@@ -1426,16 +1446,17 @@ def _parse_school_row(row):
     }
 
 def _school_card(school):
-    gender = _gender_key(school.get("coedu", ""))
+    level = school.get("school_level") or ""
+    gender = _gender_key(school.get("coedu", ""), level)
     founded = school.get("founded", "")
     hs_label = ""
-    if school.get("school_level") == "고등학교":
+    if level == "고등학교":
         hs_label = _hs_type_label(school.get("hs_type", ""), founded)
     address = school.get("address", "")
     location = address.split(" ", 1)[1] if " " in address else address
     tags = []
     if gender:
-        tags.append(GENDER_LABELS[gender])
+        tags.append(_gender_labels(level)[gender])
     if founded:
         tags.append(founded)
     if hs_label:
@@ -1449,7 +1470,7 @@ def _school_card(school):
     return {
         "code": school["school_code"],
         "name": school["school_name"],
-        "level": school.get("school_level") or "",
+        "level": level,
         "location": location,
         "district": school.get("district") or "",
         "gender": gender,
@@ -1708,7 +1729,7 @@ def get_nearby_schools(current_school_info):
 
         _, all_schools = cached
         nearby = [
-            {'code': s['school_code'], 'name': s['school_name'], 'distance_info': current_district}
+            dict(_school_card(s), distance_info=current_district)
             for s in all_schools
             if s.get('district') == current_district
             and s.get('school_level') == current_level
@@ -1983,6 +2004,14 @@ def track_event():
 def current_time():
     return jsonify({'current_time': datetime.now(KST).isoformat()})
 
+@app.route('/schools')
+def schools_index():
+    log_access_request(200)
+    return render_template('schools_index.html',
+                         regions=regions,
+                         levels=['초등학교', '중학교', '고등학교', '특수학교'],
+                         canonical_url=SITE_URL + url_for('schools_index'))
+
 @app.route('/schools/<region_name>')
 def schools_by_region(region_name):
     try:
@@ -2001,7 +2030,8 @@ def schools_by_region(region_name):
                          region_name=region_name,
                          level_counts=_level_counts(all_schools),
                          total_count=len(all_schools),
-                         regions=regions)
+                         regions=regions,
+                         canonical_url=SITE_URL + url_for('schools_by_region', region_name=region_name))
 
 @app.route('/schools/<region_name>/<school_level>')
 def schools_by_region_and_level(region_name, school_level):
@@ -2035,8 +2065,9 @@ def schools_by_region_and_level(region_name, school_level):
                          gender_options=_count_options((c['gender'] for c in cards), GENDER_ORDER),
                          founded_options=_count_options((c['founded'] for c in cards), FOUNDED_ORDER),
                          type_options=_count_options((c['hs_type'] for c in cards), HS_TYPE_ORDER),
-                         gender_labels=GENDER_LABELS,
-                         regions=regions)
+                         gender_labels=_gender_labels(school_level),
+                         regions=regions,
+                         canonical_url=SITE_URL + url_for('schools_by_region_and_level', region_name=region_name, school_level=school_level))
 
 @app.route('/api/schools/browse')
 def browse_schools_api():
@@ -2944,7 +2975,14 @@ from announcements import init_announcements
 init_announcements(app, _admin_auth_check, announcement_stats_by_id)
 
 from sitemap import init_sitemap
-init_sitemap(app, API_KEY, regions)
+
+def _sitemap_levels(region_name):
+    cached = region_schools_cache.get(regions[region_name])
+    if not cached:
+        return None
+    return list(_level_counts(cached[1]).keys())
+
+init_sitemap(app, API_KEY, regions, level_lookup=_sitemap_levels)
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
