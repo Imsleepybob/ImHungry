@@ -1,3 +1,4 @@
+{% from '_school_card.html' import school_card -%}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -256,20 +257,18 @@
       </div>
     </div>
     {% if nearby_schools %}
-    <div class="nearby-schools-section">
-      <button class="toggle-nearby-btn" id="toggleNearbyBtn">🏫 주변 학교 급식과 비교하기</button>
-      <div class="nearby-schools-container" id="nearbySchoolsContainer" style="display: none;">
-        <div class="nearby-schools-header">
-          <h3 class="nearby-schools-title">주변 학교 급식 정보</h3>
-          <p class="nearby-schools-subtitle">우리 학교와 다른 학교들의 급식을 비교해보세요!</p>
-        </div>
-        <div class="nearby-schools-grid">
+    <div class="school-finder-entry nearby-schools-section">
+      <button type="button" class="school-finder-link" id="toggleNearbyBtn" aria-expanded="false" aria-controls="nearbySchoolsContainer">
+        <span>
+          <span class="school-finder-title">주변 학교 급식과 비교하기</span>
+          <span class="school-finder-sub">{% if current_school and current_school.district %}{{ current_school.district }} {% endif %}{% if current_school and current_school.school_level %}{{ current_school.school_level }} {% endif %}{{ nearby_schools|length }}개교의 급식을 바로 볼 수 있어요.</span>
+        </span>
+        <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
+      </button>
+      <div class="nearby-list" id="nearbySchoolsContainer" hidden>
+        <div class="school-list">
           {% for school in nearby_schools %}
-          <div class="nearby-school-card">
-            <div class="nearby-school-name">{{ school.name }}</div>
-            <div class="nearby-school-distance">{{ school.distance_info }}</div>
-            <a href="{{ url_for('school_meal_view', school_code=school.code) }}" class="view-nearby-meal-btn">급식 정보 보기</a>
-          </div>
+          {{ school_card(school) }}
           {% endfor %}
         </div>
       </div>
@@ -277,10 +276,10 @@
     {% endif %}
     {% if current_school and region and current_school.school_level %}
     <div class="school-finder-entry">
-      <a class="school-finder-link" href="{{ url_for('schools_by_region_and_level', region_name=region, school_level=current_school.school_level, district=current_school.district) }}">
+      <a class="school-finder-link" href="{{ url_for('schools_by_region_and_level', region_name=region, school_level=current_school.school_level) }}{% if current_school.district %}#district={{ current_school.district|urlencode }}{% endif %}">
         <span>
           <span class="school-finder-title">다른 학교도 찾아볼까요?</span>
-          <span class="school-finder-sub">{{ region }}{% if current_school.district %} {{ current_school.district }}{% endif %} {{ current_school.school_level }}를 검색하고 유형별로 골라볼 수 있어요.</span>
+          <span class="school-finder-sub">{{ region|region_full }}{% if current_school.district %} {{ current_school.district }}{% endif %} {{ current_school.school_level }}를 검색하고 유형별로 골라볼 수 있어요.</span>
         </span>
         <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
       </a>
@@ -297,31 +296,20 @@
   </div>
   {% endif %}
 
-  <div class="manual-school-finder form-field-animated" id="manualSchoolFinder">
-    <div class="manual-finder-header" id="manualFinderToggle">
-      <div class="manual-finder-title">🏫 지역별 학교 찾기</div>
-      <div class="manual-finder-icon" id="manualFinderIcon">▼</div>
-    </div>
-    <div class="manual-finder-content" id="manualFinderContent">
-      <div class="finder-description">
-        학교명을 직접 검색하지 않고도 지역과 학교급별로 학교를 찾을 수 있어요.
-      </div>
-      <div class="regions-grid">
-        {% for region_name, region_code in regions.items() %}
-        <div class="region-card">
-          <div class="region-name">{{ region_name }}</div>
-          <div class="school-levels">
-            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='초등학교') }}" class="level-link">초등학교</a>
-            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='중학교') }}" class="level-link">중학교</a>
-            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='고등학교') }}" class="level-link">고등학교</a>
-            <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level='특수학교') }}" class="level-link">특수학교</a>
-            <a href="{{ url_for('schools_by_region', region_name=region_name) }}" class="level-link">전체보기</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
+  {% if not (school_name and week_meals) %}
+  <div class="school-finder-entry main-entry entry-fade" id="schoolFinderEntry">
+    <a class="school-finder-link" href="{{ url_for('schools_index') }}">
+      <span>
+        <span class="school-finder-title">지역별로 학교 찾기</span>
+        <span class="school-finder-sub">학교 이름을 몰라도 지역과 학교 유형으로 골라서 급식을 확인할 수 있어요.</span>
+      </span>
+      <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
+    </a>
+    <div class="region-quick">
+      {% for name in regions %}<a href="{{ url_for('schools_by_region', region_name=name) }}">{{ name }}</a>{% endfor %}
     </div>
   </div>
+  {% endif %}
 
 <div class="allergy-info">
   <div class="allergy-info-title">급식 알레르기 성분표</div>
@@ -566,15 +554,18 @@ async function initFormAnimation() {
     const promptEl = document.getElementById('stepPrompt');
     const regionSelectWrapper = document.getElementById('regionSelectWrapper');
     const regionSelect = document.getElementById('region');
-    const manualFinder = document.querySelector('.manual-school-finder');
-    if (!promptEl) return;
+    const entry = document.getElementById('schoolFinderEntry');
+    if (!promptEl) {
+        if (entry) entry.classList.add('visible');
+        return;
+    }
 
     if (regionSelect && regionSelect.value) {
         promptEl.classList.remove('fade-in-start');
         promptEl.textContent = '학교를 검색하세요!';
         showElement(regionSelectWrapper);
         showSchoolRowAnimated();
-        if (manualFinder) manualFinder.classList.add('visible');
+        if (entry) entry.classList.add('visible');
         showAboutBtn();
         return;
     }
@@ -595,14 +586,14 @@ async function initFormAnimation() {
         await delay(2800);
         await fadePromptText(promptEl, '먼저, 지역을 선택해주세요.');
         showElement(regionSelectWrapper);
-        if (manualFinder) manualFinder.classList.add('visible');
+        if (entry) entry.classList.add('visible');
     } else {
         promptEl.textContent = '지역을 선택해주세요.';
         promptEl.offsetHeight;
         promptEl.classList.remove('fade-in-start');
         await delay(400);
         showElement(regionSelectWrapper);
-        if (manualFinder) manualFinder.classList.add('visible');
+        if (entry) entry.classList.add('visible');
         showAboutBtn();
     }
 }
@@ -717,36 +708,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const manualFinderToggle = document.getElementById('manualFinderToggle');
-    const manualFinderContent = document.getElementById('manualFinderContent');
-    const manualFinderIcon = document.getElementById('manualFinderIcon');
-    if (manualFinderToggle && manualFinderContent && manualFinderIcon) {
-        const manualFinderEl = document.getElementById('manualSchoolFinder');
-        manualFinderToggle.addEventListener('click', function() {
-            const expanded = manualFinderContent.classList.contains('show');
-            if (expanded) {
-                manualFinderContent.classList.remove('show');
-                manualFinderIcon.classList.remove('expanded');
-                manualFinderIcon.textContent = '▼';
-                if (manualFinderEl) manualFinderEl.style.maxHeight = '64px';
-            } else {
-                manualFinderContent.classList.add('show');
-                manualFinderIcon.classList.add('expanded');
-                manualFinderIcon.textContent = '▲';
-                if (manualFinderEl) manualFinderEl.style.maxHeight = 'none';
-            }
-        });
-    }
-
     const toggleNearbyBtn = document.getElementById('toggleNearbyBtn');
     const nearbyContainer = document.getElementById('nearbySchoolsContainer');
     if (toggleNearbyBtn && nearbyContainer) {
         toggleNearbyBtn.addEventListener('click', function() {
             trackEvent('btn_nearby', 'toggle');
             NotificationManager.triggerHaptic('impact', 'LIGHT');
-            const hidden = nearbyContainer.style.display === 'none';
-            if (hidden) { nearbyContainer.style.display='block'; toggleNearbyBtn.textContent='▲ 주변 학교 급식 비교 접기'; toggleNearbyBtn.classList.add('active'); nearbyContainer.scrollIntoView({behavior:'smooth'}); }
-            else { nearbyContainer.style.display='none'; toggleNearbyBtn.textContent='🏫 주변 학교 급식과 비교하기'; toggleNearbyBtn.classList.remove('active'); }
+            const opening = nearbyContainer.hidden;
+            nearbyContainer.hidden = !opening;
+            toggleNearbyBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+            if (opening) nearbyContainer.scrollIntoView({behavior:'smooth', block:'nearest'});
         });
     }
 
