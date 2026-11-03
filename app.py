@@ -1313,12 +1313,12 @@ def extract_district_from_address(address):
         return None
     district_patterns = [
         r'서울특별시\s+([가-힣]+구)',
-        r'부산광역시\s+([가-힣]+구)',
-        r'대구광역시\s+([가-힣]+구)',
-        r'인천광역시\s+([가-힣]+구)',
+        r'부산광역시\s+([가-힣]+[구군])',
+        r'대구광역시\s+([가-힣]+[구군])',
+        r'인천광역시\s+([가-힣]+[구군])',
         r'광주광역시\s+([가-힣]+구)',
         r'대전광역시\s+([가-힣]+구)',
-        r'울산광역시\s+([가-힣]+구)',
+        r'울산광역시\s+([가-힣]+[구군])',
         r'경기도\s+([가-힣]+시)',
         r'경기도\s+([가-힣]+군)',
         r'강원[특별자치]*도\s+([가-힣]+시)',
@@ -1361,16 +1361,119 @@ def get_school_level_from_name(school_name):
         return '각종학교'
     return None
 
+def get_school_level_from_kind(kind):
+    if kind in ("초등학교", "중학교", "고등학교", "특수학교"):
+        return kind
+    if kind.startswith("각종학교"):
+        return "각종학교"
+    return None
+
+def _clean_field(value):
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return "" if text in ("None", "null") else text
+
+GENDER_LABELS = {"boys": "남학교", "girls": "여학교", "co": "남녀공학"}
+GENDER_ORDER = ["boys", "girls", "co"]
+FOUNDED_ORDER = ["공립", "사립", "국립"]
+HS_TYPE_ORDER = ["일반고", "특성화고", "특목고", "자율형 사립고", "자율형 공립고", "자율고"]
+
+def _gender_key(coedu):
+    if not coedu:
+        return ""
+    if "공학" in coedu or "남여" in coedu or "남녀" in coedu:
+        return "co"
+    if coedu.startswith("남"):
+        return "boys"
+    if coedu.startswith("여"):
+        return "girls"
+    return ""
+
+def _hs_type_label(hs_type, founded):
+    if not hs_type:
+        return ""
+    if "자율" in hs_type:
+        if "사립" in hs_type or founded == "사립":
+            return "자율형 사립고"
+        if "공립" in hs_type or founded == "공립":
+            return "자율형 공립고"
+        return "자율고"
+    if "특성화" in hs_type:
+        return "특성화고"
+    if "특목" in hs_type or "특수목적" in hs_type:
+        return "특목고"
+    if "일반" in hs_type:
+        return "일반고"
+    return hs_type
+
 def _parse_school_row(row):
-    address = row.get("ORG_RDNMA", "")
+    address = _clean_field(row.get("ORG_RDNMA"))
+    kind = _clean_field(row.get("SCHUL_KND_SC_NM"))
+    level = get_school_level_from_kind(kind) or get_school_level_from_name(row["SCHUL_NM"]) or "각종학교"
     return {
         "school_code": row["SD_SCHUL_CODE"],
         "school_name": row["SCHUL_NM"],
         "region_code": row["ATPT_OFCDC_SC_CODE"],
         "address": address,
         "district": extract_district_from_address(address),
-        "school_level": get_school_level_from_name(row["SCHUL_NM"])
+        "school_level": level,
+        "coedu": _clean_field(row.get("COEDU_SC_NM")),
+        "founded": _clean_field(row.get("FOND_SC_NM")),
+        "hs_type": _clean_field(row.get("HS_SC_NM")),
+        "special": _clean_field(row.get("SPCLY_PURPS_HS_ORD_NM")),
+        "day_night": _clean_field(row.get("DGHT_SC_NM"))
     }
+
+def _school_card(school):
+    gender = _gender_key(school.get("coedu", ""))
+    founded = school.get("founded", "")
+    hs_label = ""
+    if school.get("school_level") == "고등학교":
+        hs_label = _hs_type_label(school.get("hs_type", ""), founded)
+    address = school.get("address", "")
+    location = address.split(" ", 1)[1] if " " in address else address
+    tags = []
+    if gender:
+        tags.append(GENDER_LABELS[gender])
+    if founded:
+        tags.append(founded)
+    if hs_label:
+        tags.append(hs_label)
+    special = school.get("special", "") if hs_label == "특목고" else ""
+    if special:
+        tags.append(special)
+    day_night = school.get("day_night", "")
+    if day_night and day_night != "주간":
+        tags.append(day_night)
+    return {
+        "code": school["school_code"],
+        "name": school["school_name"],
+        "level": school.get("school_level") or "",
+        "location": location,
+        "district": school.get("district") or "",
+        "gender": gender,
+        "founded": founded,
+        "hs_type": hs_label,
+        "tags": tags
+    }
+
+def _count_options(values, order=None):
+    counts = {}
+    for value in values:
+        if value:
+            counts[value] = counts.get(value, 0) + 1
+    order = order or []
+    keys = sorted(counts, key=lambda k: (order.index(k) if k in order else len(order), k))
+    return [{"value": k, "count": counts[k]} for k in keys]
+
+def _level_counts(schools):
+    counts = {}
+    for level in school_levels.keys():
+        count = sum(1 for s in schools if s.get("school_level") == level)
+        if count:
+            counts[level] = count
+    return counts
 
 def get_school_from_neis(school_code):
     cached = school_code_cache.get(school_code)
@@ -1484,7 +1587,8 @@ def get_schools_by_region_cached(region_code, school_level=None):
     if not cached or time.time() - cached[0] > REGION_SCHOOLS_CACHE_TTL:
         app.logger.info(f"Fetching all schools for region {region_code} from NEIS API")
         schools = _fetch_all_schools_for_region(region_code)
-        region_schools_cache[region_code] = (time.time(), schools)
+        if schools:
+            region_schools_cache[region_code] = (time.time(), schools)
     else:
         schools = cached[1]
 
@@ -1892,19 +1996,11 @@ def schools_by_region(region_name):
     region_code = regions[region_name]
     all_schools = get_schools_by_region_cached(region_code)
 
-    schools_by_level = {}
-    for level in school_levels.keys():
-        level_schools = [
-            {'code': s['school_code'], 'name': s['school_name'], 'address': s.get('address', '')}
-            for s in all_schools if s.get('school_level') == level
-        ]
-        if level_schools:
-            schools_by_level[level] = level_schools
-
     log_access_request(200)
     return render_template('schools_by_region.html',
                          region_name=region_name,
-                         schools_by_level=schools_by_level,
+                         level_counts=_level_counts(all_schools),
+                         total_count=len(all_schools),
                          regions=regions)
 
 @app.route('/schools/<region_name>/<school_level>')
@@ -1922,18 +2018,49 @@ def schools_by_region_and_level(region_name, school_level):
         return redirect(url_for('schools_by_region', region_name=region_name))
 
     region_code = regions[region_name]
-    schools_data = get_schools_by_region_cached(region_code, school_level)
-    schools = [
-        {'code': s['school_code'], 'name': s['school_name'], 'address': s.get('address', '')}
-        for s in schools_data
-    ]
+    all_schools = get_schools_by_region_cached(region_code)
+    cards = sorted(
+        (_school_card(s) for s in all_schools if s.get("school_level") == school_level),
+        key=lambda c: c['name']
+    )
 
     log_access_request(200)
     return render_template('schools_by_level.html',
                          region_name=region_name,
                          school_level=school_level,
-                         schools=schools,
+                         schools=cards,
+                         level_counts=_level_counts(all_schools),
+                         total_count=len(all_schools),
+                         district_options=_count_options((c['district'] for c in cards)),
+                         gender_options=_count_options((c['gender'] for c in cards), GENDER_ORDER),
+                         founded_options=_count_options((c['founded'] for c in cards), FOUNDED_ORDER),
+                         type_options=_count_options((c['hs_type'] for c in cards), HS_TYPE_ORDER),
+                         gender_labels=GENDER_LABELS,
                          regions=regions)
+
+@app.route('/api/schools/browse')
+def browse_schools_api():
+    query = request.args.get('q', '').strip().lower()
+    region_name = request.args.get('region', '').strip()
+
+    if len(query) < 2 or region_name not in regions:
+        return jsonify([])
+
+    try:
+        schools = get_schools_by_region_cached(regions[region_name])
+        name_hits = []
+        address_hits = []
+        for s in schools:
+            if query in s['school_name'].lower():
+                name_hits.append(s)
+            elif query in (s.get('address') or '').lower():
+                address_hits.append(s)
+        name_hits.sort(key=lambda s: s['school_name'])
+        address_hits.sort(key=lambda s: s['school_name'])
+        return jsonify([_school_card(s) for s in (name_hits + address_hits)[:40]])
+    except Exception as e:
+        app.logger.error(f"Error in browse search: {e}")
+        return jsonify({"error": "검색 중 오류가 발생했습니다."}), 500
 
 @app.route('/robots.txt')
 def robots_txt():
