@@ -6,8 +6,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="급식알리미">
-    <meta name="description" content="{{ region_name }} 지역의 초중고교를 검색하고 급식 정보를 확인하세요.">
-    <title>{{ region_name }} 학교 찾기 - 급식알리미</title>
+    <meta name="description" content="{{ region_name|region_full }} 초중고교 학교 목록이에요. 학교명이나 동네로 검색하고 학교급별로 급식 정보를 확인하세요.">
+    <title>{{ region_name|region_full }} 학교 목록 - 급식알리미</title>
+    <link rel="canonical" href="{{ canonical_url }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
     <script>
@@ -26,7 +27,7 @@
     <header class="main-header">
         <div class="logo">
             <a href="/">
-                <img src="{{ url_for('favicon') }}" alt="ImHungry" style="height: 24px;">
+                <img src="{{ url_for('favicon') }}" alt="급식알리미" style="height: 24px;">
             </a>
         </div>
         <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
@@ -38,10 +39,16 @@
             </svg>
         </button>
     </header>
+<div id="ad-mobile">
+    <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
+</div>
+<div id="ad-desktop">
+    <ins class="kakao_ad_area" data-ad-unit="DAN-I2BhGwRuogHXusUi" data-ad-width="728" data-ad-height="90"></ins>
+</div>
 
     <div class="container">
         <div class="finder-page">
-            <h1 class="finder-title">{{ region_name }} 학교 찾기</h1>
+            <h1 class="finder-title">{{ region_name|region_full }} 학교 목록</h1>
             <div class="finder-panel">
                 <div class="finder-row">
                     <select id="regionSwitch" class="step-select" aria-label="지역 선택">
@@ -49,8 +56,14 @@
                         <option value="{{ name }}" {% if name == region_name %}selected{% endif %}>{{ name }}</option>
                         {% endfor %}
                     </select>
-                    <input type="text" id="regionQuery" placeholder="학교명이나 동네로 검색" autocomplete="off" enterkeyhint="search" aria-label="학교 검색">
+                    <input type="text" id="regionQuery" placeholder="검색" autocomplete="off" enterkeyhint="search" aria-label="학교 검색">
                 </div>
+            </div>
+            <div id="bodyad-desktop">
+                <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
+            </div>
+            <div id="bodyad-mobile">
+                <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
             </div>
             <div id="searchResults" hidden>
                 <p class="finder-result-info" id="searchInfo"></p>
@@ -78,12 +91,11 @@
         <div class="footer-content">
             <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
             <div class="footer-links">
-                <a href="https://status.imsleepy.xyz" target="_blank" rel="noopener noreferrer">Imsleepy 서비스</a>
                 <a href="/terms">이용약관</a>
                 <a href="/privacy">개인정보처리방침</a>
                 <a href="mailto:{{ contact_email }}">문의하기</a>
             </div>
-            <p>&copy; 2025 ImHungry. All rights reserved.</p>
+            <p>&copy; 2026 급식알리미. All rights reserved.</p>
         </div>
     </footer>
 
@@ -278,5 +290,6 @@
             });
         })();
     </script>
+<script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
 </body>
 </html>
