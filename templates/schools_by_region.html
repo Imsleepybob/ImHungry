@@ -6,10 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="급식알리미">
-    <meta name="description" content="{{ region_name }} 지역의 초중고교 급식 정보를 확인하세요. 학교급별로 쉽게 찾아볼 수 있어요.">
-    <title>{{ region_name }} 지역 학교 목록 - 급식알리미</title>
+    <meta name="description" content="{{ region_name }} 지역의 초중고교를 검색하고 급식 정보를 확인하세요.">
+    <title>{{ region_name }} 학교 찾기 - 급식알리미</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -40,28 +40,37 @@
     </header>
 
     <div class="container">
-        <a href="/" class="back-btn">← 홈으로 돌아가기</a>
-        <div class="breadcrumb">
-            <a href="/">홈</a> > {{ region_name }} 지역 학교
-        </div>
-        <div class="region-header">
-            <h1>{{ region_name }} 지역 학교 목록</h1>
-            <p style="color: white;">아래 학교급을 선택하여 해당 지역의 학교들을 확인하세요</p>
-        </div>
-        <div class="school-level-grid">
-            {% for level, schools in schools_by_level.items() %}
-            {% if schools %}
-            <div class="level-card">
-                <div class="level-title">
-                    {% if level == "초등학교" %}🏫{% elif level == "중학교" %}🏫{% elif level == "고등학교" %}🏫{% elif level == "특수학교" %}🏫{% else %}🏫{% endif %}
-                    {{ level }}
-                    <span class="school-count">{{ schools|length }}개교</span>
+        <div class="finder-page">
+            <h1 class="finder-title">{{ region_name }} 학교 찾기</h1>
+            <div class="finder-panel">
+                <div class="finder-row">
+                    <select id="regionSwitch" class="step-select" aria-label="지역 선택">
+                        {% for name in regions %}
+                        <option value="{{ name }}" {% if name == region_name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="regionQuery" placeholder="학교명이나 동네로 검색" autocomplete="off" enterkeyhint="search" aria-label="학교 검색">
                 </div>
-                <p>{{ region_name }} 지역의 {{ level }} {{ schools|length }}개교의 급식 정보를 확인할 수 있어요.</p>
-                <a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=level) }}" class="view-all-btn">{{ level }} 보기</a>
             </div>
-            {% endif %}
-            {% endfor %}
+            <div id="searchResults" hidden>
+                <p class="finder-result-info" id="searchInfo"></p>
+                <div class="school-list" id="searchList"></div>
+            </div>
+            <div id="levelSection">
+                <p class="finder-result-info">전체 {{ total_count }}개교</p>
+                {% if level_counts %}
+                <div class="level-grid">
+                    {% for level, count in level_counts.items() %}
+                    <a class="level-link-card" href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=level) }}">
+                        <span class="level-link-name">{{ level }}</span>
+                        <span class="level-link-count">{{ count }}개교</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="finder-empty">학교 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>
+                {% endif %}
+            </div>
         </div>
     </div>
 
@@ -169,6 +178,105 @@
                 updateIcon();
             }
         });
+    </script>
+    <script>
+        (function () {
+            const select = document.getElementById('regionSwitch');
+            const input = document.getElementById('regionQuery');
+            const results = document.getElementById('searchResults');
+            const list = document.getElementById('searchList');
+            const info = document.getElementById('searchInfo');
+            const levels = document.getElementById('levelSection');
+            let timer = null;
+            let controller = null;
+
+            select.addEventListener('change', function () {
+                window.location.href = '/schools/' + encodeURIComponent(select.value);
+            });
+
+            function buildCard(school) {
+                const link = document.createElement('a');
+                link.className = 'school-item' + (school.gender ? ' ' + school.gender : '');
+                link.href = '/meal/' + encodeURIComponent(school.code);
+
+                const head = document.createElement('div');
+                head.className = 'school-item-head';
+                const name = document.createElement('span');
+                name.className = 'school-item-name';
+                name.textContent = school.name;
+                const go = document.createElement('span');
+                go.className = 'school-item-go';
+                go.textContent = '급식 보기';
+                head.appendChild(name);
+                head.appendChild(go);
+
+                const loc = document.createElement('div');
+                loc.className = 'school-item-loc';
+                loc.textContent = school.location;
+
+                const tags = document.createElement('div');
+                tags.className = 'school-item-tags';
+                const labels = [school.level].concat(school.tags);
+                labels.forEach(function (label) {
+                    if (!label) return;
+                    const tag = document.createElement('span');
+                    tag.className = 'school-tag';
+                    tag.textContent = label;
+                    tags.appendChild(tag);
+                });
+
+                link.appendChild(head);
+                link.appendChild(loc);
+                link.appendChild(tags);
+                return link;
+            }
+
+            function render(items) {
+                list.textContent = '';
+                items.forEach(function (school) {
+                    list.appendChild(buildCard(school));
+                });
+                if (!items.length) {
+                    info.textContent = '검색 결과가 없어요.';
+                } else if (items.length >= 40) {
+                    info.textContent = '검색 결과가 많아요. 더 구체적으로 입력해 보세요.';
+                } else {
+                    info.textContent = '검색 결과 ' + items.length + '개교';
+                }
+                results.hidden = false;
+                levels.hidden = true;
+            }
+
+            function search() {
+                const query = input.value.trim();
+                if (controller) controller.abort();
+                if (query.length < 2) {
+                    results.hidden = true;
+                    levels.hidden = false;
+                    return;
+                }
+                controller = new AbortController();
+                fetch('/api/schools/browse?region=' + encodeURIComponent(select.value) + '&q=' + encodeURIComponent(query), { signal: controller.signal })
+                    .then(function (response) {
+                        return response.ok ? response.json() : Promise.reject(new Error('request failed'));
+                    })
+                    .then(function (data) {
+                        if (Array.isArray(data)) render(data);
+                    })
+                    .catch(function (error) {
+                        if (error && error.name === 'AbortError') return;
+                        list.textContent = '';
+                        info.textContent = '검색 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.';
+                        results.hidden = false;
+                        levels.hidden = true;
+                    });
+            }
+
+            input.addEventListener('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(search, 250);
+            });
+        })();
     </script>
 </body>
 </html>
