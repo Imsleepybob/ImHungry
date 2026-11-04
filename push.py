@@ -18,6 +18,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Blueprint, jsonify, redirect, request, send_from_directory, make_response
 from pywebpush import webpush, WebPushException
 
+from sitemap import SITE_URL
+
 push_bp = Blueprint('push', __name__)
 
 VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '').strip()
@@ -372,7 +374,7 @@ def _endpoint_id(endpoint):
 
 def _send_one(endpoint, p256dh, auth, title, body, tag):
     subscription = {'endpoint': endpoint, 'keys': {'p256dh': p256dh, 'auth': auth}}
-    payload = json.dumps({'title': title, 'body': body, 'tag': tag, 'url': '/'}, ensure_ascii=False)
+    payload = json.dumps({'title': title, 'body': body, 'tag': tag, 'url': SITE_URL + '/'}, ensure_ascii=False)
     try:
         response = webpush(
             subscription_info=subscription,
