@@ -2455,7 +2455,7 @@ button{width:100%;padding:13px;border:0;border-radius:12px;background:#007aff;co
 @media (prefers-color-scheme:dark){body{background:#000;color:#f5f5f7}.card{background:#1c1c1e}input{background:#2c2c2e;border-color:#3a3a3c;color:#f5f5f7}button{background:#0a84ff}.err{color:#ff453a}}
 </style></head><body><form class="card" method="post">
 <h1>관리자 로그인</h1>__NOTICE__
-<input type="password" name="password" placeholder="비밀번호" autocomplete="current-password" autofocus>
+<input type="password" id="current-password" name="password" placeholder="비밀번호" autocomplete="current-password" required>
 <button type="submit">로그인</button></form></body></html>"""
 
 
