@@ -604,7 +604,7 @@ body {
   <div class="card">
     <div class="section-header">
       <div class="chart-title">상위 봇 IP TOP 10 <span style="font-size:0.8rem; color:var(--text3);">(조직·위치 포함)</span></div>
-      <button class="btn-expand" onclick="openModal('botModal')">전체 목록 ({{ stats.bot_ip_list | length }}개) ⛶</button>
+      <button class="btn-expand" onclick="openModal('botModal')">전체 목록 ({{ stats.bot_ip_total }}개) ⛶</button>
     </div>
     {% if stats.bot_ip_list_enriched %}
     <div style="overflow-x:auto;">
@@ -1125,9 +1125,42 @@ new Chart(document.getElementById('statusChart'), {
     })
 });
 
+const DASH_DAYS = {{ stats.days }};
+const rowState = {};
+function loadRows(tbody) {
+    const name = tbody.dataset.rows;
+    const st = rowState[name] || (rowState[name] = { page: 0, loading: false, done: false });
+    if (st.loading || st.done) return;
+    st.loading = true;
+    fetch(`/admin/dashboard/rows/${name}?days=${DASH_DAYS}&page=${st.page}`, { headers: { 'Accept': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+            tbody.insertAdjacentHTML('beforeend', d.html);
+            if (d.next === null) st.done = true; else st.page = d.next;
+        })
+        .catch(() => {
+            st.done = true;
+            tbody.insertAdjacentHTML('beforeend', '<tr><td colspan="9">목록을 불러오지 못했습니다. 페이지를 새로고침해 주세요.</td></tr>');
+        })
+        .finally(() => { st.loading = false; });
+}
+function ensureRows(root) {
+    root.querySelectorAll('tbody[data-rows]').forEach(tb => {
+        const box = tb.closest('.modal-body');
+        if (box && !box.dataset.lazy) {
+            box.dataset.lazy = '1';
+            box.addEventListener('scroll', () => {
+                if (box.scrollTop + box.clientHeight >= box.scrollHeight - 400) loadRows(tb);
+            });
+        }
+        if (!rowState[tb.dataset.rows]) loadRows(tb);
+    });
+}
 function openModal(id) {
-    document.getElementById(id).classList.add('open');
+    const modal = document.getElementById(id);
+    modal.classList.add('open');
     document.body.style.overflow = 'hidden';
+    ensureRows(modal);
 }
 function closeModal(id) {
     document.getElementById(id).classList.remove('open');
@@ -1170,7 +1203,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>학교명</th><th>방문 수</th></tr></thead>
-        <tbody>{% for name, count, code in stats.all_schools %}<tr><td>{{ loop.index }}</td><td><a href="/admin/school/{{ code }}">{{ name }}</a></td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="schools"></tbody>
       </table>
     </div>
   </div>
@@ -1190,13 +1223,13 @@ function toggleTheme() {
     <div id="mPathUser" class="tab-pane active modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>경로</th><th>횟수</th></tr></thead>
-        <tbody>{% for path, count in stats.all_user_paths %}<tr><td>{{ loop.index }}</td><td class="path-text">{{ path }}</td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="user_paths"></tbody>
       </table>
     </div>
     <div id="mPathBot" class="tab-pane modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>경로</th><th>횟수</th></tr></thead>
-        <tbody>{% for path, count in stats.all_bot_paths %}<tr><td>{{ loop.index }}</td><td class="path-text">{{ path }}</td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="bot_paths"></tbody>
       </table>
     </div>
   </div>
@@ -1212,7 +1245,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>도메인</th><th>횟수</th></tr></thead>
-        <tbody>{% for domain, count in stats.all_referrers %}<tr><td>{{ loop.index }}</td><td>{{ domain }}</td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="referrers"></tbody>
       </table>
     </div>
   </div>
@@ -1228,7 +1261,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>IP 주소</th><th>요청 수</th></tr></thead>
-        <tbody>{% for ip, count in stats.all_ips %}<tr><td>{{ loop.index }}</td><td><a href="/admin/ip/{{ ip }}" class="path-text">{{ ip }}</a></td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="ips"></tbody>
       </table>
     </div>
   </div>
@@ -1238,7 +1271,7 @@ function toggleTheme() {
 <div id="uaModal" class="modal-overlay" onclick="if(event.target===this)closeModal('uaModal')">
   <div class="modal-box"><div class="modal-header"><h3>📱 User-Agent 전체 ({{ stats.ua_list | length }}개)</h3><button class="modal-close" onclick="closeModal('uaModal')">✕</button></div>
     <div class="modal-body"><table class="data-table"><thead><tr><th>#</th><th>User-Agent</th><th>IP 수</th><th>요청 수</th></tr></thead>
-      <tbody>{% for row in stats.ua_list %}<tr><td>{{ loop.index }}</td><td style="font-size:0.78rem; word-break:break-all;"><a href="/admin/ua/{{ row.uid }}">{{ row.name or row.uid }}</a></td><td>{{ "{:,}".format(row.ips) }}</td><td><span class="count-badge">{{ "{:,}".format(row.n) }}</span></td></tr>{% endfor %}</tbody></table></div>
+      <tbody data-rows="ua"></tbody></table></div>
   </div>
 </div>
 
@@ -1252,7 +1285,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>IP 주소</th><th>기기</th><th>접속 학교</th><th>마지막 접속</th><th>실행</th></tr></thead>
-        <tbody>{% for row in stats.pwa.ip_list %}<tr><td>{{ loop.index }}</td><td><a href="/admin/ip/{{ row.ip }}" class="path-text">{{ row.ip }}</a></td><td>{{ row.devices }}</td><td>{% for name, cnt in row.schools %}{{ name }} ({{ cnt }}){% if not loop.last %}, {% endif %}{% endfor %}</td><td>{{ row.last_seen }}</td><td><span class="count-badge">{{ "{:,}".format(row.visits) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="pwa_ips"></tbody>
       </table>
     </div>
   </div>
@@ -1268,7 +1301,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>학교명</th><th>기기</th><th>실행</th></tr></thead>
-        <tbody>{% for name, visits, devices, code in stats.pwa.school_list %}<tr><td>{{ loop.index }}</td><td><a href="/admin/school/{{ code }}">{{ name }}</a></td><td>{{ devices }}</td><td><span class="count-badge">{{ "{:,}".format(visits) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="pwa_schools"></tbody>
       </table>
     </div>
   </div>
@@ -1284,7 +1317,7 @@ function toggleTheme() {
     <div class="modal-body">
       <table class="data-table">
         <thead><tr><th>#</th><th>크롤러</th><th>횟수</th></tr></thead>
-        <tbody>{% for name, count in stats.all_crawlers %}<tr><td>{{ loop.index }}</td><td style="font-size:0.82rem; word-break:break-all;">{{ name }}</td><td><span class="count-badge">{{ "{:,}".format(count) }}</span></td></tr>{% endfor %}</tbody>
+        <tbody data-rows="crawlers"></tbody>
       </table>
     </div>
   </div>
@@ -1294,7 +1327,7 @@ function toggleTheme() {
 <div id="botModal" class="modal-overlay" onclick="if(event.target===this)closeModal('botModal')">
   <div class="modal-box" style="max-width:1100px;">
     <div class="modal-header">
-      <h3>🤖 봇 IP 전체 목록 ({{ stats.bot_ip_list | length }}개)</h3>
+      <h3>🤖 봇 IP 전체 목록 ({{ stats.bot_ip_total }}개)</h3>
       <button class="modal-close" onclick="closeModal('botModal')">✕</button>
     </div>
     <div class="modal-body" style="overflow-x:auto;">
