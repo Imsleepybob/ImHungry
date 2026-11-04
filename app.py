@@ -1872,7 +1872,7 @@ def silent_spam_block(filename=None):
 @app.route("/", methods=["GET", "POST"])
 def index():
     error_message = request.args.get('error_message')
-    region_cookie = request.cookies.get('region_name')
+    region_cookie = unquote(request.cookies.get('region_name') or '') or None
     school_name_encoded = request.cookies.get('school_name')
     school_code_cookie = request.cookies.get('school_code')
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
@@ -1897,7 +1897,7 @@ def index():
             response.set_cookie('school_code', school['school_code'], max_age=60*60*24*30)
             response.set_cookie('school_name', quote(school['school_name']), max_age=60*60*24*30)
             response.set_cookie('region_code', school['region_code'], max_age=60*60*24*30)
-            response.set_cookie('region_name', region_name, max_age=60*60*24*30)
+            response.set_cookie('region_name', quote(region_name), max_age=60*60*24*30)
             return response
         else:
             return render_template('school_meal.html', error_message="학교를 찾을 수 없습니다.", regions=regions, region=region_name, school_name=school_name_input)
@@ -1965,7 +1965,7 @@ def school_meal_view(school_code):
     resp.set_cookie('school_name', quote(school_info['school_name']), max_age=60*60*24*30)
     resp.set_cookie('region_code', school_info['region_code'], max_age=60*60*24*30)
     if region_name:
-        resp.set_cookie('region_name', region_name, max_age=60*60*24*30)
+        resp.set_cookie('region_name', quote(region_name), max_age=60*60*24*30)
 
     return resp
 
