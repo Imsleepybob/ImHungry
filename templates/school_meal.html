@@ -656,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedSchool && schoolNameInput) {
         try { schoolNameInput.value = decodeURIComponent(savedSchool); } catch (e) { schoolNameInput.value = savedSchool; }
     }
-    if (savedRegion && regionSelect) {
+    if (savedRegion && regionSelect && !regionSelect.value && Array.from(regionSelect.options).some(o => o.value === savedRegion)) {
         regionSelect.value = savedRegion;
     }
 
