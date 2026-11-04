@@ -33,7 +33,8 @@
 .legal .legal-toc { margin: 18px 0 8px; padding: 14px 18px; background: var(--bg-secondary); border-radius: 10px; font-size: 0.92rem; }
 .legal .legal-toc ol { margin: 0; padding-left: 20px; }
 .legal .legal-toc li { margin: 3px 0; }
-.legal h2[id] { scroll-margin-top: 16px; }
+.legal h2[id] { scroll-margin-top: 84px; }
+.legal .legal-toc ol.legal-toc-plain { list-style: none; padding-left: 0; }
 .legal .legal-note { margin-top: 12px; padding: 12px 14px; background: var(--bg-secondary); border-radius: 10px; font-size: 0.92rem; }
 @media (max-width: 600px) { .legal { margin: 14px 10px; padding: 20px 16px 28px; } }
 </style>
@@ -42,6 +43,16 @@
 <header class="main-header">
   <div class="logo">
     <a href="/"><img src="{{ url_for('static', filename='favicon.svg') }}" alt="급식알리미" style="height:28px;"></a>
+  </div>
+  <div style="display:flex; align-items:center; gap:4px;">
+    <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="테마 변경">
+      <svg class="theme-icon-light" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+          <path d="M18.4102 15.9141C11.9531 15.9141 7.94531 12.0234 7.94531 5.77734C7.94531 3.99609 8.23828 2.42578 8.67188 1.58203C8.84766 1.24219 8.88281 1.07812 8.88281 0.84375C8.88281 0.457031 8.51953 0 8.02734 0C7.93359 0 7.71094 0.0351562 7.38281 0.164062C3.04688 1.92188 0 6.49219 0 11.4141C0 18.5273 5.16797 23.707 12.2812 23.707C17.3789 23.707 21.5156 21.0352 23.4141 16.6523C23.5547 16.3477 23.5781 16.0898 23.5781 15.9609C23.5781 15.4805 23.168 15.1523 22.8047 15.1523C22.6172 15.1523 22.4766 15.1641 22.1953 15.2695C21.2461 15.6562 19.8164 15.9141 18.4102 15.9141ZM1.83984 11.332C1.83984 7.6875 3.73828 4.21875 6.77344 2.30859C6.39844 3.39844 6.19922 4.60547 6.19922 5.94141C6.19922 13.2656 10.6641 17.625 18.1406 17.625C19.3477 17.625 20.3672 17.4844 21.3398 17.1445C19.5586 20.0859 16.125 21.8789 12.3516 21.8789C6.26953 21.8789 1.83984 17.4492 1.83984 11.332Z"/>
+      </svg>
+      <svg class="theme-icon-dark" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+          <path d="M18.5188 16.0408C12.0426 16.0408 7.90071 11.9828 7.90071 5.49459C7.90071 4.15386 8.22391 2.23854 8.65487 1.24496C8.7626 0.969632 8.78654 0.802041 8.78654 0.682334C8.78654 0.359122 8.54713 0 8.08027 0C7.94859 0 7.66129 0.0359122 7.39794 0.131678C2.96875 1.90335 0 6.66771 0 11.6835C0 18.7223 5.3629 23.75 12.3778 23.75C17.5372 23.75 22.0023 20.6256 23.4867 16.7232C23.5944 16.4479 23.6183 16.1605 23.6183 16.0528C23.6183 15.6098 23.2472 15.3106 22.9121 15.3106C22.7564 15.3106 22.6247 15.3465 22.3973 15.4184C21.4755 15.7176 19.9912 16.0408 18.5188 16.0408Z" />
+      </svg>
+    </button>
   </div>
 </header>
 
@@ -62,5 +73,71 @@
     <p>&copy; 2026 급식알리미. All rights reserved.</p>
   </div>
 </footer>
+
+<div id="themePopover" class="theme-popover">
+  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
+  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
+  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    const popover = document.getElementById('themePopover');
+    const options = document.querySelectorAll('.theme-option');
+    const iconLight = document.querySelector('.theme-icon-light');
+    const iconDark = document.querySelector('.theme-icon-dark');
+
+    function applyTheme(theme) {
+        const dark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+        else document.documentElement.removeAttribute('data-theme');
+    }
+    function updateIcon() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (iconLight) iconLight.style.display = isDark ? 'none' : 'block';
+        if (iconDark) iconDark.style.display = isDark ? 'block' : 'none';
+    }
+    if (toggleBtn && popover) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            popover.classList.toggle('show');
+            const current = localStorage.getItem('theme') || 'system';
+            options.forEach(function(o) { o.classList.toggle('active', o.dataset.value === current); });
+        });
+        document.addEventListener('click', function(e) {
+            if (!popover.contains(e.target) && !toggleBtn.contains(e.target)) popover.classList.remove('show');
+        });
+        options.forEach(function(o) {
+            o.addEventListener('click', function() {
+                const theme = o.dataset.value;
+                localStorage.setItem('theme', theme);
+                applyTheme(theme);
+                updateIcon();
+                popover.classList.remove('show');
+            });
+        });
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+            if ((localStorage.getItem('theme') || 'system') === 'system') {
+                applyTheme('system');
+                updateIcon();
+            }
+        });
+        updateIcon();
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    document.querySelectorAll('.legal-toc a[href^="#"]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            const hash = link.getAttribute('href');
+            const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+            if (!target) return;
+            e.preventDefault();
+            target.scrollIntoView({ behavior: reduceMotion.matches ? 'auto' : 'smooth', block: 'start' });
+            history.replaceState(null, '', hash);
+        });
+    });
+});
+</script>
 </body>
 </html>
