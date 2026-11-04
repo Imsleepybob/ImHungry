@@ -345,7 +345,8 @@ class DashStore:
     def _push_key(self, key):
         path = self._key_path(key)
         for attempt in range(2):
-            payload = _dumps(self.doc_for(key))
+            with self.lock:
+                payload = _dumps(self.doc_for(key))
             digest = hashlib.sha256(payload).hexdigest()
             known = self.remote.get(key) or {}
             if digest == known.get('hash'):
