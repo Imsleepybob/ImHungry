@@ -279,7 +279,7 @@
       <a class="school-finder-link" href="{{ url_for('schools_by_region_and_level', region_name=region, school_level=current_school.school_level) }}{% if current_school.district %}#district={{ current_school.district|urlencode }}{% endif %}">
         <span>
           <span class="school-finder-title">다른 학교도 찾아볼까요?</span>
-          <span class="school-finder-sub">{{ region|region_full }}{% if current_school.district %} {{ current_school.district }}{% endif %} {{ current_school.school_level }} 외의 전국 모든 고등학교를 찾아보세요.</span>
+          <span class="school-finder-sub">{{ region|region_full }}{% if current_school.district %} {{ current_school.district }}{% endif %} {{ current_school.school_level }} 외 전국 모든 학교를 찾아보세요.</span>
         </span>
         <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
       </a>
