@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import heapq
 import ipaddress
 import os
 import re
@@ -419,9 +420,10 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
         'browsers': dict(total['browsers']),
         'top_crawlers': _sorted(total['crawler_names'], 15),
         'all_crawlers': _sorted(total['crawler_names']),
+        'bot_ip_total': len(total['bot_ips']),
         'bot_ip_list': [
             {'ip': ip, 'total': entry['t'], 'crawler_name': entry['c'], 'top_paths': _sorted(entry['p'], 5)}
-            for ip, entry in sorted(total['bot_ips'].items(), key=lambda item: item[1]['t'], reverse=True)
+            for ip, entry in heapq.nlargest(50, total['bot_ips'].items(), key=lambda item: item[1]['t'])
         ],
         'events': {
             'theme': dict(total['ev']['theme']),
