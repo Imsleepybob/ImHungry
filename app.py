@@ -19,6 +19,8 @@ import hashlib
 import base64
 import sqlite3
 import secrets
+import gzip
+import atexit
 import dashagg
 import dashstore
 import secwatch
@@ -282,6 +284,22 @@ def schedule_github_sync():
             return
         _github_sync_pending = True
     threading.Thread(target=_github_sync_worker, daemon=True).start()
+
+def request_blacklist_sync():
+    if not github_sync_configured():
+        return False
+    schedule_github_sync()
+    return True
+
+def _flush_pending_github_sync():
+    global _github_sync_pending
+    with _github_sync_lock:
+        pending = _github_sync_pending
+        _github_sync_pending = False
+    if pending:
+        sync_blacklist_to_github()
+
+atexit.register(_flush_pending_github_sync)
 
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"\'').strip().lower()
 
@@ -1115,7 +1133,43 @@ def tail_logs_into_store():
                     continue
 
 
+MEAL_STALE_KEEP = 2 * 86400
+MEAL_CACHE_MAX = 3000
+SEARCH_CACHE_MAX = 2000
+
+
+def _prune_runtime_state():
+    now = time.time()
+    window = SECURITY_CONFIG['rate_limit_window']
+    for ip, stamps in list(request_counts.items()):
+        try:
+            if not stamps or stamps[-1] < now - window:
+                request_counts.pop(ip, None)
+        except IndexError:
+            request_counts.pop(ip, None)
+    for key, entry in list(search_result_cache.items()):
+        if now - entry[0] >= SEARCH_CACHE_TTL:
+            search_result_cache.pop(key, None)
+    if len(search_result_cache) > SEARCH_CACHE_MAX:
+        for key, _ in sorted(search_result_cache.items(), key=lambda item: item[1][0])[:len(search_result_cache) - SEARCH_CACHE_MAX]:
+            search_result_cache.pop(key, None)
+    for key, entry in list(meal_cache.items()):
+        if entry['expires'] < now - MEAL_STALE_KEEP:
+            meal_cache.pop(key, None)
+    if len(meal_cache) > MEAL_CACHE_MAX:
+        for key, _ in sorted(meal_cache.items(), key=lambda item: item[1]['expires'])[:len(meal_cache) - MEAL_CACHE_MAX]:
+            meal_cache.pop(key, None)
+    with _dash_cache_lock:
+        for days, entry in list(_dash_cache.items()):
+            if now - entry[0] > DASH_FRAGMENT_MAX_AGE:
+                _dash_cache.pop(days, None)
+
+
 def _dash_tick():
+    try:
+        _prune_runtime_state()
+    except Exception as e:
+        app.logger.error(f'[dashboard] 런타임 상태 정리 실패: {e}')
     tail_logs_into_store()
     if security_watch.dirty:
         dash_store.set_security(security_watch.snapshot())
@@ -1253,32 +1307,51 @@ def announcement_stats_by_id(days=30):
     return {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()}
 
 
-def parse_logs_for_dashboard(days=30):
+DASH_CACHE_TTL = 30
+DASH_FRAGMENT_MAX_AGE = 600
+_dash_cache = {}
+_dash_cache_lock = threading.Lock()
+
+
+def _build_dashboard_core(days):
     dash_store.start()
     tail_logs_into_store()
     today = datetime.now(KST).date()
-
-    cache_stats = {
-        '급식 캐시': len(meal_cache),
-        '학교코드 캐시': len(school_code_cache),
-        '검색결과 캐시': len(search_result_cache),
-        '지역별학교 캐시': len(region_schools_cache),
-    }
-    security_stats = {
-        'blocked_networks': len(BLOCKED_NETWORKS),
-        'temp_blocked_ips': len(blocked_ips),
-        'total_failed_attempts': sum(failed_attempts.values()),
-    }
     aggs = dash_store.merged_days(today, days, with_rel=False)
     _prefetch_school_names(_collect_school_codes(aggs))
 
     def school_name(code):
         return _cached_school_name(code) or code
 
-    result = dashagg.finalize(aggs, today, days, school_name, cache_stats, security_stats)
+    result = dashagg.finalize(aggs, today, days, school_name, {}, {})
     result['ann_stats'] = _announcement_stats(result['events'].get('ann', {}))
     result['ua_list'] = dash_store.with_days(today, days, lambda raw: dashagg.ua_index(raw, 200))
     result['rel_days'] = dashagg.REL_RETENTION_DAYS
+    return result
+
+
+def parse_logs_for_dashboard(days=30, max_age=DASH_CACHE_TTL):
+    with _dash_cache_lock:
+        entry = _dash_cache.get(days)
+        if entry is None or time.time() - entry[0] > max_age:
+            core = _build_dashboard_core(days)
+            _dash_cache[days] = (time.time(), core)
+            while len(_dash_cache) > 3:
+                _dash_cache.pop(min(_dash_cache, key=lambda key: _dash_cache[key][0]))
+        else:
+            core = entry[1]
+    result = dict(core)
+    result['cache_stats'] = {
+        '급식 캐시': len(meal_cache),
+        '학교코드 캐시': len(school_code_cache),
+        '검색결과 캐시': len(search_result_cache),
+        '지역별학교 캐시': len(region_schools_cache),
+    }
+    result['security'] = {
+        'blocked_networks': len(BLOCKED_NETWORKS),
+        'temp_blocked_ips': len(blocked_ips),
+        'total_failed_attempts': sum(failed_attempts.values()),
+    }
     result['persistence'] = {
         'github': dash_store.gh_enabled(),
         'restored': dash_store.restored,
@@ -1290,7 +1363,6 @@ def parse_logs_for_dashboard(days=30):
     result['watch'] = watch_rows
     result['incidents'] = incidents
     return result
-
 
 API_KEY = "e309120a7d884eb7b725deaac507a5af"
 KST = timezone(timedelta(hours=9))
@@ -2144,7 +2216,7 @@ def view_access_logs():
         if os.path.exists(ACCESS_LOG_PATH):
             with open(ACCESS_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            return f'<h2>접속 로그</h2><pre>{"".join(lines)}</pre>'
+            return f'<h2>접속 로그</h2><pre>{escape("".join(lines))}</pre>'
         return '접속 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'접속 로그 파일 읽기 오류: {e}'
@@ -2158,7 +2230,7 @@ def view_app_logs():
         if os.path.exists(APP_LOG_PATH):
             with open(APP_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            return f'<h2>앱 로그</h2><pre>{"".join(lines)}</pre>'
+            return f'<h2>앱 로그</h2><pre>{escape("".join(lines))}</pre>'
         return '앱 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'앱 로그 파일 읽기 오류: {e}'
@@ -2172,7 +2244,7 @@ def view_namuboard_logs():
         if os.path.exists(NAMUBOARD_LOG_PATH):
             with open(NAMUBOARD_LOG_PATH, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            return f'<h2>NamuBoard Extension 로그</h2><pre>{"".join(lines)}</pre>'
+            return f'<h2>NamuBoard Extension 로그</h2><pre>{escape("".join(lines))}</pre>'
         return 'NamuBoard Extension 로그 파일이 아직 생성되지 않았습니다.'
     except Exception as e:
         return f'NamuBoard Extension 로그 파일 읽기 오류: {e}'
@@ -2219,7 +2291,7 @@ def admin_dashboard():
     except (ValueError, TypeError):
         days = 30
 
-    stats = parse_logs_for_dashboard(days)
+    stats = parse_logs_for_dashboard(days, max_age=0 if request.args.get('fresh') else DASH_CACHE_TTL)
 
     top_bots = stats['bot_ip_list'][:50]
     missing_ips = [
@@ -2246,6 +2318,44 @@ def admin_dashboard():
         '사용 중인 헤더 설정': ','.join(CLIENT_IP_HEADERS) or '(없음)',
     }
     return render_template('admin_dashboard.html', stats=stats, ip_debug=ip_debug)
+
+
+DASH_ROW_PAGE = 500
+DASH_ROW_SOURCES = {
+    'schools': lambda stats: stats['all_schools'],
+    'user_paths': lambda stats: stats['all_user_paths'],
+    'bot_paths': lambda stats: stats['all_bot_paths'],
+    'referrers': lambda stats: stats['all_referrers'],
+    'ips': lambda stats: stats['all_ips'],
+    'ua': lambda stats: stats['ua_list'],
+    'pwa_ips': lambda stats: stats['pwa']['ip_list'],
+    'pwa_schools': lambda stats: stats['pwa']['school_list'],
+    'crawlers': lambda stats: stats['all_crawlers'],
+}
+
+
+@app.route('/admin/dashboard/rows/<name>')
+def admin_dashboard_rows(name):
+    auth = _admin_auth_check()
+    if auth is not None:
+        return auth
+    source = DASH_ROW_SOURCES.get(name)
+    if source is None:
+        abort(404)
+    try:
+        days = max(1, min(int(request.args.get('days', 30)), 90))
+    except (ValueError, TypeError):
+        days = 30
+    try:
+        page = max(0, int(request.args.get('page', 0)))
+    except (ValueError, TypeError):
+        page = 0
+    rows = source(parse_logs_for_dashboard(days, max_age=DASH_FRAGMENT_MAX_AGE))
+    start = page * DASH_ROW_PAGE
+    html = render_template('admin_dashboard_rows.html', kind=name, rows=rows[start:start + DASH_ROW_PAGE], start=start)
+    response = jsonify({'html': html, 'next': page + 1 if start + DASH_ROW_PAGE < len(rows) else None, 'total': len(rows)})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.route('/stats', methods=['GET', 'POST'])
@@ -2691,12 +2801,13 @@ def add_to_blacklist():
         ipaddress.ip_network(ip_or_cidr, strict=False)
         save_to_blacklist(ip_or_cidr, reason)
         add_network_to_blacklist_memory(ip_or_cidr)
-        synced, sync_error = sync_blacklist_to_github()
+        scheduled = request_blacklist_sync()
         return jsonify({
             'success': True,
             'message': f'Added {ip_or_cidr} to blacklist',
-            'github_synced': synced,
-            'github_error': sync_error,
+            'github_synced': False,
+            'github_sync_scheduled': scheduled,
+            'github_error': None,
         })
     except ValueError as e:
         return jsonify({'error': f'Invalid IP/CIDR format: {e}'}), 400
@@ -2717,13 +2828,10 @@ def admin_blocklist():
             ipaddress.ip_network(cidr_input, strict=False)
             save_to_blacklist(cidr_input, reason)
             add_network_to_blacklist_memory(cidr_input)
-            synced, sync_error = sync_blacklist_to_github()
-            if synced:
-                message = f'{cidr_input} 차단 완료 (GitHub 동기화됨)'
-            elif sync_error:
-                message = f'{cidr_input} 차단 완료 (로컬만 적용, GitHub 동기화 실패: {sync_error})'
+            if request_blacklist_sync():
+                message = f'{cidr_input} 차단 완료 (GitHub 동기화 예약됨)'
             else:
-                message = f'{cidr_input} 차단 완료'
+                message = f'{cidr_input} 차단 완료 (로컬만 적용, GitHub 동기화 미설정)'
         except ValueError as e:
             error = f'잘못된 IP/CIDR 형식입니다: {e}'
 
@@ -2831,15 +2939,14 @@ def admin_blocklist_bulk_add():
         add_network_to_blacklist_memory(cidr)
         added.append(cidr)
 
-    synced, sync_error = (False, None)
-    if added:
-        synced, sync_error = sync_blacklist_to_github()
+    scheduled = request_blacklist_sync() if added else False
 
     return jsonify({
         'added_count': len(added),
         'invalid': invalid,
-        'github_synced': synced,
-        'github_error': sync_error,
+        'github_synced': False,
+        'github_sync_scheduled': scheduled,
+        'github_error': None,
     })
 
 @app.after_request
@@ -2858,6 +2965,55 @@ def after_request_func(response):
             app.logger.warning(f"Error - Method: {request_method}, Path: {request_path}, Status: {status_code}")
 
     return response
+
+COMPRESSIBLE_TYPES = frozenset((
+    'text/html', 'text/plain', 'text/css', 'text/xml', 'text/javascript', 'application/javascript',
+    'application/json', 'application/xml', 'application/manifest+json', 'image/svg+xml',
+))
+COMPRESS_MIN_SIZE = 600
+_static_gzip_cache = {}
+
+
+@app.after_request
+def compress_response(response):
+    try:
+        if response.status_code != 200 or response.mimetype not in COMPRESSIBLE_TYPES:
+            return response
+        if 'Content-Encoding' in response.headers or 'Range' in request.headers:
+            return response
+        response.vary.add('Accept-Encoding')
+        if 'gzip' not in request.headers.get('Accept-Encoding', '').lower():
+            return response
+        passthrough = response.direct_passthrough
+        if response.is_streamed and not passthrough:
+            return response
+        etag = response.headers.get('ETag')
+        cache_key = (request.path, etag) if passthrough and etag else None
+        packed = _static_gzip_cache.get(cache_key) if cache_key else None
+        if packed is None:
+            if passthrough:
+                response.direct_passthrough = False
+            data = response.get_data()
+            if len(data) < COMPRESS_MIN_SIZE:
+                response.set_data(data)
+                return response
+            packed = gzip.compress(data, 5, mtime=0)
+            if cache_key:
+                if len(_static_gzip_cache) >= 64:
+                    _static_gzip_cache.clear()
+                _static_gzip_cache[cache_key] = packed
+        else:
+            if passthrough:
+                response.direct_passthrough = False
+            response.get_data()
+        response.set_data(packed)
+        response.headers['Content-Encoding'] = 'gzip'
+        if etag and not etag.startswith('W/'):
+            response.headers['ETag'] = 'W/' + etag
+    except Exception as e:
+        app.logger.error(f'응답 압축 중 오류: {e}')
+    return response
+
 
 _error_info = {
     400: ('Bad Request', '요청하신 URL을 이 서버에서 찾을 수 없습니다.'),
