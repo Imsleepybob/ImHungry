@@ -1609,10 +1609,10 @@ def _search_region_cache(query, region_code, limit):
             })
             if len(results) >= limit:
                 break
-    return results or None
+    return results
 
 def search_schools_neis(query, region_code, limit=10):
-    cache_key = (query.lower(), region_code)
+    cache_key = (query.lower(), region_code, limit)
     cached = search_result_cache.get(cache_key)
     if cached and time.time() - cached[0] < SEARCH_CACHE_TTL:
         return cached[1]
@@ -1652,7 +1652,7 @@ def _fetch_all_schools_for_region(region_code):
     while page <= 10:
         params = {
             "KEY": API_KEY, "Type": "json",
-            "pIndex": page, "pSize": 300,
+            "pIndex": page, "pSize": 1000,
             "ATPT_OFCDC_SC_CODE": region_code
         }
         try:
@@ -1666,13 +1666,13 @@ def _fetch_all_schools_for_region(region_code):
                 break
             for row in rows:
                 all_schools.append(_parse_school_row(row))
-            if len(rows) < 300:
+            if len(rows) < 1000:
                 break
             page += 1
             time.sleep(0.3)
         except Exception as e:
             app.logger.error(f"Error fetching region schools (region={region_code}, page={page}): {e}")
-            break
+            return []
     return all_schools
 
 def get_schools_by_region_cached(region_code, school_level=None):
