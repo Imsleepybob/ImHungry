@@ -1,0 +1,31 @@
+{% extends 'school_layout.html' %}
+{% block h1 %}{{ profile.name }} 학사일정{% endblock %}
+{% block content %}
+<section class="school-card">
+  <div class="school-month-nav">
+    <a href="{{ prev_url }}" rel="nofollow" aria-label="이전 달">&lsaquo;</a>
+    <h2>{{ year }}년 {{ month }}월</h2>
+    <a href="{{ next_url }}" rel="nofollow" aria-label="다음 달">&rsaquo;</a>
+  </div>
+  {% if not is_current %}<p class="school-more-wrap"><a class="school-inline-link" href="{{ today_url }}">이번 달로 돌아가기</a></p>{% endif %}
+  {% if load_failed %}
+    <p class="school-empty">학사일정을 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
+  {% elif events %}
+  <ul class="school-event-list">
+    {% for event in events %}
+    <li>
+      <span class="school-event-date">{{ event.start_label }}{% if event.days > 1 %} ~ {{ event.end_label }}{% endif %}</span>
+      <span class="school-event-name">{{ event.name }}</span>
+      {% if event.grade_label %}<span class="school-badge">{{ event.grade_label }}</span>{% endif %}
+      {% if event.kind and event.kind != '해당없음' %}<span class="school-badge alt">{{ event.kind }}</span>{% endif %}
+      {% if event.course and event.course != '주간' %}<span class="school-badge alt">{{ event.course }}</span>{% endif %}
+      {% if event.content %}<p class="school-event-content">{{ event.content }}</p>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="school-empty">이 달에 등록된 학사일정이 없어요.</p>
+  {% endif %}
+  {% if routine_count %}<p class="school-note">토요휴업일 {{ routine_count }}일은 목록에서 뺐어요.</p>{% endif %}
+</section>
+{% endblock %}
