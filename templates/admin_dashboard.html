@@ -736,6 +736,34 @@ body {
           <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_notification) }}</div>
         </div>
       </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">📘</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">급식 → 학교 정보</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_school_info) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🍽️</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">학교 정보 → 급식</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_school_meal) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🗓️</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">시간표 조회</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_school_timetable) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">🏫</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">학교 페이지 조회 (이용자)</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.school_page_total) }}</div>
+        </div>
+      </div>
     </div>
   </div>
 
