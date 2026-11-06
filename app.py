@@ -3,6 +3,10 @@ from markupsafe import escape
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
 from sitemap import SITE_URL
+import neis_api
+import school_data
+import school_pages
+import crawler_verify
 import calendar
 import requests
 import logging
@@ -573,11 +577,17 @@ def security_check():
         log_security_incident(client_ip, "BLOCKED_IP", "IP in blacklist")
         return _blocked_response()
     if not is_rate_limit_exempt() and is_rate_limited(client_ip):
-        log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
-        _note_incident(client_ip, 'RATE_LIMIT', f"{SECURITY_CONFIG['rate_limit_window']}초 동안 {SECURITY_CONFIG['rate_limit_requests']}회 초과 (자동 차단하지 않음)")
-        response = make_response('', 444)
-        response.headers['Connection'] = 'close'
-        return response
+        crawler_state = crawler_verify.classify(client_ip, request.headers.get('User-Agent', ''))
+        if crawler_state == 'claimed':
+            response = make_response('', 429)
+            response.headers['Retry-After'] = '30'
+            return response
+        if crawler_state != 'verified':
+            log_security_incident(client_ip, "RATE_LIMIT", "Too many requests")
+            _note_incident(client_ip, 'RATE_LIMIT', f"{SECURITY_CONFIG['rate_limit_window']}초 동안 {SECURITY_CONFIG['rate_limit_requests']}회 초과 (자동 차단하지 않음)")
+            response = make_response('', 444)
+            response.headers['Connection'] = 'close'
+            return response
     is_suspicious, suspicion_score, reasons = is_suspicious_request()
     if is_suspicious:
         log_security_incident(client_ip, "SUSPICIOUS_PATTERN",
@@ -1365,6 +1375,7 @@ def parse_logs_for_dashboard(days=30, max_age=DASH_CACHE_TTL):
     return result
 
 API_KEY = "e309120a7d884eb7b725deaac507a5af"
+neis_api.configure(API_KEY)
 KST = timezone(timedelta(hours=9))
 regions = {
     "서울": "B10", "부산": "C10", "대구": "D10", "인천": "E10", "광주": "F10",
@@ -1573,15 +1584,9 @@ def get_school_from_neis(school_code):
     if cached and time.time() - cached[0] < SCHOOL_CODE_CACHE_TTL:
         return cached[1]
 
-    url = "https://open.neis.go.kr/hub/schoolInfo"
-    params = {
-        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 1,
-        "SD_SCHUL_CODE": school_code
-    }
+    params = {"pIndex": 1, "pSize": 1, "SD_SCHUL_CODE": school_code}
     try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        data = neis_api.request_json("schoolInfo", params, timeout=5)
         if "schoolInfo" in data and len(data["schoolInfo"]) >= 2:
             rows = data["schoolInfo"][1].get("row", [])
             if rows:
@@ -1646,26 +1651,23 @@ def search_schools_neis(query, region_code, limit=10):
         return []
 
 def _fetch_all_schools_for_region(region_code):
-    url = "https://open.neis.go.kr/hub/schoolInfo"
     all_schools = []
     page = 1
     while page <= 10:
         params = {
-            "KEY": API_KEY, "Type": "json",
             "pIndex": page, "pSize": 1000,
             "ATPT_OFCDC_SC_CODE": region_code
         }
         try:
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+            data = neis_api.request_json("schoolInfo", params, timeout=10)
             if "schoolInfo" not in data or len(data["schoolInfo"]) < 2:
                 break
             rows = data["schoolInfo"][1].get("row", [])
             if not rows:
                 break
             for row in rows:
-                all_schools.append(_parse_school_row(row))
+                if school_data.is_valid_school_row(row):
+                    all_schools.append(_parse_school_row(row))
             if len(rows) < 1000:
                 break
             page += 1
@@ -1741,9 +1743,8 @@ def get_month_meals_from_api(school_code, region_code):
     if fresh is not None:
         return fresh
 
-    url = "https://open.neis.go.kr/hub/mealServiceDietInfo"
     params = {
-        "KEY": API_KEY, "Type": "json", "pIndex": 1, "pSize": 100,
+        "pIndex": 1, "pSize": 100,
         "ATPT_OFCDC_SC_CODE": region_code, "SD_SCHUL_CODE": school_code,
         "MLSV_YMD": month_str
     }
@@ -1751,9 +1752,7 @@ def get_month_meals_from_api(school_code, region_code):
     meals = defaultdict(lambda: {"breakfast": "급식 정보 없음", "lunch": "급식 정보 없음", "dinner": "급식 정보 없음"})
 
     try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
+        data = neis_api.request_json("mealServiceDietInfo", params, timeout=5)
 
         info = data.get("mealServiceDietInfo")
         if info and len(info) > 1 and info[1].get("row"):
@@ -1767,13 +1766,17 @@ def get_month_meals_from_api(school_code, region_code):
                 elif meal_type == "3": meals[date_str]["dinner"] = menu
 
             result = dict(meals)
-            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_CACHE_TTL}
+            meal_cache[cache_key] = {
+                'data': result,
+                'expires': time.time() + MEAL_CACHE_TTL,
+                'detail': school_data.build_meal_details(info[1]["row"]),
+            }
             return result
 
         result_code = (data.get("RESULT") or {}).get("CODE", "")
         if result_code == "INFO-200":
             result = {}
-            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_EMPTY_TTL}
+            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_EMPTY_TTL, 'detail': {}}
             return result
         app.logger.warning(f"NEIS meal response without data (school={school_code}, code={result_code or 'unknown'})")
 
@@ -1784,6 +1787,12 @@ def get_month_meals_from_api(school_code, region_code):
 
     stale = _meal_cache_get(cache_key, allow_stale=True)
     return stale if stale is not None else {}
+
+
+def get_month_meal_details(school_code, region_code):
+    cache_key = f"{region_code}_{school_code}_{datetime.now(KST).strftime('%Y%m')}"
+    entry = meal_cache.get(cache_key)
+    return entry.get('detail', {}) if entry else {}
 
 
 def get_nearby_schools(current_school_info):
@@ -1946,6 +1955,10 @@ def school_meal_view(school_code):
 
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
 
+    meal_details_data = get_month_meal_details(school_code, school_info['region_code'])
+    area_text = ' '.join(part for part in (region_name, school_info.get('district')) if part)
+    seo_title, seo_description = school_data.meal_seo(school_info['school_name'], area_text, today_str, today_meal, meal_details_data.get(today_str, {}))
+
     resp = make_response(render_template(
         'school_meal.html',
         regions=regions,
@@ -1958,7 +1971,12 @@ def school_meal_view(school_code):
         nearby_schools=nearby_schools,
         current_school=school_info,
         loading=False,
-        region=region_name
+        region=region_name,
+        meal_details=meal_details_data,
+        today_detail=meal_details_data.get(today_str, {}),
+        page_title=seo_title,
+        page_description=seo_description,
+        canonical_url=f"{SITE_URL}/meal/{school_info['school_code']}"
     ))
 
     resp.set_cookie('school_code', school_info['school_code'], max_age=60*60*24*30)
@@ -2038,7 +2056,7 @@ def track_event():
         return '', 204
     event = data.get('event', '')
     value = str(data.get('value', ''))[:50]
-    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close', 'egg_open'}
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close', 'egg_open', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable'}
     if event not in allowed:
         return '', 204
     if event in ('ann_view', 'ann_close'):
@@ -3139,6 +3157,17 @@ def _sitemap_levels(region_name):
     return list(_level_counts(cached[1]).keys())
 
 init_sitemap(app, API_KEY, regions, level_lookup=_sitemap_levels)
+
+school_pages_api = school_pages.init_school_pages(app, {
+    'site_url': SITE_URL,
+    'regions': regions,
+    'kst': KST,
+    'parse_school_row': _parse_school_row,
+    'get_nearby_schools': get_nearby_schools,
+    'get_month_meals': get_month_meals_from_api,
+    'get_month_meal_details': get_month_meal_details,
+    'region_full_name': region_full_name,
+})
 
 if __name__ == "__main__":
     app.logger.info(f"LOG_DIR: {LOG_DIR}")
