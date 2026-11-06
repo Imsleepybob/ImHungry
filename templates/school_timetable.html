@@ -1,0 +1,85 @@
+{% extends 'school_layout.html' %}
+{% block h1 %}{{ profile.name }} 시간표{% endblock %}
+{% block content %}
+<section class="school-card">
+  {% if not supported %}
+    <p class="school-empty">이 학교 유형은 NEIS 시간표 조회를 지원하지 않아요.</p>
+  {% elif not groups %}
+    <p class="school-empty">조회할 수 있는 학급 정보가 NEIS에 등록되어 있지 않아요.</p>
+  {% else %}
+    {% if can_room_view %}
+    <div class="school-seg">
+      <a href="{{ url_for('school_timetable_page', code=profile.code) }}" class="{% if view == 'class' %}active{% endif %}">학급으로 보기</a>
+      <a href="{{ url_for('school_timetable_page', code=profile.code, view='room') }}" class="{% if view == 'room' %}active{% endif %}">강의실로 보기</a>
+    </div>
+    {% endif %}
+    <form method="get" action="{{ url_for('school_timetable_page', code=profile.code) }}" class="school-form" id="ttForm">
+      {% if view == 'room' %}<input type="hidden" name="view" value="room">{% endif %}
+      <label for="ttSel">{% if view == 'room' %}강의실{% else %}학급{% endif %}</label>
+      <select name="sel" id="ttSel" required>
+        <option value="" {% if not selected_value %}selected{% endif %} disabled>선택해주세요</option>
+        {% for group in groups %}
+        <optgroup label="{{ group.label }}">
+          {% for option in group['items'] %}<option value="{{ option.value }}" {% if option.value == selected_value %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+      <label for="ttDate">날짜</label>
+      <input type="date" name="d" id="ttDate" value="{{ chosen_day }}">
+      <button type="submit" class="school-submit" data-track="btn_school_timetable" data-track-value="{{ profile.code }}">시간표 보기</button>
+    </form>
+  {% endif %}
+</section>
+
+{% if selected_value and supported %}
+<section class="school-card">
+  <div class="school-month-nav">
+    <a href="{{ url_for('school_timetable_page', code=profile.code, sel=selected_value, d=prev_week, view=(view if view == 'room' else None)) }}" rel="nofollow" aria-label="이전 주">&lsaquo;</a>
+    <h2>{{ week_label }}</h2>
+    <a href="{{ url_for('school_timetable_page', code=profile.code, sel=selected_value, d=next_week, view=(view if view == 'room' else None)) }}" rel="nofollow" aria-label="다음 주">&rsaquo;</a>
+  </div>
+  {% if message %}
+    <p class="school-empty">{{ message }}</p>
+  {% elif grid %}
+  <div class="school-table-wrap">
+    <table class="school-table tt-table">
+      <thead>
+        <tr><th>교시</th>{% for day in grid.days %}<th>{{ day.label }}</th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for row in grid.rows %}
+        <tr><th scope="row">{{ row.period }}</th>{% for cell in row.cells %}<td>{{ cell or '-' }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <p class="school-note">시간표는 학교가 NEIS에 등록한 내용이에요. 학교 사정으로 실제 수업과 다를 수 있어요.</p>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    var code = {{ profile.code | tojson }};
+    var key = 'tt:' + code;
+    try {
+        var params = new URLSearchParams(location.search);
+        if (params.get('sel')) {
+            var saved = new URLSearchParams(location.search);
+            saved.delete('d');
+            localStorage.setItem(key, saved.toString());
+        } else if (!params.get('reset')) {
+            var stored = localStorage.getItem(key);
+            if (stored && stored.indexOf('sel=') !== -1) {
+                var restore = new URLSearchParams(stored);
+                var now = new Date();
+                var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+                restore.set('d', now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()));
+                location.replace(location.pathname + '?' + restore.toString());
+            }
+        }
+    } catch (e) {}
+})();
+</script>
+{% endblock %}
