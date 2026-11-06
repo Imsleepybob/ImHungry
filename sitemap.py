@@ -9,13 +9,16 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from xml.sax.saxutils import escape
 
-import requests
 from flask import Response, abort
+
+import neis_api
+import school_data
 
 SITE_URL = os.environ.get('SITE_URL', 'https://geupsikalimi.com').strip().rstrip('/')
 NEIS_SCHOOL_URL = 'https://open.neis.go.kr/hub/schoolInfo'
 SCHOOL_KINDS = {'초등학교', '중학교', '고등학교', '특수학교'}
 DEFAULT_LEVELS = ['초등학교', '중학교', '고등학교', '특수학교']
+SITEMAP_VERSION = 2
 REFRESH_SECONDS = 30 * 86400
 RETRY_SECONDS = 300
 CHECK_SECONDS = 6 * 3600
@@ -32,6 +35,7 @@ SCHOOL_CODE_PATTERN = re.compile(r'^[0-9A-Za-z]+$')
 class SitemapStore:
     def __init__(self, api_key, regions, logger, cache_dir=DEFAULT_CACHE_DIR, level_lookup=None):
         self.api_key = api_key
+        neis_api.POOL.add(api_key)
         self.regions = dict(regions)
         self.level_lookup = level_lookup
         self.region_codes = list(regions.values())
@@ -45,17 +49,17 @@ class SitemapStore:
     # NEIS 조회
     def fetch_codes(self, region_code):
         codes = set()
+        school_items = {}
+        mode = school_data.indexing_mode()
         seen = 0
         total = None
         for page in range(1, MAX_PAGES + 1):
             params = {
-                'KEY': self.api_key, 'Type': 'json',
+                'Type': 'json',
                 'pIndex': page, 'pSize': PAGE_SIZE,
                 'ATPT_OFCDC_SC_CODE': region_code,
             }
-            response = requests.get(NEIS_SCHOOL_URL, params=params, timeout=20)
-            response.raise_for_status()
-            payload = response.json()
+            payload = neis_api.request_json('schoolInfo', params, timeout=20)
             block = payload.get('schoolInfo')
             if not block or len(block) < 2:
                 if page == 1:
@@ -74,6 +78,9 @@ class SitemapStore:
                 code = str(row.get('SD_SCHUL_CODE', '')).strip()
                 if row.get('SCHUL_KND_SC_NM') in SCHOOL_KINDS and SCHOOL_CODE_PATTERN.match(code):
                     codes.add(code)
+                    item = school_data.sitemap_item(row, mode)
+                    if item:
+                        school_items[item[0]] = item[1]
             seen += len(rows)
             if total is not None and seen >= total:
                 break
@@ -82,13 +89,16 @@ class SitemapStore:
             raise RuntimeError(f'학교 목록이 불완전합니다 ({seen}/{total})')
         if not codes:
             raise RuntimeError('조건에 맞는 학교가 없습니다 (학교종류명 값 확인 필요)')
-        return sorted(codes)
+        return sorted(codes), school_items
 
     # XML 생성
-    def build_urlset(self, codes, lastmod):
+    def build_urlset(self, codes, lastmod, school_items=None):
         lines = ['<?xml version="1.0" encoding="UTF-8"?>', f'<urlset xmlns="{XML_NS}">']
         for code in codes:
             lines.append(f'  <url><loc>{SITE_URL}/meal/{escape(code)}</loc><lastmod>{lastmod}</lastmod></url>')
+        for code in sorted(school_items or {}):
+            school_lastmod = (school_items or {})[code] or lastmod
+            lines.append(f'  <url><loc>{SITE_URL}/school/{escape(code)}</loc><lastmod>{school_lastmod}</lastmod></url>')
         lines.append('</urlset>')
         return '\n'.join(lines) + '\n'
 
@@ -128,14 +138,15 @@ class SitemapStore:
     def refresh(self, region_code):
         self.last_try[region_code] = time.time()
         try:
-            codes = self.fetch_codes(region_code)
+            codes, school_items = self.fetch_codes(region_code)
         except Exception as e:
             self.logger.error(f'[sitemap] {region_code} 갱신 실패: {e}')
             return False
         lastmod = datetime.now(KST).strftime('%Y-%m-%d')
         entry = {
-            'xml': self.build_urlset(codes, lastmod), 'count': len(codes),
+            'xml': self.build_urlset(codes, lastmod, school_items), 'count': len(codes),
             'codes': frozenset(codes), 'updated': time.time(), 'lastmod': lastmod,
+            'version': SITEMAP_VERSION, 'school_count': len(school_items),
         }
         old = self.get(region_code)
         with self.lock:
@@ -156,7 +167,8 @@ class SitemapStore:
 
     def save(self, region_code, entry):
         xml_path, meta_path = self.cache_paths(region_code)
-        meta = {'lastmod': entry['lastmod'], 'updated': entry['updated'], 'count': entry['count']}
+        meta = {'lastmod': entry['lastmod'], 'updated': entry['updated'], 'count': entry['count'],
+                'version': entry.get('version', SITEMAP_VERSION), 'school_count': entry.get('school_count', 0)}
         try:
             os.makedirs(self.cache_dir, exist_ok=True)
             for path, text in ((xml_path, entry['xml']), (meta_path, json.dumps(meta))):
@@ -177,7 +189,9 @@ class SitemapStore:
                 return cached
             with open(xml_path, encoding='utf-8') as f:
                 xml = f.read()
-            entry = {'xml': xml, 'count': meta['count'], 'codes': None, 'updated': meta['updated'], 'lastmod': meta['lastmod']}
+            entry = {'xml': xml, 'count': meta['count'], 'codes': None, 'updated': meta['updated'],
+                     'lastmod': meta['lastmod'], 'version': meta.get('version', 1),
+                     'school_count': meta.get('school_count', 0)}
         except (OSError, ValueError, KeyError):
             return None
         self.disk_entries[region_code] = entry
@@ -193,7 +207,7 @@ class SitemapStore:
 
     def is_due(self, region_code, now):
         entry = self.get(region_code)
-        if entry and now - entry['updated'] < REFRESH_SECONDS:
+        if entry and entry.get('version', 1) >= SITEMAP_VERSION and now - entry['updated'] < REFRESH_SECONDS:
             return False
         return now - self.last_try.get(region_code, 0) >= RETRY_SECONDS
 
