@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="급식알리미">
+<title>{{ page_title }}</title>
+<meta name="description" content="{{ page_description }}">
+<meta name="robots" content="{{ robots }}">
+<link rel="canonical" href="{{ canonical_url }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ page_title }}">
+<meta property="og:description" content="{{ page_description }}">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.6">
+<link rel="manifest" href="{{ url_for('manifest') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<script>
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+})();
+</script>
+<script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
+{% for block in ld_blocks %}<script type="application/ld+json">{{ block | tojson }}</script>
+{% endfor %}
+</head>
+<body>
+{% include '_site_header.html' %}
+<div class="container">
+  <div class="school-page">
+    <nav class="school-crumbs" aria-label="현재 위치">
+      <a href="{{ url_for('schools_index') }}">학교 목록</a>
+      {% if region_name %}<span aria-hidden="true">&rsaquo;</span><a href="{{ url_for('schools_by_region', region_name=region_name) }}">{{ region_name|region_full }}</a>{% endif %}
+      {% if parsed.school_level and region_name %}<span aria-hidden="true">&rsaquo;</span><a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=parsed.school_level) }}">{{ parsed.school_level }}</a>{% endif %}
+    </nav>
+    <h1 class="school-page-title">{% block h1 %}{{ profile.name }}{% endblock %}</h1>
+    {% if profile.short_name or area %}<p class="school-page-sub">{% if profile.short_name %}{{ profile.short_name }} · {% endif %}{{ area }}</p>{% endif %}
+    <div class="school-cta-row">
+      <a class="school-meal-btn" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">🍽️ 오늘 급식 보기</a>
+    </div>
+    <nav class="school-tabs" aria-label="학교 정보 메뉴">
+      {% for tab in tabs %}<a href="{{ tab.url }}" class="school-tab{% if tab.active %} active{% endif %}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
+      <a href="{{ meal_url }}" class="school-tab" data-track="btn_school_meal" data-track-value="{{ profile.code }}">급식</a>
+    </nav>
+    {% block content %}{% endblock %}
+    <p class="school-source">학교 정보는 교육부 나이스(NEIS) 교육정보 개방 포털 자료를 바탕으로 해요{% if updated_label %}(기준일 {{ updated_label }}){% endif %}. 학교 사정에 따라 실제와 다를 수 있으니 정확한 내용은 학교에 확인해주세요.</p>
+  </div>
+</div>
+{% include '_site_footer.html' %}
+<script>
+document.addEventListener('click', function (event) {
+    var el = event.target.closest('[data-track]');
+    if (!el) return;
+    var body = JSON.stringify({ event: el.getAttribute('data-track'), value: el.getAttribute('data-track-value') || '' });
+    try {
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/track', new Blob([body], { type: 'application/json' }));
+        } else {
+            fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true });
+        }
+    } catch (e) {}
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
