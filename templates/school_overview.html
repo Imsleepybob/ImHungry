@@ -1,0 +1,102 @@
+{% extends 'school_layout.html' %}
+{% from '_school_card.html' import school_card %}
+{% block h1 %}{{ profile.name }} 학교 정보{% endblock %}
+{% block content %}
+<section class="school-card" id="basic">
+  <h2>기본 정보</h2>
+  <dl class="school-dl">
+    <dt>학교 구분</dt>
+    <dd>{{ [level, profile.founding, profile.coedu]|select|join(' · ') }}{% if level == '고등학교' and profile.hs_type %} · {{ profile.hs_type }}{% endif %}{% if profile.special %} · {{ profile.special }}{% endif %}</dd>
+    {% if profile.english_name %}<dt>영문 이름</dt><dd>{{ profile.english_name }}</dd>{% endif %}
+    {% if profile.address %}
+    <dt>주소</dt>
+    <dd>{% if profile.zip %}({{ profile.zip }}) {% endif %}{{ profile.address }}
+      <a class="school-inline-link" href="https://map.naver.com/p/search/{{ (profile.address ~ ' ' ~ profile.name)|urlencode }}" target="_blank" rel="noopener noreferrer">네이버 지도에서 보기</a>
+    </dd>
+    {% endif %}
+    {% if profile.office %}<dt>관할 기관</dt><dd>{{ profile.office }}</dd>{% endif %}
+    {% if profile.phone %}<dt>전화번호</dt><dd><a href="tel:{{ profile.phone_digits }}">{{ profile.phone }}</a></dd>{% endif %}
+    {% if profile.fax %}<dt>팩스</dt><dd>{{ profile.fax }}</dd>{% endif %}
+    {% if profile.homepage %}<dt>홈페이지</dt><dd><a href="{{ profile.homepage }}" target="_blank" rel="noopener noreferrer nofollow">{{ profile.homepage|replace('https://', '')|replace('http://', '') }}</a></dd>{% endif %}
+    {% if founded_label %}<dt>설립일</dt><dd>{{ founded_label }}</dd>{% endif %}
+    {% if anniversary %}<dt>개교기념일</dt><dd>{{ anniversary }}</dd>{% endif %}
+    {% if level == '고등학교' %}
+      {% if profile.general_business %}<dt>계열</dt><dd>{{ profile.general_business }}</dd>{% endif %}
+      {% if profile.entrance_term %}<dt>입시 시기</dt><dd>{{ profile.entrance_term }}</dd>{% endif %}
+    {% endif %}
+    {% if profile.day_night and profile.day_night != '주간' %}<dt>수업 시간대</dt><dd>{{ profile.day_night }}</dd>{% endif %}
+    {% if profile.industry_class %}<dt>산업체 특별학급</dt><dd>운영</dd>{% endif %}
+  </dl>
+  {% if profile.planned %}<p class="school-note">아직 개교하지 않았거나 개교 예정인 학교예요. 개교 후 정보가 달라질 수 있어요.</p>{% endif %}
+</section>
+
+<section class="school-card" id="meal">
+  <h2>오늘({{ today_label }}) 급식</h2>
+  {% if meal and meal['items'] %}
+    {% for item in meal['items'] %}
+    <div class="school-meal-row">
+      <strong>{{ item.label }}</strong>
+      <p class="school-meal-menu">{{ item.menu }}</p>
+      {% if item.detail and (item.detail.calories or item.detail.people) %}<span class="school-meal-meta">{% if item.detail.calories %}{{ item.detail.calories }}{% endif %}{% if item.detail.calories and item.detail.people %} · {% endif %}{% if item.detail.people %}{{ '{:,}'.format(item.detail.people) }}명{% endif %}</span>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="school-empty">오늘은 등록된 급식 정보가 없어요.</p>
+  {% endif %}
+  <a class="school-more" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">이번 주 급식 · 영양 정보 보기 &rsaquo;</a>
+</section>
+
+<section class="school-card" id="classes">
+  <h2>학급 현황</h2>
+  {% if class_summary.total %}
+    <p class="school-lead">학급은 모두 <strong>{{ class_summary.total }}개</strong>예요.</p>
+    <div class="school-chip-row">
+      {% for item in class_summary.grades %}<span class="school-chip">{% if item.grade %}{{ item.grade }}학년 {% endif %}{{ item.count }}학급</span>{% endfor %}
+    </div>
+    {% if class_summary.departments %}
+    <p class="school-sub-label">학과</p>
+    <div class="school-chip-row">
+      {% for dept, count in class_summary.departments %}<span class="school-chip">{{ dept }} {{ count }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  {% else %}
+    <p class="school-empty">NEIS에 등록된 학급 정보가 아직 없어요.</p>
+  {% endif %}
+  <a class="school-more" href="{{ url_for('school_classes_page', code=profile.code) }}">학급·학과 자세히 보기 &rsaquo;</a>
+</section>
+
+<section class="school-card" id="schedule">
+  <h2>다가오는 학사일정</h2>
+  {% if upcoming %}
+  <ul class="school-event-list">
+    {% for event in upcoming %}
+    <li>
+      <span class="school-event-date">{{ event.start_label }}{% if event.days > 1 %} ~ {{ event.end_label }}{% endif %}</span>
+      <span class="school-event-name">{{ event.name }}</span>
+      {% if event.kind and event.kind != '해당없음' %}<span class="school-badge">{{ event.kind }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="school-empty">앞으로 두 달 동안 등록된 학사일정이 없어요.</p>
+  {% endif %}
+  <a class="school-more" href="{{ url_for('school_schedule_page', code=profile.code) }}">전체 학사일정 보기 &rsaquo;</a>
+</section>
+
+{% if has_timetable %}
+<section class="school-card" id="timetable">
+  <h2>시간표</h2>
+  <p class="school-lead">학년과 반을 고르면 이번 주 시간표를 바로 볼 수 있어요.</p>
+  <a class="school-more strong" href="{{ url_for('school_timetable_page', code=profile.code) }}" data-track="btn_school_timetable" data-track-value="{{ profile.code }}">시간표 보러 가기 &rsaquo;</a>
+</section>
+{% endif %}
+
+{% if siblings %}
+<section class="school-card" id="nearby">
+  <h2>{% if parsed.district %}{{ parsed.district }} {% endif %}{{ level }} 더 보기</h2>
+  <div class="school-list">
+    {% for school in siblings %}{{ school_card(school) }}{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
