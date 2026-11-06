@@ -1,4 +1,16 @@
 {% from '_school_card.html' import school_card -%}
+{% macro meal_meta(detail) -%}
+{%- if detail and (detail.calories or detail.people) -%}
+<span class="meal-meta">{% if detail.calories %}{{ detail.calories }}{% endif %}{% if detail.calories and detail.people %} · {% endif %}{% if detail.people %}급식 인원 {{ '{:,}'.format(detail.people) }}명{% endif %}</span>
+{%- endif -%}
+{%- if detail and (detail.nutrients or detail.origins or detail.allergens) -%}
+<details class="meal-detail"><summary>영양·원산지 자세히 보기</summary><div class="meal-detail-body">
+{%- if detail.nutrients %}<p><strong>영양 정보</strong><br>{% for label, value in detail.nutrients %}{{ label }} {{ value }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif -%}
+{%- if detail.allergens %}<p><strong>알레르기 유발 성분</strong><br>{% for item in detail.allergens %}{{ item.name }}({{ item.no }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
+{%- if detail.origins %}<p><strong>원산지</strong><br>{% for label, value in detail.origins %}{{ label }} {{ value }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif -%}
+</div></details>
+{%- endif -%}
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,15 +19,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="급식알리미">
-<meta name="description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
-<title>{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - 간편한 급식 사이트</title>
+<meta name="description" content="{% if page_description %}{{ page_description }}{% elif school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
+<title>{% if page_title %}{{ page_title }}{% else %}{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미 - 간편한 급식 사이트{% endif %}</title>
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
 <meta property="og:type" content="website">
-<meta property="og:title" content="{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미">
-<meta property="og:description" content="{% if school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
+<meta property="og:title" content="{% if page_title %}{{ page_title }}{% else %}{% if school_name %}{{ school_name }} 급식 정보 - {% endif %}급식알리미{% endif %}">
+<meta property="og:description" content="{% if page_description %}{{ page_description }}{% elif school_name %}가장 간편한 초중고교 급식 조회 사이트예요. {{ school_name }}의 오늘 급식과 이번 주 급식을 바로 확인하세요!{% else %}가장 간편한 초중고교 급식 조회 사이트예요. 학교만 입력하고 빠르게 이번 주 급식 정보를 확인하세요!{% endif %}">
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
-<meta property="og:url" content="{{ request.url }}">
+<meta property="og:url" content="{{ canonical_url or request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.6">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -188,20 +201,28 @@
   {% if school_name and week_meals %}
   <div class="meal-container">
     <h1 class="school-title">{{ school_name }} 급식 정보</h1>
+    <div class="meal-chips">
+      <a class="meal-chip" href="{{ url_for('school_overview', code=school_code) }}" data-track="btn_school_info" data-track-value="{{ school_code }}">🏫 학교 정보</a>
+      <a class="meal-chip" href="{{ url_for('school_timetable_page', code=school_code) }}" data-track="btn_school_timetable" data-track-value="{{ school_code }}">🗓️ 시간표</a>
+      <a class="meal-chip" href="{{ url_for('school_schedule_page', code=school_code) }}" data-track="btn_school_info" data-track-value="{{ school_code }}">📅 학사일정</a>
+    </div>
     <div class="today-meal-card">
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
       <div class="today-meal-grid">
         <div class="today-meal-item">
           <div class="today-meal-type">🍎 조식</div>
           <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}</div>
+          {{ meal_meta((today_detail or {}).get('breakfast')) }}
         </div>
         <div class="today-meal-item">
           <div class="today-meal-type">🍔 중식</div>
           <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}</div>
+          {{ meal_meta((today_detail or {}).get('lunch')) }}
         </div>
         <div class="today-meal-item">
           <div class="today-meal-type">🍝 석식</div>
           <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}</div>
+          {{ meal_meta((today_detail or {}).get('dinner')) }}
         </div>
       </div>
     </div>
@@ -223,9 +244,9 @@
             <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('breakfast')) }}</div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('lunch')) }}</div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('dinner')) }}</div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
@@ -245,9 +266,9 @@
             <tr class="meal-row">
               <td class="date-cell">{{ date | format_date }}</td>
               <td class="menu-cell">
-                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p></div>{% endif %}
-                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p></div>{% endif %}
-                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p></div>{% endif %}
+                {% if meal.breakfast != "급식 정보 없음" %}<div class="meal-type"><strong>조식</strong><p>{{ meal.breakfast | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('breakfast')) }}</div>{% endif %}
+                {% if meal.lunch != "급식 정보 없음" %}<div class="meal-type"><strong>중식</strong><p>{{ meal.lunch | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('lunch')) }}</div>{% endif %}
+                {% if meal.dinner != "급식 정보 없음" %}<div class="meal-type"><strong>석식</strong><p>{{ meal.dinner | safe }}</p>{{ meal_meta((meal_details or {}).get(date, {}).get('dinner')) }}</div>{% endif %}
                 {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
               </td>
             </tr>
@@ -1300,5 +1321,12 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endif %}
 
 <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+<script>
+document.addEventListener('click', function (event) {
+    var el = event.target.closest('[data-track]');
+    if (!el || typeof trackEvent !== 'function') return;
+    trackEvent(el.getAttribute('data-track'), el.getAttribute('data-track-value') || '');
+});
+</script>
 </body>
 </html>
