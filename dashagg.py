@@ -8,8 +8,9 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 SCHOOL_PATH_RE = re.compile(r'^/meal/(\w+)$')
+SCHOOL_PAGE_RE = re.compile(r'^/school/(\w+)(?:/(schedule|classes|timetable))?$')
 REFERRER_RE = re.compile(r'https?://([^/]+)')
-EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification')
+EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable')
 ANN_EVENTS = {'ann_view': 0, 'ann_close': 1}
 EGG_MAPS = ('devices', 'os', 'browsers', 'haptics', 'input', 'mode')
 
@@ -55,13 +56,15 @@ def new_agg():
         'user_ips': {},
         'user_paths': {},
         'schools': {},
+        'school_pages': {},
+        'school_sections': {},
         'referrers': {},
         'devices': {},
         'os': {},
         'browsers': {},
         'rel': {},
         'ua_names': {},
-        'ev': {'theme': {}, 'search_method': {}, 'btn_month': 0, 'btn_nearby': 0, 'btn_share': 0, 'btn_notification': 0, 'ann': {}},
+        'ev': {'theme': {}, 'search_method': {}, 'btn_month': 0, 'btn_nearby': 0, 'btn_share': 0, 'btn_notification': 0, 'btn_school_info': 0, 'btn_school_meal': 0, 'btn_school_timetable': 0, 'ann': {}},
         'pwa': {'visits': 0, 'ips': {}, 'schools': {}, 'uid_visits': {}},
     }
 
@@ -153,6 +156,10 @@ def add_access(agg, ip, status, path, referrer, kind, name, device=None, os_name
     school = SCHOOL_PATH_RE.match(path)
     if school:
         _inc(agg['schools'], school.group(1))
+    page = SCHOOL_PAGE_RE.match(path)
+    if page:
+        _inc(agg.setdefault('school_pages', {}), page.group(1))
+        _inc(agg.setdefault('school_sections', {}), page.group(2) or 'overview')
     if referrer and referrer != 'N/A':
         host = REFERRER_RE.match(referrer)
         if host:
@@ -170,7 +177,7 @@ def add_event(agg, event, value):
     elif event == 'search_method':
         _inc(ev['search_method'], value)
     elif event in EVENT_COUNTERS:
-        ev[event] += 1
+        ev[event] = ev.get(event, 0) + 1
     elif event in ANN_EVENTS:
         key = re.sub(r'[^0-9a-fA-F]', '', str(value))[:32]
         if key:
@@ -257,7 +264,9 @@ def merge(target, source, with_rel=True):
     for key in ('theme', 'search_method'):
         _merge_counts(target['ev'][key], source['ev'][key])
     for key in EVENT_COUNTERS:
-        target['ev'][key] += source['ev'][key]
+        target['ev'][key] = target['ev'].get(key, 0) + source['ev'].get(key, 0)
+    for key in ('school_pages', 'school_sections'):
+        _merge_counts(target.setdefault(key, {}), source.get(key) or {})
     for key, counts in source['ev'].get('ann', {}).items():
         mine = target['ev'].setdefault('ann', {}).setdefault(key, [0, 0])
         mine[0] += counts[0]
@@ -300,6 +309,7 @@ def compact(agg):
     for key, cap in (('ips', 'ips'), ('user_ips', 'user_ips'), ('user_paths', 'user_paths'), ('bot_paths', 'bot_paths'),
                      ('schools', 'schools'), ('referrers', 'referrers'), ('crawler_names', 'crawler_names')):
         out[key] = _top(out[key], CAPS[cap])
+    out['school_pages'] = _top(out.get('school_pages') or {}, CAPS['schools'])
     if len(out['bot_ips']) > CAPS['bot_ips']:
         out['bot_ips'] = dict(sorted(out['bot_ips'].items(), key=lambda item: item[1]['t'], reverse=True)[:CAPS['bot_ips']])
     for entry in out['bot_ips'].values():
@@ -364,6 +374,10 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
     names = {}
     for code in total['schools']:
         names[code] = school_name(code)
+    school_page_counts = total.get('school_pages') or {}
+    for code, _ in _sorted(school_page_counts, 10):
+        if code not in names:
+            names[code] = school_name(code)
 
     pwa = total['pwa']
     uid_ips = defaultdict(set)
@@ -410,6 +424,9 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
         'top_bot_paths': _sorted(total['bot_paths'], 15),
         'all_bot_paths': _sorted(total['bot_paths']),
         'top_schools': [(names.get(c, c), v, c) for c, v in _sorted(total['schools'], 10)],
+        'school_page_total': sum(school_page_counts.values()),
+        'school_sections': dict(total.get('school_sections') or {}),
+        'top_school_pages': [(names.get(c, c), v, c) for c, v in _sorted(school_page_counts, 10)],
         'all_schools': [(names.get(c, c), v, c) for c, v in _sorted(total['schools'])],
         'top_ips': _sorted(total['user_ips'], 10),
         'all_ips': _sorted(total['user_ips']),
@@ -432,6 +449,9 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
             'btn_nearby': total['ev']['btn_nearby'],
             'btn_share': total['ev']['btn_share'],
             'btn_notification': total['ev']['btn_notification'],
+            'btn_school_info': total['ev'].get('btn_school_info', 0),
+            'btn_school_meal': total['ev'].get('btn_school_meal', 0),
+            'btn_school_timetable': total['ev'].get('btn_school_timetable', 0),
             'ann': {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()},
             'egg': _egg_stats(total['ev'].get('egg')),
         },
