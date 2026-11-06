@@ -10,7 +10,7 @@
     <title>{{ region_name|region_full }} 학교 목록 - 급식알리미</title>
     <link rel="canonical" href="{{ canonical_url }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.6">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -207,8 +207,10 @@
             });
 
             function buildCard(school) {
+                const card = document.createElement('div');
+                card.className = 'school-item' + (school.gender ? ' ' + school.gender : '');
                 const link = document.createElement('a');
-                link.className = 'school-item' + (school.gender ? ' ' + school.gender : '');
+                link.className = 'school-item-main';
                 link.href = '/meal/' + encodeURIComponent(school.code);
 
                 const head = document.createElement('div');
@@ -240,7 +242,13 @@
                 link.appendChild(head);
                 link.appendChild(loc);
                 link.appendChild(tags);
-                return link;
+                const info = document.createElement('a');
+                info.className = 'school-item-info';
+                info.href = '/school/' + encodeURIComponent(school.code);
+                info.textContent = '학교 정보 \u203A';
+                card.appendChild(link);
+                card.appendChild(info);
+                return card;
             }
 
             function render(items) {
