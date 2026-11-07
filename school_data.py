@@ -1,3 +1,4 @@
+import calendar
 import os
 import re
 from datetime import date, datetime, timedelta
@@ -31,6 +32,8 @@ GRADE_KEYS = (
 )
 
 WEEKDAYS = ('월', '화', '수', '목', '금', '토', '일')
+WEEKDAY_FULL = ('월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일')
+HOLIDAY_KINDS = ('공휴일', '휴업일')
 
 
 def clean(value):
@@ -452,7 +455,8 @@ def build_timetable_grid(rows, monday):
     days = []
     for offset in range(5):
         day = monday + timedelta(days=offset)
-        days.append({'ymd': day.strftime('%Y%m%d'), 'label': f'{day.month}/{day.day}({WEEKDAYS[day.weekday()]})'})
+        days.append({'ymd': day.strftime('%Y%m%d'), 'label': f'{day.month}/{day.day}({WEEKDAYS[day.weekday()]})',
+                     'md': f'{day.month}/{day.day}', 'wd': WEEKDAYS[day.weekday()]})
     period_list = sorted(periods)
     table = []
     for period in period_list:
@@ -494,9 +498,9 @@ def meal_seo(school_name, area, ymd, meals, details):
     names = f'{name}({short})' if short else name
     area = clean(area)
     if area:
-        title = f'{names} 급식 메뉴 - {area} 오늘·이번 주 급식 | 급식알리미'
+        title = f'{names} 급식 메뉴 - {area} 오늘 급식과 이번 주 급식 | 급식알리미'
     else:
-        title = f'{names} 급식 메뉴 - 오늘·이번 주 급식 | 급식알리미'
+        title = f'{names} 급식 메뉴 - 오늘 급식과 이번 주 급식 | 급식알리미'
     chosen = None
     for key, label in (('lunch', '중식'), ('dinner', '석식'), ('breakfast', '조식')):
         value = (meals or {}).get(key)
@@ -510,6 +514,48 @@ def meal_seo(school_name, area, ymd, meals, details):
         day_label = f'{day.month}월 {day.day}일({WEEKDAYS[day.weekday()]})'
         summary = meal_summary_text(value, 80)
         calories = ((details or {}).get(key) or {}).get('calories', '')
-        extra = f' · {calories}' if calories else ''
-        description = f'{day_label} {name} {label}: {summary}{extra}. 이번 주 급식과 알레르기 정보도 확인하세요.'
+        extra = f' 열량 {calories}.' if calories else ''
+        description = f'{day_label} {name} {label}: {summary}.{extra} 이번 주 급식과 알레르기 정보도 확인하세요.'
     return title, description
+
+
+def build_calendar(year, month, events, today=None):
+    today_text = (today or date.today()).strftime('%Y%m%d')
+    offset = (date(year, month, 1).weekday() + 1) % 7
+    total = calendar.monthrange(year, month)[1]
+    cells = [None] * offset
+    for day in range(1, total + 1):
+        ymd = f'{year}{month:02d}{day:02d}'
+        weekday = (offset + day - 1) % 7
+        items = []
+        for event in events:
+            if event['start'] <= ymd <= event['end']:
+                holiday = event['kind'] in HOLIDAY_KINDS
+                span = ''
+                if event['days'] > 1:
+                    span = f"{event['start_label']} ~ {event['end_label']}"
+                kind = event['kind'] if event['kind'] and event['kind'] != '해당없음' else ''
+                items.append({
+                    'name': event['name'], 'content': event['content'], 'grade': event['grade_label'],
+                    'kind': kind, 'range': span, 'holiday': holiday,
+                })
+        items.sort(key=lambda item: (not item['holiday'], item['name']))
+        real_weekday = date(year, month, day).weekday()
+        cells.append({
+            'day': day,
+            'ymd': ymd,
+            'weekday': weekday,
+            'events': items,
+            'is_today': ymd == today_text,
+            'holiday': any(item['holiday'] for item in items),
+            'title': f'{month}월 {day}일 {WEEKDAY_FULL[real_weekday]}',
+            'payload': [
+                {'n': item['name'], 'c': item['content'], 'g': item['grade'], 'k': item['kind'],
+                 'r': item['range'], 'h': item['holiday']}
+                for item in items
+            ],
+        })
+    while len(cells) % 7:
+        cells.append(None)
+    return [cells[index:index + 7] for index in range(0, len(cells), 7)]
+

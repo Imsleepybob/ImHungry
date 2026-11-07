@@ -1,19 +1,19 @@
 {% extends 'school_layout.html' %}
-{% block h1 %}{{ profile.name }} 학급·학과{% endblock %}
+{% block h1 %}{{ profile.name }} 학급과 학과{% endblock %}
 {% block content %}
-<section class="school-card">
+<section class="sp-card">
   <h2>{{ academic_year }}학년도 학급 현황</h2>
   {% if load_failed %}
-    <p class="school-empty">학급 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
+    <p class="sp-empty">학급 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
   {% elif summary.total %}
-    <p class="school-lead">학급은 모두 <strong>{{ summary.total }}개</strong>예요.</p>
-    <div class="school-table-wrap">
-      <table class="school-table">
-        <thead><tr><th>학년</th><th>학급 수</th>{% if summary.departments %}<th>학과별 학급</th>{% endif %}</tr></thead>
+    <p class="sp-lead">학급은 모두 <strong>{{ summary.total }}개</strong>예요.</p>
+    <div class="sp-table-wrap">
+      <table class="sp-table">
+        <thead><tr><th scope="col">학년</th><th scope="col">학급 수</th>{% if summary.departments %}<th scope="col">학과별 학급</th>{% endif %}</tr></thead>
         <tbody>
           {% for item in summary.grades %}
           <tr>
-            <td>{% if item.grade %}{{ item.grade }}학년{% else %}-{% endif %}</td>
+            <td>{% if item.grade %}{{ item.grade }}학년{% else %}전체{% endif %}</td>
             <td>{{ item.count }}</td>
             {% if summary.departments %}<td>{% for dept, count in item.depts %}{{ dept }} {{ count }}{% if not loop.last %}, {% endif %}{% endfor %}</td>{% endif %}
           </tr>
@@ -21,30 +21,28 @@
         </tbody>
       </table>
     </div>
-    {% if summary.courses %}<p class="school-note">운영 과정: {{ summary.courses|join(', ') }}</p>{% endif %}
+    {% if summary.courses %}<p class="sp-note">운영 과정은 {{ summary.courses|join(', ') }}이에요.</p>{% endif %}
   {% else %}
-    <p class="school-empty">NEIS에 등록된 학급 정보가 아직 없어요.</p>
+    <p class="sp-empty">NEIS에 등록된 학급 정보가 아직 없어요.</p>
   {% endif %}
 </section>
 
 {% if with_departments and (majors or tracks) %}
-<section class="school-card">
-  <h2>학과·계열</h2>
+<section class="sp-card">
+  <h2>학과와 계열</h2>
   {% if tracks %}
-  <p class="school-sub-label">계열</p>
-  <div class="school-chip-row">
-    {% for track in tracks %}<span class="school-chip">{{ track.order }}{% if track.course %} ({{ track.course }}){% endif %}</span>{% endfor %}
-  </div>
+  <p class="sp-label sp-label-first">계열</p>
+  <ul class="sp-list">
+    {% for track in tracks %}<li><span>{{ track.order }}</span><span class="sp-list-value">{{ track.course }}</span></li>{% endfor %}
+  </ul>
   {% endif %}
   {% if majors %}
-  <p class="school-sub-label">등록된 학과</p>
-  <ul class="school-event-list">
+  <p class="sp-label">등록된 학과</p>
+  <ul class="sp-list">
     {% for major in majors %}
     <li>
-      <span class="school-event-name">{{ major.name }}</span>
-      {% if major.order %}<span class="school-badge alt">{{ major.order }}</span>{% endif %}
-      {% if major.course and major.course != '주간' %}<span class="school-badge alt">{{ major.course }}</span>{% endif %}
-      {% if not major.active %}<span class="school-badge">현재 학급 없음</span>{% endif %}
+      <span>{{ major.name }}{% if major.order %} <span class="sp-tag">{{ major.order }}</span>{% endif %}</span>
+      <span class="sp-list-value">{% if major.course and major.course != '주간' %}{{ major.course }}{% endif %}{% if not major.active %}{% if major.course and major.course != '주간' %}, {% endif %}현재 학급 없음{% endif %}</span>
     </li>
     {% endfor %}
   </ul>
@@ -52,3 +50,4 @@
 </section>
 {% endif %}
 {% endblock %}
+

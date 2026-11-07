@@ -1,3 +1,4 @@
+{% from '_icons.html' import icon -%}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -75,9 +76,9 @@
 </footer>
 
 <div id="themePopover" class="theme-popover">
-  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
-  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
-  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
+  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>{{ icon('sun', 18) }}</span></div>
+  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>{{ icon('moon', 18) }}</span></div>
+  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>{{ icon('monitor', 18) }}</span></div>
 </div>
 
 <script>
@@ -141,3 +142,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
+

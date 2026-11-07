@@ -1,31 +1,116 @@
 {% extends 'school_layout.html' %}
+{% from '_icons.html' import icon %}
 {% block h1 %}{{ profile.name }} 학사일정{% endblock %}
 {% block content %}
-<section class="school-card">
-  <div class="school-month-nav">
-    <a href="{{ prev_url }}" rel="nofollow" aria-label="이전 달">&lsaquo;</a>
+<section class="sp-card">
+  <div class="sp-monthbar">
+    <a class="sp-iconbtn" href="{{ prev_url }}" rel="nofollow" aria-label="이전 달">{{ icon('chevron-left', 20) }}</a>
     <h2>{{ year }}년 {{ month }}월</h2>
-    <a href="{{ next_url }}" rel="nofollow" aria-label="다음 달">&rsaquo;</a>
+    <a class="sp-iconbtn" href="{{ next_url }}" rel="nofollow" aria-label="다음 달">{{ icon('chevron-right', 20) }}</a>
   </div>
-  {% if not is_current %}<p class="school-more-wrap"><a class="school-inline-link" href="{{ today_url }}">이번 달로 돌아가기</a></p>{% endif %}
+  {% if not is_current %}<a class="sp-today-link" href="{{ today_url }}">이번 달 보기</a>{% endif %}
   {% if load_failed %}
-    <p class="school-empty">학사일정을 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
-  {% elif events %}
-  <ul class="school-event-list">
-    {% for event in events %}
-    <li>
-      <span class="school-event-date">{{ event.start_label }}{% if event.days > 1 %} ~ {{ event.end_label }}{% endif %}</span>
-      <span class="school-event-name">{{ event.name }}</span>
-      {% if event.grade_label %}<span class="school-badge">{{ event.grade_label }}</span>{% endif %}
-      {% if event.kind and event.kind != '해당없음' %}<span class="school-badge alt">{{ event.kind }}</span>{% endif %}
-      {% if event.course and event.course != '주간' %}<span class="school-badge alt">{{ event.course }}</span>{% endif %}
-      {% if event.content %}<p class="school-event-content">{{ event.content }}</p>{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
+    <p class="sp-empty">학사일정을 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
   {% else %}
-    <p class="school-empty">이 달에 등록된 학사일정이 없어요.</p>
+  <div class="cal" aria-label="{{ year }}년 {{ month }}월 학사일정 달력">
+    <div class="cal-head" aria-hidden="true">{% for name in weekdays %}<span>{{ name }}</span>{% endfor %}</div>
+    {% for week in weeks %}
+    <div class="cal-week">
+      {% for cell in week %}
+        {% if cell %}
+        <div class="cal-cell{% if cell.weekday == 0 %} is-sun{% elif cell.weekday == 6 %} is-sat{% endif %}{% if cell.holiday %} is-holiday{% endif %}{% if cell.is_today %} is-today{% endif %}">
+          {% if cell.events %}
+          <button type="button" class="cal-btn" data-title="{{ cell.title }}" data-events='{{ cell.payload|tojson }}' aria-label="{{ cell.title }}, 일정 {{ cell.events|length }}개 보기">
+            <span class="cal-num">{{ cell.day }}</span>
+            {% for item in cell.events[:2] %}<span class="cal-ev{% if item.holiday %} is-holiday{% endif %}">{{ item.name }}</span>{% endfor %}
+            {% if cell.events|length > 2 %}<span class="cal-more">+{{ cell.events|length - 2 }}</span>{% endif %}
+          </button>
+          {% else %}
+          <div class="cal-plain"><span class="cal-num">{{ cell.day }}</span></div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="cal-cell is-empty"></div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if not events %}<p class="sp-note">이 달에 등록된 학사일정이 없어요.</p>{% endif %}
+  {% if routine_count %}<p class="sp-note">토요휴업일 {{ routine_count }}일은 달력에서 뺐어요.</p>{% endif %}
+  {% if events %}
+  <details class="sp-details">
+    <summary>이번 달 일정을 목록으로 보기</summary>
+    <ul class="sp-events">
+      {% for event in events %}
+      <li>
+        <span class="sp-event-date">{{ event.start_label }}{% if event.days > 1 %} ~ {{ event.end_label }}{% endif %}</span>
+        <span class="sp-event-name">{{ event.name }}{% if event.kind in ['휴업일', '공휴일'] %}<span class="sp-tag is-alert">{{ event.kind }}</span>{% endif %}{% if event.grade_label %}<span class="sp-tag">{{ event.grade_label }}</span>{% endif %}{% if event.content %}<p class="sp-event-text">{{ event.content }}</p>{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
   {% endif %}
-  {% if routine_count %}<p class="school-note">토요휴업일 {{ routine_count }}일은 목록에서 뺐어요.</p>{% endif %}
+  {% endif %}
+  <dialog class="cal-dialog" id="calDialog" aria-labelledby="calTitle">
+    <div class="cal-sheet">
+      <div class="cal-sheet-head">
+        <h2 id="calTitle" data-cal-title tabindex="-1" autofocus></h2>
+        <button type="button" class="sp-iconbtn" data-cal-close aria-label="닫기">{{ icon('x', 20) }}</button>
+      </div>
+      <ul class="cal-list" data-cal-list></ul>
+    </div>
+  </dialog>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    var dialog = document.getElementById('calDialog');
+    if (!dialog) return;
+    var title = dialog.querySelector('[data-cal-title]');
+    var list = dialog.querySelector('[data-cal-list]');
+    function closeDialog() {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+    }
+    function openDialog(button) {
+        var items = [];
+        try { items = JSON.parse(button.getAttribute('data-events') || '[]'); } catch (e) {}
+        title.textContent = button.getAttribute('data-title') || '';
+        list.textContent = '';
+        items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.className = 'cal-item' + (item.h ? ' is-holiday' : '');
+            var name = document.createElement('strong');
+            name.textContent = item.n;
+            li.appendChild(name);
+            var meta = [];
+            if (item.r) meta.push(item.r);
+            if (item.g) meta.push(item.g);
+            if (item.k) meta.push(item.k);
+            if (meta.length) {
+                var info = document.createElement('span');
+                info.className = 'cal-item-meta';
+                info.textContent = meta.join(', ');
+                li.appendChild(info);
+            }
+            if (item.c) {
+                var text = document.createElement('p');
+                text.textContent = item.c;
+                li.appendChild(text);
+            }
+            list.appendChild(li);
+        });
+        list.scrollTop = 0;
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+    }
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('.cal-btn');
+        if (button) { openDialog(button); return; }
+        if (event.target.closest('[data-cal-close]') || event.target === dialog) closeDialog();
+    });
+})();
+</script>
 {% endblock %}

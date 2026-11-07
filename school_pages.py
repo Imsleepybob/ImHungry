@@ -13,7 +13,7 @@ MEAL_LABELS = (('breakfast', '조식'), ('lunch', '중식'), ('dinner', '석식'
 TABS = (
     ('overview', '학교 정보', 'school_overview'),
     ('schedule', '학사일정', 'school_schedule_page'),
-    ('classes', '학급·학과', 'school_classes_page'),
+    ('classes', '학급과 학과', 'school_classes_page'),
     ('timetable', '시간표', 'school_timetable_page'),
 )
 
@@ -143,7 +143,8 @@ def init_school_pages(app, ctx):
 
     def area_label(profile, parsed):
         region_name = region_name_of(profile)
-        return ' '.join(part for part in (region_name, parsed.get('district')) if part)
+        full = region_full(region_name) if region_name else ''
+        return ' '.join(part for part in (full, parsed.get('district')) if part)
 
     def shorten(text, limit):
         text = ' '.join(text.split())
@@ -265,9 +266,9 @@ def init_school_pages(app, ctx):
         area = area_label(profile, parsed)
         level = parsed.get('school_level') or ''
         facts = ' '.join(part for part in (profile['founding'], profile['coedu'], level) if part)
-        description = f"{area} {facts} {profile['name']}의 학교 정보예요. 학급 수, 학사일정, 시간표, 오늘 급식 메뉴와 연락처·위치를 한곳에서 확인하세요."
+        description = f"{area} {facts} {profile['name']}의 학교 정보예요. 학급 수, 학사일정, 시간표, 오늘 급식 메뉴와 연락처와 위치를 한곳에서 확인하세요."
         if class_summary['total']:
-            description = f"{area} {facts} {profile['name']}. 학급 {class_summary['total']}개. 학사일정, 시간표, 오늘 급식 메뉴와 연락처·위치를 확인하세요."
+            description = f"{area} {facts} {profile['name']}. 학급 {class_summary['total']}개. 학사일정, 시간표, 오늘 급식 메뉴와 연락처와 위치를 확인하세요."
         title = f"{title_with_names(profile)} 학교 정보 - {area} {level} | 급식알리미".replace('  ', ' ')
         region_name = region_name_of(profile)
         context = base_context(
@@ -332,6 +333,8 @@ def init_school_pages(app, ctx):
         )
         context.update({
             'events': visible,
+            'weeks': sd.build_calendar(year, month, visible, current.date()),
+            'weekdays': ('일', '월', '화', '수', '목', '금', '토'),
             'routine_count': routine_count,
             'year': year,
             'month': month,
@@ -380,7 +383,7 @@ def init_school_pages(app, ctx):
             seen_tracks.add(key)
             tracks.append({'order': key[0], 'course': key[1]})
         area = area_label(profile, parsed)
-        title = f"{title_with_names(profile)} 학급·학과 정보 | 급식알리미"
+        title = f"{title_with_names(profile)} 학급과 학과 정보 | 급식알리미"
         description = f"{area} {profile['name']}의 학년별 학급 수와 학과, 계열 정보예요."
         if summary['total']:
             description = f"{profile['name']}의 학급은 모두 {summary['total']}개예요. 학년별 학급 수와 학과, 계열 정보를 확인하세요."
@@ -389,7 +392,7 @@ def init_school_pages(app, ctx):
         region_name = region_name_of(profile)
         context = base_context(
             entry, 'classes', canonical, indexable, title, description,
-            [breadcrumbs(profile, parsed, region_name, '학급·학과', f'{site_url}{canonical}')],
+            [breadcrumbs(profile, parsed, region_name, '학급과 학과', f'{site_url}{canonical}')],
         )
         context.update({
             'summary': summary,
@@ -471,7 +474,7 @@ def init_school_pages(app, ctx):
             if rows is not None:
                 grid = sd.build_timetable_grid(rows, monday)
                 if grid['empty'] and not message:
-                    message = '이 기간의 시간표가 NEIS에 등록되어 있지 않아요. 학교에서 시간표를 등록하지 않았거나 방학·휴업일일 수 있어요.'
+                    message = '이 기간의 시간표가 NEIS에 등록되어 있지 않아요. 학교에서 시간표를 등록하지 않았거나 방학이나 휴업일일 수 있어요.'
         area = area_label(profile, parsed)
         title = f"{title_with_names(profile)} 시간표 | 급식알리미"
         description = f"{area} {profile['name']}의 반별 주간 시간표를 확인하세요."
@@ -495,6 +498,7 @@ def init_school_pages(app, ctx):
             })
         context.update({
             'supported': bool(endpoint),
+            'cta_secondary': True,
             'groups': groups,
             'selected_value': selected_value,
             'view': view,
@@ -529,3 +533,4 @@ def init_school_pages(app, ctx):
         'mode': mode,
         'cache_sizes': lambda: {'profile': profile_cache.size(), 'data': data_cache.size()},
     }
+

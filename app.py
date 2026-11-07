@@ -1956,7 +1956,7 @@ def school_meal_view(school_code):
     region_name = next((name for name, code in regions.items() if code == school_info['region_code']), None)
 
     meal_details_data = get_month_meal_details(school_code, school_info['region_code'])
-    area_text = ' '.join(part for part in (region_name, school_info.get('district')) if part)
+    area_text = ' '.join(part for part in (region_full_name(region_name) if region_name else '', school_info.get('district')) if part)
     seo_title, seo_description = school_data.meal_seo(school_info['school_name'], area_text, today_str, today_meal, meal_details_data.get(today_str, {}))
 
     resp = make_response(render_template(
@@ -3187,3 +3187,4 @@ if __name__ == "__main__":
     app.logger.info(f"Security config: {SECURITY_CONFIG}")
 
     app.run(debug=False)
+
