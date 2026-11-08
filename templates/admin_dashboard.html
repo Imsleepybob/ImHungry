@@ -239,7 +239,7 @@ body {
     align-items: center;
     gap: 10px;
 }
-.btn-stat-icon { display: flex; color: var(--text3); }
+.btn-stat-icon { font-size: 18px; }
 .btn-stat-info { flex: 1; }
 .btn-stat-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
 .btn-stat-count { font-size: 20px; font-weight: 700; color: var(--text); }
@@ -707,31 +707,31 @@ body {
 
   <!-- 버튼 클릭 통계 -->
   <div class="card" style="margin-top:12px;">
-    <div class="chart-title">버튼 클릭 통계</div>
+    <div class="chart-title">🖱️ 버튼 클릭 통계</div>
     <div class="btn-row">
       <div class="btn-stat">
-        <div class="btn-stat-icon">{{ icon('calendar', 20) }}</div>
+        <div class="btn-stat-icon">📅</div>
         <div class="btn-stat-info">
           <div class="btn-stat-label">월간 급식표 보기</div>
           <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_month) }}</div>
         </div>
       </div>
       <div class="btn-stat">
-        <div class="btn-stat-icon">{{ icon('school', 20) }}</div>
+        <div class="btn-stat-icon">🏫</div>
         <div class="btn-stat-info">
           <div class="btn-stat-label">주변 학교와 비교</div>
           <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_nearby) }}</div>
         </div>
       </div>
       <div class="btn-stat">
-        <div class="btn-stat-icon">{{ icon('link', 20) }}</div>
+        <div class="btn-stat-icon">🔗</div>
         <div class="btn-stat-info">
           <div class="btn-stat-label">공유하기</div>
           <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_share) }}</div>
         </div>
       </div>
       <div class="btn-stat">
-        <div class="btn-stat-icon">{{ icon('bell', 20) }}</div>
+        <div class="btn-stat-icon">🔔</div>
         <div class="btn-stat-info">
           <div class="btn-stat-label">알림 설정</div>
           <div class="btn-stat-count">{{ "{:,}".format(stats.events.btn_notification) }}</div>

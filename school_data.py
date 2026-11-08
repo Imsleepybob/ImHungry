@@ -1,6 +1,8 @@
 import calendar
+import json
 import os
 import re
+import zlib
 from datetime import date, datetime, timedelta
 
 SCHOOL_CODE_RE = re.compile(r'^\d{5,10}$')
@@ -494,8 +496,7 @@ def sitemap_item(row, mode=None):
 
 def meal_seo(school_name, area, ymd, meals, details):
     name = clean(school_name)
-    short = short_school_name(name)
-    names = f'{name}({short})' if short else name
+    names = name
     area = clean(area)
     if area:
         title = f'{names} 급식 메뉴 - {area} 오늘 급식과 이번 주 급식 | 급식알리미'
@@ -515,7 +516,7 @@ def meal_seo(school_name, area, ymd, meals, details):
         summary = meal_summary_text(value, 80)
         calories = ((details or {}).get(key) or {}).get('calories', '')
         extra = f' 열량 {calories}.' if calories else ''
-        description = f'{day_label} {name} {label}: {summary}.{extra} 이번 주 급식과 알레르기 정보도 확인하세요.'
+        description = f'{day_label} {name} {label}은 {summary}.{extra} 이번 주 급식과 알레르기 정보도 확인하세요.'
     return title, description
 
 
@@ -559,3 +560,27 @@ def build_calendar(year, month, events, today=None):
         cells.append(None)
     return [cells[index:index + 7] for index in range(0, len(cells), 7)]
 
+
+
+DETAIL_FIELDS = ('MLSV_YMD', 'MMEAL_SC_CODE', 'CAL_INFO', 'MLSV_FGR', 'NTR_INFO', 'ORPLC_INFO', 'DDISH_NM')
+
+
+def pack_meal_details(rows):
+    compact = []
+    for row in rows:
+        if clean(row.get('MMEAL_SC_CODE')) not in MEAL_TYPE_KEYS:
+            continue
+        compact.append([row.get(field) for field in DETAIL_FIELDS])
+    if not compact:
+        return None
+    return zlib.compress(json.dumps(compact, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 6)
+
+
+def unpack_meal_details(blob):
+    if not blob:
+        return {}
+    try:
+        rows = json.loads(zlib.decompress(blob).decode('utf-8'))
+    except (zlib.error, ValueError):
+        return {}
+    return build_meal_details([dict(zip(DETAIL_FIELDS, values)) for values in rows])

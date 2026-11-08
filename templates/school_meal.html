@@ -208,20 +208,20 @@
       <a class="meal-action" href="{{ url_for('school_schedule_page', code=school_code) }}" data-track="btn_school_info" data-track-value="{{ school_code }}">{{ icon('calendar', 18) }}학사일정</a>
     </div>
     <div class="today-meal-card">
-      <h3 class="today-meal-title">오늘 급식 정보<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
+      <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
       <div class="today-meal-grid">
         <div class="today-meal-item">
-          <div class="today-meal-type">조식</div>
+          <div class="today-meal-type">🍎 조식</div>
           <div class="today-meal-menu {% if today_meal.breakfast == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.breakfast if today_meal.breakfast != "급식 정보 없음" else "급식 없음" }}</div>
           {{ meal_meta((today_detail or {}).get('breakfast')) }}
         </div>
         <div class="today-meal-item">
-          <div class="today-meal-type">중식</div>
+          <div class="today-meal-type">🍔 중식</div>
           <div class="today-meal-menu {% if today_meal.lunch == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.lunch if today_meal.lunch != "급식 정보 없음" else "급식 없음" }}</div>
           {{ meal_meta((today_detail or {}).get('lunch')) }}
         </div>
         <div class="today-meal-item">
-          <div class="today-meal-type">석식</div>
+          <div class="today-meal-type">🍝 석식</div>
           <div class="today-meal-menu {% if today_meal.dinner == '급식 정보 없음' %}no-meal-today{% endif %}">{{ today_meal.dinner if today_meal.dinner != "급식 정보 없음" else "급식 없음" }}</div>
           {{ meal_meta((today_detail or {}).get('dinner')) }}
         </div>
@@ -236,7 +236,7 @@
     </div>
 
     <div class="meal-card week-meal">
-      <h3 class="meal-title">이번 주 급식 정보</h3>
+      <h3 class="meal-title">이번 주 급식 정보🍗</h3>
       <div class="meal-table-container">
         <table class="meal-table">
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
@@ -258,7 +258,7 @@
     </div>
     <button class="toggle-month-btn" id="toggleMonthBtn">▼ 월간 급식표 보기</button>
     <div class="meal-card month-meal" id="monthTable" style="display: none;">
-      <h3 class="meal-title">이번 달 급식 정보</h3>
+      <h3 class="meal-title">이번 달 급식 정보🍱</h3>
       <div class="meal-table-container">
         <table class="meal-table">
           <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
@@ -308,7 +308,7 @@
     </div>
     {% endif %}
     <div style="text-align:center; margin:8px 0 20px;">
-      <button id="share-btn" class="share-btn">{{ icon('share', 18) }}공유하기</button>
+      <button id="share-btn" class="share-btn">🔗 공유하기</button>
     </div>
   </div>
   {% elif school_name and not week_meals %}
@@ -371,9 +371,9 @@
 </footer>
 
 <div id="themePopover" class="theme-popover">
-  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>{{ icon('sun', 18) }}</span></div>
-  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>{{ icon('moon', 18) }}</span></div>
-  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>{{ icon('monitor', 18) }}</span></div>
+  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
+  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
+  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
 </div>
 
 <script>

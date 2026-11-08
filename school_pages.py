@@ -1,13 +1,21 @@
 import calendar
-from concurrent.futures import ThreadPoolExecutor
+import functools
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor, wait as futures_wait
 from datetime import date, datetime, timedelta
 
 from flask import abort, make_response, redirect, render_template, request, url_for
 
+import memguard
 import neis_api
 import school_data as sd
 
 HOUR = 3600
+PARALLEL_DEADLINE = 7
+SLOT_WAIT_HUMAN = 2.5
+MONITOR_HINTS = ('uptime', 'monitor', 'pingdom', 'statuscake', 'cron-job', 'render', 'hetrix', 'site24x7', 'freshping')
+BOT_HINTS = ('bot', 'crawl', 'spider', 'slurp', 'yeti', 'daumoa', 'facebookexternalhit', 'headless', 'scrapy')
 LEVELS_WITH_DEPARTMENTS = ('고등학교', '특수학교')
 MEAL_LABELS = (('breakfast', '조식'), ('lunch', '중식'), ('dinner', '석식'))
 TABS = (
@@ -22,6 +30,13 @@ class LookupFailed(Exception):
     pass
 
 
+def looks_like_bot_agent(user_agent):
+    agent = (user_agent or '').lower()
+    if not agent or any(hint in agent for hint in MONITOR_HINTS):
+        return False
+    return any(hint in agent for hint in BOT_HINTS)
+
+
 def init_school_pages(app, ctx):
     site_url = ctx['site_url'].rstrip('/')
     regions = ctx['regions']
@@ -34,9 +49,44 @@ def init_school_pages(app, ctx):
 
     mode = sd.indexing_mode()
 
-    profile_cache = neis_api.TTLCache(4000)
-    data_cache = neis_api.TTLCache(6000)
+    profile_cache = neis_api.TTLCache(4000, max_bytes=6 * 1024 * 1024)
+    data_cache = neis_api.TTLCache(6000, max_bytes=20 * 1024 * 1024)
     executor = ThreadPoolExecutor(max_workers=6)
+    slots = threading.BoundedSemaphore(max(2, int(os.environ.get('SCHOOL_HEAVY_SLOTS') or 2)))
+    bot_slot = threading.BoundedSemaphore(1)
+    memguard.register(profile_cache.clear)
+    memguard.register(data_cache.clear)
+
+    def looks_like_bot():
+        return looks_like_bot_agent(request.headers.get('User-Agent'))
+
+    def busy_response():
+        response = make_response(render_template(
+            'error.html', error_code=503, error_title='잠시 후 다시 시도해 주세요',
+            error_description='지금 접속이 많아 학교 정보를 보여드리기 어려워요. 잠시 뒤에 다시 열어 주세요.'), 503)
+        response.headers['Retry-After'] = '30'
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    def gated(view):
+        @functools.wraps(view)
+        def wrapper(*args, **kwargs):
+            bot = looks_like_bot()
+            if bot:
+                if not bot_slot.acquire(blocking=False):
+                    return busy_response()
+                if not slots.acquire(blocking=False):
+                    bot_slot.release()
+                    return busy_response()
+            elif not slots.acquire(timeout=SLOT_WAIT_HUMAN):
+                return busy_response()
+            try:
+                return view(*args, **kwargs)
+            finally:
+                slots.release()
+                if bot:
+                    bot_slot.release()
+        return wrapper
 
     def now():
         return datetime.now(kst)
@@ -129,10 +179,16 @@ def init_school_pages(app, ctx):
 
     def run_parallel(*calls):
         futures = [executor.submit(call) for call in calls]
+        done, _ = futures_wait(futures, timeout=PARALLEL_DEADLINE)
         results = []
         for future in futures:
+            if future not in done:
+                future.cancel()
+                app.logger.error('학교 페이지 병렬 조회가 제한 시간을 넘었어요.')
+                results.append(None)
+                continue
             try:
-                results.append(future.result(timeout=9))
+                results.append(future.result())
             except Exception as exc:
                 app.logger.error(f'학교 페이지 병렬 조회 실패: {exc}')
                 results.append(None)
@@ -243,10 +299,10 @@ def init_school_pages(app, ctx):
         return entry, None
 
     def title_with_names(profile):
-        short = f"({profile['short_name']})" if profile['short_name'] else ''
-        return f"{profile['name']}{short}"
+        return profile['name']
 
     @app.route('/school/<code>')
+    @gated
     def school_overview(code):
         entry, error = lookup_or_error(code)
         if error:
@@ -302,6 +358,7 @@ def init_school_pages(app, ctx):
         return None
 
     @app.route('/school/<code>/schedule')
+    @gated
     def school_schedule_page(code):
         entry, error = lookup_or_error(code)
         if error:
@@ -323,7 +380,7 @@ def init_school_pages(app, ctx):
         description = f"{area} {profile['name']}의 {year}년 {month}월 학사일정이에요. 시험, 방학, 개교기념일, 학교 행사를 날짜별로 확인하세요."
         if visible:
             names = ', '.join(dict.fromkeys(event['name'] for event in visible[:4]))
-            description = f"{profile['name']} {year}년 {month}월 학사일정: {names} 등. 시험, 방학, 학교 행사를 날짜별로 확인하세요."
+            description = f"{profile['name']} {year}년 {month}월 학사일정에는 {names} 등이 있어요. 시험, 방학, 학교 행사를 날짜별로 확인하세요."
         indexable = indexing_allowed(profile) and is_current and bool(visible)
         canonical = url_for('school_schedule_page', code=code)
         region_name = region_name_of(profile)
@@ -348,6 +405,7 @@ def init_school_pages(app, ctx):
         return respond('school_schedule.html', context, indexable, max_age=300)
 
     @app.route('/school/<code>/classes')
+    @gated
     def school_classes_page(code):
         entry, error = lookup_or_error(code)
         if error:
@@ -424,6 +482,7 @@ def init_school_pages(app, ctx):
         return None
 
     @app.route('/school/<code>/timetable')
+    @gated
     def school_timetable_page(code):
         entry, error = lookup_or_error(code)
         if error:

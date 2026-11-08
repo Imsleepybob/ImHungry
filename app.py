@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory, abort
+from flask import Flask, render_template, request, send_file, make_response, jsonify, redirect, url_for, send_from_directory, abort, g
 from markupsafe import escape
 from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict, deque
@@ -7,6 +7,7 @@ import neis_api
 import school_data
 import school_pages
 import crawler_verify
+import memguard
 import calendar
 import requests
 import logging
@@ -256,7 +257,7 @@ def sync_blacklist_to_github():
         with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         payload = {
-            'message': f"chore: ip_blacklist.txt 자동 갱신 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
+            'message': f"[skip render] chore: ip_blacklist.txt 자동 갱신 ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})",
             'content': base64.b64encode(content.encode('utf-8')).decode('ascii'),
             'branch': GITHUB_BRANCH,
         }
@@ -609,6 +610,29 @@ def security_check():
             response.headers['Connection'] = 'close'
             return response
 
+
+
+BOT_SLOTS = threading.BoundedSemaphore(max(1, int(os.environ.get('BOT_CONCURRENCY') or 2)))
+BOT_EXEMPT_PREFIXES = ('/static/', '/robots.txt', '/sitemap', '/favicon', '/manifest', '/sw.js', '/api/')
+
+
+@app.before_request
+def limit_bot_concurrency():
+    if request.path.startswith(BOT_EXEMPT_PREFIXES) or not school_pages.looks_like_bot_agent(request.headers.get('User-Agent')):
+        return None
+    if BOT_SLOTS.acquire(blocking=False):
+        g.bot_slot = True
+        return None
+    response = make_response('', 503)
+    response.headers['Retry-After'] = '30'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.teardown_request
+def release_bot_slot(exc):
+    if g.pop('bot_slot', False):
+        BOT_SLOTS.release()
 
 @app.after_request
 def track_watched_requests(response):
@@ -1769,14 +1793,14 @@ def get_month_meals_from_api(school_code, region_code):
             meal_cache[cache_key] = {
                 'data': result,
                 'expires': time.time() + MEAL_CACHE_TTL,
-                'detail': school_data.build_meal_details(info[1]["row"]),
+                'detail_z': school_data.pack_meal_details(info[1]["row"]),
             }
             return result
 
         result_code = (data.get("RESULT") or {}).get("CODE", "")
         if result_code == "INFO-200":
             result = {}
-            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_EMPTY_TTL, 'detail': {}}
+            meal_cache[cache_key] = {'data': result, 'expires': time.time() + MEAL_EMPTY_TTL, 'detail_z': None}
             return result
         app.logger.warning(f"NEIS meal response without data (school={school_code}, code={result_code or 'unknown'})")
 
@@ -1789,10 +1813,20 @@ def get_month_meals_from_api(school_code, region_code):
     return stale if stale is not None else {}
 
 
+def _trim_meal_cache():
+    ordered = sorted(meal_cache.items(), key=lambda item: item[1]['expires'])
+    for key, _ in ordered[:max(0, len(ordered) - len(ordered) // 4)]:
+        meal_cache.pop(key, None)
+    search_result_cache.clear()
+
+
+memguard.register(_trim_meal_cache)
+
+
 def get_month_meal_details(school_code, region_code):
     cache_key = f"{region_code}_{school_code}_{datetime.now(KST).strftime('%Y%m')}"
     entry = meal_cache.get(cache_key)
-    return entry.get('detail', {}) if entry else {}
+    return school_data.unpack_meal_details(entry.get('detail_z')) if entry else {}
 
 
 def get_nearby_schools(current_school_info):
@@ -3139,6 +3173,7 @@ def _warm_region_caches():
         _fetch_and_store_region(region_code)
         time.sleep(1)
 
+memguard.start()
 threading.Thread(target=_warm_region_caches, daemon=True).start()
 threading.Thread(target=ensure_asn_db, daemon=True).start()
 

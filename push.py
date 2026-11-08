@@ -176,7 +176,7 @@ def _gh_push():
         if digest == _remote['pushed_hash']:
             return True
         body = {
-            'message': f"chore: 푸시 구독 자동 갱신 ({datetime.now(_state['tz']).strftime('%Y-%m-%d %H:%M:%S')})",
+            'message': f"[skip render] chore: 푸시 구독 자동 갱신 ({datetime.now(_state['tz']).strftime('%Y-%m-%d %H:%M:%S')})",
             'content': base64.b64encode(payload).decode('ascii'),
             'branch': GITHUB_BRANCH,
         }

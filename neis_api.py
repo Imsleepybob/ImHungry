@@ -1,7 +1,9 @@
+import json
 import os
 import re
 import threading
 import time
+import zlib
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
@@ -131,12 +133,15 @@ class NeisUnavailable(Exception):
     pass
 
 
-def request_json(endpoint, params, timeout=5):
+def request_json(endpoint, params, timeout=5, total_timeout=None):
     keys = POOL.candidates()
     if not keys:
         raise NeisUnavailable('사용 가능한 NEIS API 키가 없습니다.')
     last = None
+    started = time.monotonic()
     for key in keys:
+        if total_timeout is not None and last is not None and time.monotonic() - started >= total_timeout:
+            break
         query = dict(params)
         query['KEY'] = key
         query.setdefault('Type', 'json')
@@ -154,18 +159,28 @@ def request_json(endpoint, params, timeout=5):
     raise NeisUnavailable('NEIS API 호출에 실패했습니다.')
 
 
-def fetch_rows(endpoint, params, timeout=5):
-    data = request_json(endpoint, params, timeout=timeout)
+def fetch_rows(endpoint, params, timeout=5, total_timeout=8):
+    data = request_json(endpoint, params, timeout=timeout, total_timeout=total_timeout)
     code = result_code(data)
     rows = extract_rows(data, endpoint)
     return rows, code
 
 
 class TTLCache:
-    def __init__(self, max_items=2000):
+    def __init__(self, max_items=2000, max_bytes=16 * 1024 * 1024):
         self._data = OrderedDict()
         self._lock = threading.Lock()
         self._max = max_items
+        self._max_bytes = max_bytes
+        self._bytes = 0
+
+    @staticmethod
+    def _pack(value):
+        return zlib.compress(json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8'), 3)
+
+    @staticmethod
+    def _unpack(blob):
+        return json.loads(zlib.decompress(blob).decode('utf-8'))
 
     def get(self, key, allow_stale=False):
         now = time.time()
@@ -173,19 +188,34 @@ class TTLCache:
             entry = self._data.get(key)
             if not entry:
                 return None
-            expires, value = entry
-            if allow_stale or now < expires:
-                self._data.move_to_end(key)
-                return value
-            return None
+            expires, blob = entry
+            if not (allow_stale or now < expires):
+                return None
+            self._data.move_to_end(key)
+        return self._unpack(blob)
 
     def set(self, key, value, ttl):
+        blob = self._pack(value)
+        size = len(blob) + len(str(key)) + 120
         with self._lock:
-            self._data[key] = (time.time() + ttl, value)
-            self._data.move_to_end(key)
-            while len(self._data) > self._max:
-                self._data.popitem(last=False)
+            old = self._data.pop(key, None)
+            if old:
+                self._bytes -= len(old[1]) + len(str(key)) + 120
+            self._data[key] = (time.time() + ttl, blob)
+            self._bytes += size
+            while self._data and (len(self._data) > self._max or self._bytes > self._max_bytes):
+                dropped_key, dropped = self._data.popitem(last=False)
+                self._bytes -= len(dropped[1]) + len(str(dropped_key)) + 120
+
+    def clear(self):
+        with self._lock:
+            self._data.clear()
+            self._bytes = 0
 
     def size(self):
         with self._lock:
             return len(self._data)
+
+    def bytes_used(self):
+        with self._lock:
+            return self._bytes
