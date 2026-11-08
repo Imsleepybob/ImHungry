@@ -5,7 +5,7 @@
 <span class="meal-meta">{% if detail.calories %}<span>열량 {{ detail.calories }}</span>{% endif %}{% if detail.people %}<span>급식 인원 {{ '{:,}'.format(detail.people) }}명</span>{% endif %}</span>
 {%- endif -%}
 {%- if detail and (detail.nutrients or detail.origins or detail.allergens) -%}
-<details class="meal-detail"><summary>영양과 원산지 자세히 보기</summary><div class="meal-detail-body">
+<details class="meal-detail"><summary>영양 정보 및 원산지 자세히 보기</summary><div class="meal-detail-body">
 {%- if detail.nutrients %}<p><strong>영양 정보</strong><br>{% for label, value in detail.nutrients %}{{ label }} {{ value }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
 {%- if detail.allergens %}<p><strong>알레르기 유발 성분</strong><br>{% for item in detail.allergens %}{{ item.name }}({{ item.no }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
 {%- if detail.origins %}<p><strong>원산지</strong><br>{% for label, value in detail.origins %}{{ label }} {{ value }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
