@@ -21,7 +21,7 @@ MEAL_LABELS = (('breakfast', '조식'), ('lunch', '중식'), ('dinner', '석식'
 TABS = (
     ('overview', '학교 정보', 'school_overview'),
     ('schedule', '학사일정', 'school_schedule_page'),
-    ('classes', '학급과 학과', 'school_classes_page'),
+    ('classes', '학급 및 학과', 'school_classes_page'),
     ('timetable', '시간표', 'school_timetable_page'),
 )
 
