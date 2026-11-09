@@ -3203,6 +3203,8 @@ school_pages_api = school_pages.init_school_pages(app, {
     'get_month_meals': get_month_meals_from_api,
     'get_month_meal_details': get_month_meal_details,
     'region_full_name': region_full_name,
+    'client_ip': get_client_ip,
+    'is_crawler': lambda: detect_client_type(request.headers.get('User-Agent', ''))[0],
 })
 
 if __name__ == "__main__":

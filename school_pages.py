@@ -1,5 +1,7 @@
 import calendar
 import functools
+import json
+import logging
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait as futures_wait
@@ -10,6 +12,7 @@ from flask import abort, make_response, redirect, render_template, request, url_
 import memguard
 import neis_api
 import school_data as sd
+import school_geo
 
 HOUR = 3600
 PARALLEL_DEADLINE = 7
@@ -46,6 +49,8 @@ def init_school_pages(app, ctx):
     meals_fn = ctx['get_month_meals']
     details_fn = ctx['get_month_meal_details']
     region_full = ctx['region_full_name']
+    client_ip_fn = ctx.get('client_ip')
+    is_crawler_fn = ctx.get('is_crawler')
 
     mode = sd.indexing_mode()
 
@@ -59,6 +64,20 @@ def init_school_pages(app, ctx):
 
     def looks_like_bot():
         return looks_like_bot_agent(request.headers.get('User-Agent'))
+
+    def record_geo_event(code, found):
+        try:
+            crawler = is_crawler_fn() if is_crawler_fn else looks_like_bot()
+            if crawler:
+                return
+            logging.getLogger('events').info(json.dumps({
+                'ts': datetime.now(kst).isoformat(),
+                'ip': client_ip_fn() if client_ip_fn else '',
+                'event': 'school_geo_hit' if found else 'school_geo_miss',
+                'value': code,
+            }, ensure_ascii=False))
+        except Exception:
+            pass
 
     def busy_response():
         response = make_response(render_template(
@@ -331,6 +350,8 @@ def init_school_pages(app, ctx):
             entry, 'overview', url_for('school_overview', code=code), indexing_allowed(profile), title, description,
             [school_ld(profile, parsed, region_name), breadcrumbs(profile, parsed, region_name)],
         )
+        geo = school_geo.lookup(code)
+        record_geo_event(code, geo is not None)
         siblings = []
         try:
             siblings = nearby(parsed)[:6]
@@ -341,6 +362,7 @@ def init_school_pages(app, ctx):
             'upcoming': upcoming,
             'meal': meal,
             'siblings': siblings,
+            'geo': geo,
             'level': level,
             'has_timetable': level in sd.KIND_TO_TIMETABLE,
             'anniversary': sd.format_anniversary(profile['anniversary']),
