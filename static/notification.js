@@ -389,6 +389,13 @@ const NotificationManager = {
     async syncWebPush() {
         const settings = this.loadSettings();
         if (!settings || !settings.enabled || !settings.school || Notification.permission !== 'granted') return;
+        if (settings.school_mode === 'my' && window.MySchool) {
+            const mine = window.MySchool.get();
+            if (mine && (mine.code !== settings.school.code || mine.region !== settings.school.region || mine.name !== settings.school.name)) {
+                settings.school = { code: mine.code, region: mine.region, name: mine.name };
+                this.saveSettings(settings);
+            }
+        }
         await this.subscribeWebPush(settings);
     },
 

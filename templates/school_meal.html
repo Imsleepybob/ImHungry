@@ -44,7 +44,8 @@
 <meta name="naver-site-verification" content="1a29afd73abcdb0f7c06f0abdafa9cf67fb738de" />
 <meta name="naver-site-verification" content="c76cf19f251dd849e05ea865c850cabe130cb96f" />
 <meta name="yandex-verification" content="ac2c4472e1221315" />
-<script src="{{ url_for('static', filename='notification.js', v='20261027') }}"></script>
+<script src="{{ url_for('static', filename='my-school.js', v='20261109') }}"></script>
+<script src="{{ url_for('static', filename='notification.js', v='20261109') }}"></script>
 <script src="{{ url_for('static', filename='announcements.js') }}?v=20261027-closeanim1" defer></script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
 <script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
@@ -206,6 +207,7 @@
       <a class="meal-action" href="{{ url_for('school_overview', code=school_code) }}" data-track="btn_school_info" data-track-value="{{ school_code }}">{{ icon('school', 18) }}학교 정보</a>
       <a class="meal-action" href="{{ url_for('school_timetable_page', code=school_code) }}" data-track="btn_school_timetable" data-track-value="{{ school_code }}">{{ icon('clock', 18) }}시간표</a>
       <a class="meal-action" href="{{ url_for('school_schedule_page', code=school_code) }}" data-track="btn_school_info" data-track-value="{{ school_code }}">{{ icon('calendar', 18) }}학사일정</a>
+      <button type="button" class="meal-action meal-action-wide" data-my-school data-code="{{ school_code }}" data-name="{{ school_name }}" data-region="{{ current_school.region_code }}">{{ icon('map-pin', 18) }}<span data-my-school-label>내 학교로 설정</span></button>
     </div>
     <div class="today-meal-card">
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
@@ -833,6 +835,10 @@ document.addEventListener('DOMContentLoaded', function() {
       </button>
     </header>
     <p class="noti-settings-desc">설정한 시각에 급식 알림을 받을 수 있어요. 급식이 없는 날은 알림이 오지 않아요.</p>
+    <div class="noti-settings-section" id="noti-school-section">
+      <label class="noti-settings-label" id="noti-school-label">알림 받을 학교</label>
+      <div class="noti-meal-list" id="noti-school-list" role="radiogroup" aria-labelledby="noti-school-label"></div>
+    </div>
     <div class="noti-settings-section">
       <label class="noti-settings-label">알림 받을 급식</label>
       <div class="noti-meal-list">
@@ -903,6 +909,11 @@ document.addEventListener('DOMContentLoaded', function() {
 [data-theme="dark"] .noti-meal-row input[type="time"] { color-scheme:dark; }
 .noti-meal-row input[type="time"]::-webkit-date-and-time-value { margin:0; min-height:20px; line-height:20px; text-align:left; }
 .noti-days { display:flex; justify-content:space-between; gap:6px; margin-top:8px; }
+.noti-school-option { display:grid; grid-template-columns:20px minmax(0,1fr) auto; align-items:center; column-gap:12px; min-height:52px; box-sizing:border-box; padding:8px 14px; cursor:pointer; }
+.noti-school-option + .noti-school-option { border-top:1px solid var(--border-color); }
+.noti-school-option input[type="radio"] { width:20px; height:20px; margin:0; accent-color:var(--primary-color); }
+.noti-school-name { color:var(--text-primary); font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+.noti-school-tag { color:var(--text-secondary); font-size:.8rem; white-space:nowrap; }
 .noti-days .day-label { flex:0 1 40px; width:auto; min-width:0; height:auto; aspect-ratio:1/1; box-sizing:border-box; }
 .noti-settings-actions { display:flex; flex-direction:column; gap:10px; }
 .noti-settings-actions .noti-guide-btn { min-height:48px; }
@@ -1107,7 +1118,59 @@ document.addEventListener('DOMContentLoaded', function() {
             disableBtn.hidden = !on;
         };
 
+        const pageSchool = { code: {{ school_code | tojson }}, region: {{ current_school.region_code | tojson }}, name: {{ school_name | tojson }} };
+        const schoolList = document.getElementById('noti-school-list');
+        let schoolCandidates = [];
+
+        const renderSchoolOptions = () => {
+            const saved = NotificationManager.loadSettings();
+            const mine = window.MySchool ? window.MySchool.get() : null;
+            schoolCandidates = [];
+            if (mine) schoolCandidates.push({ value: 'my', mode: 'my', school: mine, tag: '내 학교' });
+            if (!mine || mine.code !== pageSchool.code) schoolCandidates.push({ value: 'current', mode: 'current', school: pageSchool, tag: '지금 보는 학교' });
+            const savedSchool = saved && saved.school && saved.school.code ? saved.school : null;
+            if (savedSchool && savedSchool.code !== pageSchool.code && (!mine || mine.code !== savedSchool.code)) {
+                schoolCandidates.push({
+                    value: 'saved',
+                    mode: 'current',
+                    school: { code: savedSchool.code, region: savedSchool.region, name: savedSchool.name || '' },
+                    tag: '현재 알림 학교'
+                });
+            }
+            let selected = mine ? 'my' : 'current';
+            if (saved && saved.enabled && savedSchool) {
+                if (saved.school_mode === 'my' && mine) selected = 'my';
+                else if (mine && mine.code === savedSchool.code) selected = 'my';
+                else if (savedSchool.code === pageSchool.code) selected = 'current';
+                else if (schoolCandidates.some((c) => c.value === 'saved')) selected = 'saved';
+            }
+            schoolList.textContent = '';
+            schoolCandidates.forEach((candidate) => {
+                const row = document.createElement('label');
+                row.className = 'noti-school-option';
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'noti-school';
+                input.value = candidate.value;
+                input.checked = candidate.value === selected;
+                const name = document.createElement('span');
+                name.className = 'noti-school-name';
+                name.textContent = candidate.school.name || '기존에 설정한 학교';
+                const tag = document.createElement('span');
+                tag.className = 'noti-school-tag';
+                tag.textContent = candidate.tag;
+                row.append(input, name, tag);
+                schoolList.appendChild(row);
+            });
+        };
+
+        const selectedSchool = () => {
+            const checked = schoolList.querySelector('input[name="noti-school"]:checked');
+            return schoolCandidates.find((c) => checked && c.value === checked.value) || schoolCandidates[0];
+        };
+
         const openNotificationModal = () => {
+            renderSchoolOptions();
             clearTimeout(settingsCloseTimer);
             settingsModal.classList.add('show');
             settingsSheet.classList.remove('show');
@@ -1277,9 +1340,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 breakfast: { enabled: document.getElementById('noti-breakfast-enable').checked, time: document.getElementById('noti-breakfast-time').value },
                 lunch:     { enabled: document.getElementById('noti-lunch-enable').checked,     time: document.getElementById('noti-lunch-time').value },
                 dinner:    { enabled: document.getElementById('noti-dinner-enable').checked,    time: document.getElementById('noti-dinner-time').value },
-                days: Array.from(selectedDays),
-                school: { code: {{ school_code | tojson }}, region: {{ current_school.region_code | tojson }} }
+                days: Array.from(selectedDays)
             };
+            const chosen = selectedSchool();
+            settings.school = { code: chosen.school.code, region: chosen.school.region, name: chosen.school.name };
+            settings.school_mode = chosen.mode;
 
             if (NotificationManager.isWebPushSupported()) {
                 const ok = await NotificationManager.subscribeWebPush(settings);
@@ -1309,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', function() {
             NotificationManager.autoSchedule(mealData);
         } else if (NotificationManager.isWebPushSupported()) {
             NotificationManager.syncWebPush();
+            window.addEventListener('myschoolchange', () => { NotificationManager.syncWebPush(); });
         }
     }
 

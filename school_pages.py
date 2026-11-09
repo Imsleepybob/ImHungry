@@ -573,9 +573,10 @@ def init_school_pages(app, ctx):
         return respond('school_timetable.html', context, False, max_age=60)
 
     def saved_school_redirect(target):
-        code = request.cookies.get('school_code', '')
-        if sd.SCHOOL_CODE_RE.match(code):
-            return redirect(url_for(target, code=code))
+        for cookie_name in ('my_school_code', 'school_code'):
+            code = request.cookies.get(cookie_name, '')
+            if sd.SCHOOL_CODE_RE.match(code):
+                return redirect(url_for(target, code=code))
         return redirect(url_for('schools_index'))
 
     @app.route('/timetable')

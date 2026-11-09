@@ -31,6 +31,7 @@
 })();
 </script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
+<script src="{{ url_for('static', filename='my-school.js', v='20261109') }}"></script>
 {% for block in ld_blocks %}<script type="application/ld+json">{{ block | tojson }}</script>
 {% endfor %}
 </head>
@@ -53,6 +54,7 @@
     {% if area %}<p class="sp-sub">{{ area }}</p>{% endif %}
     <div class="sp-cta">
       <a class="sp-btn {{ 'sp-btn-secondary' if cta_secondary else 'sp-btn-primary' }} sp-btn-block" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">{{ icon('utensils', 20) }}오늘 급식 보기</a>
+      <button type="button" class="sp-btn sp-btn-secondary sp-btn-block" data-my-school data-code="{{ profile.code }}" data-name="{{ profile.name }}" data-region="{{ profile.region_code }}">{{ icon('map-pin', 20) }}<span data-my-school-label>내 학교로 설정</span></button>
     </div>
     <nav class="sp-tabs" aria-label="학교 정보 메뉴">
       {% for tab in tabs %}<a href="{{ tab.url }}" class="sp-tab{% if tab.active %} active{% endif %}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}

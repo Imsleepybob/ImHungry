@@ -830,6 +830,8 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-title { margin: 0 0 4px; font-size: 1.55rem; font-weight: 800; line-height: 1.25; color: var(--text-primary); word-break: keep-all; }
 .sp-sub { margin: 0 0 16px; font-size: 0.9rem; color: var(--text-muted); }
 .sp-cta { margin: 0 0 4px; }
+.sp-cta .sp-btn + .sp-btn { margin-top: 8px; }
+.sp-btn.is-set { border-color: var(--primary-color); color: var(--primary-color); }
 .sp-tabs { display: flex; gap: 22px; margin: 14px 0 16px; border-bottom: 1px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
 .sp-tabs::-webkit-scrollbar { display: none; }
 .sp-tab { position: relative; flex: 0 0 auto; padding: 12px 2px; font-size: 0.95rem; font-weight: 500; color: var(--text-secondary); text-decoration: none; white-space: nowrap; }
@@ -969,6 +971,9 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
 .meal-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
 .meal-action { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 6px; border: 1px solid var(--border-light); border-radius: var(--sp-r-sm); background: var(--bg-container); color: var(--text-primary); font-size: 0.85rem; font-weight: 500; line-height: 1; text-decoration: none; white-space: nowrap; transition: border-color 0.16s ease, color 0.16s ease, transform 0.16s ease; -webkit-tap-highlight-color: transparent; }
 .meal-action .ico { width: 18px; height: 18px; }
+button.meal-action { font-family: inherit; cursor: pointer; }
+.meal-action-wide { grid-column: 1 / -1; }
+.meal-action.is-set { border-color: var(--primary-color); color: var(--primary-color); }
 .meal-action:active { transform: scale(0.98); }
 @media (hover: hover) {
     .meal-action:hover { border-color: var(--primary-color); color: var(--primary-color); transform: translateY(-1px); }

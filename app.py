@@ -1917,7 +1917,8 @@ def index():
     error_message = request.args.get('error_message')
     region_cookie = unquote(request.cookies.get('region_name') or '') or None
     school_name_encoded = request.cookies.get('school_name')
-    school_code_cookie = request.cookies.get('school_code')
+    my_school_cookie = request.cookies.get('my_school_code', '')
+    school_code_cookie = my_school_cookie if school_data.SCHOOL_CODE_RE.match(my_school_cookie) else request.cookies.get('school_code')
     school_name_cookie = unquote(school_name_encoded) if school_name_encoded else None
 
     if request.method == 'POST':
