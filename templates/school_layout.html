@@ -66,7 +66,7 @@
       <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
     </div>
     {% block page %}<div class="sp-panel">{% block content %}{% endblock %}</div>{% endblock %}
-    <p class="sp-source">학교 정보는 교육부 나이스(NEIS) 교육정보 개방 포털 자료를 바탕으로 해요{% if updated_label %}(기준일 {{ updated_label }}){% endif %}. 학교 사정에 따라 실제와 다를 수 있으니 정확한 내용은 학교에 확인해주세요.</p>
+    <p class="sp-source">학교 정보는 교육부 나이스(NEIS) 교육정보 개방 포털 자료를 바탕으로 해요{% if updated_label %}(기준일 {{ updated_label }}){% endif %}.{% if disclosure %} 학생수와 급식 운영 정보는 학교알리미(schoolinfo.go.kr) 공시 자료를 바탕으로 해요.{% endif %} 학교 사정에 따라 실제와 다를 수 있으니 정확한 내용은 학교에 확인해주세요.</p>
   </div>
 </div>
 {% include '_site_footer.html' %}

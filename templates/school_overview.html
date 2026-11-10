@@ -45,6 +45,16 @@
   {% else %}
     <p class="sp-empty">오늘은 등록된 급식 정보가 없어요.</p>
   {% endif %}
+  {% if disclosure and disclosure.meal %}
+  {% set ml = disclosure.meal %}
+  <p class="sp-label">급식 운영, {{ ml.year }}년 공시</p>
+  <ul class="sp-list">
+    {% if ml.operation %}<li><span>운영 방식</span><span class="sp-list-value">{{ ml.operation }}{% if ml.vendors %} ({{ ml.vendors | join(', ') }}){% endif %}</span></li>{% endif %}
+    {% if ml.students %}<li><span>급식 학생</span><span class="sp-list-value">{{ '{:,}'.format(ml.students) }}명{% if ml.rate is not none %} ({{ ml.rate }}%){% endif %}</span></li>{% endif %}
+    {% if ml.staff %}<li><span>급식 담당 인력</span><span class="sp-list-value">{{ ml.staff }}</span></li>{% endif %}
+    {% if ml.place %}<li><span>배식 장소</span><span class="sp-list-value">{{ ml.place }}</span></li>{% endif %}
+  </ul>
+  {% endif %}
   <a class="sp-link" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">이번 주 급식과 영양 정보 보기{{ icon('chevron-right', 16) }}</a>
 </section>
 
@@ -63,6 +73,21 @@
     {% endif %}
   {% else %}
     <p class="sp-empty">NEIS에 등록된 학급 정보가 아직 없어요.</p>
+  {% endif %}
+  {% if disclosure and disclosure.students %}
+  {% set st = disclosure.students %}
+  <p class="sp-label">학생수, {{ st.year }}년 공시</p>
+  <div class="sp-stats">
+    <div class="sp-stat"><div class="sp-stat-label">전체</div><div class="sp-stat-value">{{ '{:,}'.format(st.total) }}명</div></div>
+    <div class="sp-stat"><div class="sp-stat-label">남학생</div><div class="sp-stat-value">{{ '{:,}'.format(st.men) }}명</div></div>
+    <div class="sp-stat"><div class="sp-stat-label">여학생</div><div class="sp-stat-value">{{ '{:,}'.format(st.women) }}명</div></div>
+  </div>
+  <ul class="sp-list">
+    {% if st.diff is not none %}<li><span>전년 대비</span><span class="sp-list-value">{{ '%+d' | format(st.diff) }}명</span></li>{% endif %}
+    {% if st.avg %}<li><span>{{ st.area }} {{ st.kind }} 평균</span><span class="sp-list-value">{{ '{:,}'.format(st.avg) }}명 ({{ st.avg_count }}개교)</span></li>{% endif %}
+    {% for g in st.grades %}<li><span>{{ g.label }}</span><span class="sp-list-value">{{ '{:,}'.format(g.total) }}명 (남 {{ g.m }}, 여 {{ g.w }})</span></li>{% endfor %}
+    {% for g in st.extra %}<li><span>{{ g.label }}</span><span class="sp-list-value">{{ '{:,}'.format(g.total) }}명 (남 {{ g.m }}, 여 {{ g.w }})</span></li>{% endfor %}
+  </ul>
   {% endif %}
   <a class="sp-link" href="{{ url_for('school_classes_page', code=profile.code) }}">학급 및 학과 자세히 보기{{ icon('chevron-right', 16) }}</a>
 </section>

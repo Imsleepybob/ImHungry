@@ -895,7 +895,9 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-list { margin: 0; padding: 0; list-style: none; }
 .sp-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--table-border); font-size: 0.92rem; color: var(--text-primary); }
 .sp-list li:first-child { border-top: 0; padding-top: 0; }
-.sp-list-value { flex-shrink: 0; color: var(--text-secondary); }
+.sp-stats + .sp-list { margin-top: 12px; }
+.sp-list li > span:first-child { flex-shrink: 0; }
+.sp-list-value { flex: 0 1 auto; min-width: 0; text-align: right; overflow-wrap: anywhere; color: var(--text-secondary); }
 .sp-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--border-light); border-radius: var(--sp-r-xs); font-size: 0.72rem; line-height: 1.5; color: var(--text-secondary); vertical-align: middle; }
 .sp-tag.is-alert { border-color: var(--sp-sun); color: var(--sp-sun); }
 
