@@ -12,9 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_school_geo import CODE_RE, SIDO, district, group_of, norm_name, rest_key, split_address
 
 ENDPOINT = 'https://www.schoolinfo.go.kr/openApi.do'
-KIND_CODES = ('02', '03', '04', '05')
-YEAR_TYPES = ('63', '34')
-PILOT_TYPES = ('0', '09', '10', '22', '34', '44', '51', '56', '58', '59', '62', '63', '73')
+KIND_CODES = ('02', '03', '04')
+PILOT_TYPES = ('0', '09', '10', '22', '34', '44', '51', '56', '59', '63', '73')
 
 
 class Fetcher:
@@ -56,6 +55,11 @@ class Fetcher:
                 print(f'  재시도 {attempt + 1}/5 ({error.__class__.__name__}), {wait:.0f}초 대기', flush=True)
                 continue
             if data.get('resultCode') != 'success':
+                if '공시되지 않은' in str(data.get('resultMsg')):
+                    empty = {'resultCode': 'success', 'resultMsg': data.get('resultMsg'), 'list': []}
+                    with open(path, 'w', encoding='utf-8') as handle:
+                        json.dump(empty, handle, ensure_ascii=False)
+                    return empty
                 self.failures += 1
                 print(f'  응답 실패 apiType={api_type} sgg={sgg} kind={kind} year={year}: {data.get("resultMsg")}', flush=True)
                 if self.failures >= self.max_failures:
@@ -96,11 +100,13 @@ def to_float(value):
         return None
 
 
-def student_entry(row):
+def student_entry(rows):
+    row = rows[0]
     return [to_int(row.get(f'COL_M{i}')) for i in range(1, 9)] + [to_int(row.get(f'COL_W{i}')) for i in range(1, 9)] + [to_int(row.get('SUM'))]
 
 
-def meal_entry(row):
+def meal_entry(rows):
+    row = rows[0]
     entry = {}
     text = {'o': 'OPER_MET_CODE', 'v2': 'COL_2', 'v3': 'COL_3'}
     for short, field in text.items():
@@ -119,6 +125,151 @@ def meal_entry(row):
     if places:
         entry['p'] = places
     return entry
+
+
+def class_entry(rows):
+    row = rows[0]
+    entry = {}
+    for short, field in (('c', 'COL_C_SUM'), ('t', 'TEACH_CNT')):
+        if row.get(field) not in (None, ''):
+            entry[short] = to_int(row.get(field))
+    for short, field in (('a', 'COL_SUM'), ('p', 'TEACH_CAL')):
+        value = to_float(row.get(field))
+        if value is not None:
+            entry[short] = value
+    return entry
+
+
+def move_entry(rows):
+    row = rows[0]
+    if row.get('MVIN_SUM') in (None, '') and row.get('MVT_SUM') in (None, ''):
+        return {}
+    return {'in': to_int(row.get('MVIN_SUM')), 'out': to_int(row.get('MVT_SUM'))}
+
+
+TEACHER_FIELDS = {1: 'COL_1', 2: 'COL_2', 15: 'COL_15', 3: 'COL_3', 4: 'COL_4', 5: 'COL_5', 6: 'COL_6', 7: 'COL_7', 8: 'COL_8', 9: 'COL_9', 10: 'COL_10', 11: 'COL_11', 13: 'COL_13', 14: 'COL_14'}
+
+
+def teacher_entry(rows):
+    row = rows[0]
+    if row.get('COL_S') in (None, ''):
+        return {}
+    positions = {str(code): to_int(row.get(field)) for code, field in TEACHER_FIELDS.items() if to_int(row.get(field))}
+    return {'t': to_int(row.get('COL_S')), 'm': to_int(row.get('COL_SM')), 'w': to_int(row.get('COL_SW')), 'r': to_int(row.get('COL_SR')), 'p': positions}
+
+
+def enroll_entry(rows):
+    row = rows[0]
+    if row.get('TOT_SUM') in (None, ''):
+        return {}
+    return {'t': to_int(row.get('TOT_SUM'))}
+
+
+def club_entry(rows):
+    row = rows[0]
+    entry = {
+        'a': to_int(row.get('STDNT_SLCTL_CCCLU_FGR')), 'an': to_int(row.get('STDNT_SLCTL_FGR')),
+        'c': to_int(row.get('CREAT_EXPER_ACT_CCCLU_FGR')), 'cn': to_int(row.get('CREAT_EXPER_ACT_STDNT_FGR')),
+    }
+    return entry if any(entry.values()) else {}
+
+
+def after_entry(rows):
+    row = rows[0]
+    entry = {
+        'p': to_int(row.get('ASL_PTPT_STDNT_FGR')), 'g': to_int(row.get('SUM_ASL_PGM_FGR')),
+        'c': to_int(row.get('ASL_CURR_PGM_FGR')), 'sp': to_int(row.get('ASL_SPABL_APTD_PGM_FGR')),
+        'pm': to_int(row.get('ECC_PM_OPER_CCCLA_FGR')), 'pms': to_int(row.get('ECC_PM_PTPT_STDNT_FGR')),
+        'dn': to_int(row.get('ECC_DINNR_OPER_CCCLA_FGR')), 'dns': to_int(row.get('ECC_DINNR_PTPT_STDNT_FGR')),
+    }
+    return entry if any(entry.values()) else {}
+
+
+def safety_entry(rows):
+    dates = []
+    managed = 0
+    unmanaged = []
+    for row in rows:
+        name = (row.get('CK_BBOOK_NM') or '').strip()
+        flag = str(row.get('CK_RSLT_CODE') or '').strip().upper()
+        if flag == 'O':
+            managed += 1
+            day = str(row.get('CK_YMD') or '').strip()
+            if len(day) == 8 and day.isdigit():
+                dates.append(day)
+        elif flag == 'X' and name:
+            unmanaged.append(name)
+    if not managed and not unmanaged:
+        return {}
+    entry = {'n': managed + len(unmanaged), 'o': managed}
+    if dates:
+        entry['d'] = max(dates)
+    if unmanaged:
+        entry['x'] = unmanaged
+    return entry
+
+
+def uniform_entry(rows):
+    row = rows[0]
+    entry = {}
+    if row.get('SCUF_OPER_SC_NM') or row.get('SUTYP_SFB_AMT') or row.get('LFTYP_SFB_AMT') or row.get('GWEAR_SFB_AMT'):
+        for short, field in (('ty', 'SCUF_OPER_SC_NM'), ('sm', 'SUTYP_PRCHS_MET_SC_NM'), ('lm', 'LFTYP_PRCHS_MET_SC_NM'), ('gm', 'GWEAR_PRCHS_MET_SC_NM')):
+            value = (row.get(field) or '').strip() if isinstance(row.get(field), str) else ''
+            if value:
+                entry[short] = value
+        for short, field in (('su', 'SUTYP_SFB_AMT'), ('lf', 'LFTYP_SFB_AMT'), ('gw', 'GWEAR_SFB_AMT'), ('sp', 'STU_1_PSNBY_SCU')):
+            amount = to_int(row.get(field))
+            if amount:
+                entry[short] = amount
+        return entry
+    winter = [code for code, field in ((1, 'COL_1'), (2, 'COL_2'), (3, 'COL_3'), (4, 'COL_4'), (6, 'COL_6')) if str(row.get(field) or '').strip()]
+    summer = [code for code, field in ((1, 'COL_8'), (2, 'COL_9'), (3, 'COL_10'), (4, 'COL_11'), (6, 'COL_13')) if str(row.get(field) or '').strip()]
+    winter_price = to_int(row.get('COL_7'))
+    summer_price = to_int(row.get('COL_14'))
+    if winter:
+        entry['dm'] = winter
+    if summer:
+        entry['hm'] = summer
+    if winter_price:
+        entry['dp'] = winter_price
+    if summer_price:
+        entry['hp'] = summer_price
+    return entry
+
+
+SPECS = (
+    ('63', 'st', student_entry, True),
+    ('34', 'ml', meal_entry, True),
+    ('09', 'cl', class_entry, False),
+    ('10', 'mv', move_entry, False),
+    ('22', 'tc', teacher_entry, False),
+    ('51', 'en', enroll_entry, False),
+    ('56', 'cb', club_entry, False),
+    ('59', 'af', after_entry, False),
+    ('44', 'sf', safety_entry, False),
+    ('73', 'un', uniform_entry, False),
+)
+
+
+def apply_spec(fetcher, region, kind, entries, years, spec):
+    api_type, target, builder, all_years = spec
+    for year in years:
+        data = fetcher.get(api_type, region['sido'], region['sgg'], kind, year)
+        grouped = collections.defaultdict(list)
+        for row in data.get('list', []):
+            code = row.get('SCHUL_CODE')
+            if code in entries:
+                grouped[code].append(row)
+        for code, group in grouped.items():
+            if not all_years and any(entries[code][target].values()):
+                continue
+            built = builder(group)
+            if built:
+                entries[code][target][str(year)] = built
+        if not all_years:
+            covered = sum(1 for item in entries.values() if item[target])
+            if covered * 2 >= len(entries):
+                return
 
 
 def collect(fetcher, regions, kinds, years, only):
@@ -140,20 +291,13 @@ def collect(fetcher, regions, kinds, years, only):
             bucket['area'] = schools[0].get('ADRCD_NM') or f'{region["sido_name"]} {region["sgg_name"]}'
             entries = bucket['kinds'].setdefault(kind, {})
             for row in schools:
-                entries[row['SCHUL_CODE']] = {'nm': row.get('SCHUL_NM') or '', 'st': {}, 'ml': {}}
+                entries[row['SCHUL_CODE']] = {'nm': row.get('SCHUL_NM') or '', **{spec[1]: {} for spec in SPECS}}
                 disclosed.append({
                     'sgg': region['sgg'], 'kind': kind, 'code': row['SCHUL_CODE'], 'name': row.get('SCHUL_NM') or '',
                     'group': SIDO.get(region['sido_name'], ''), 'rest': split_address(row.get('SCHUL_RDNMA')),
                 })
-            for year in years:
-                for api_type, target, builder in (('63', 'st', student_entry), ('34', 'ml', meal_entry)):
-                    data = fetcher.get(api_type, region['sido'], region['sgg'], kind, year)
-                    for row in data.get('list', []):
-                        code = row.get('SCHUL_CODE')
-                        if code in entries:
-                            built = builder(row)
-                            if built:
-                                entries[code][target][str(year)] = built
+            for spec in SPECS:
+                apply_spec(fetcher, region, kind, entries, years, spec)
     return shards, disclosed
 
 
@@ -216,6 +360,10 @@ def write_output(out_dir, shards, mapping, years, tiers):
     os.makedirs(out_dir, exist_ok=True)
     built = date.today().isoformat()
     for sgg, shard in shards.items():
+        for entries in shard['kinds'].values():
+            for item in entries.values():
+                for key in [k for k, v in item.items() if k != 'nm' and not v]:
+                    del item[key]
         payload = {'v': 1, 'built': built, 'sgg': sgg, 'area': shard['area'], 'kinds': shard['kinds']}
         with open(os.path.join(out_dir, f'{sgg}.json'), 'w', encoding='utf-8') as handle:
             json.dump(payload, handle, ensure_ascii=False, separators=(',', ':'))
@@ -249,7 +397,7 @@ def main():
     parser.add_argument('--neis')
     parser.add_argument('--out', default='data/disclosure')
     parser.add_argument('--cache', default='.disclosure_cache')
-    parser.add_argument('--years', default='2025,2024')
+    parser.add_argument('--years', default='2026,2025')
     parser.add_argument('--kinds', default=','.join(KIND_CODES))
     parser.add_argument('--delay', type=float, default=1.0)
     parser.add_argument('--max-failures', type=int, default=8)

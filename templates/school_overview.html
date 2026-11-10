@@ -89,9 +89,78 @@
     {% for g in st.extra %}<li><span>{{ g.label }}</span><span class="sp-list-value">{{ '{:,}'.format(g.total) }}명 (남 {{ g.m }}, 여 {{ g.w }})</span></li>{% endfor %}
   </ul>
   {% endif %}
+  {% if disclosure and (disclosure.classes or disclosure.enroll or disclosure.moves) %}
+  {% set cl = disclosure.classes %}
+  <p class="sp-label">학급 운영</p>
+  <ul class="sp-list">
+    {% if cl and cl.avg %}<li><span>학급당 학생 수</span><span class="sp-list-value">{{ cl.avg }}명 ({{ cl.year }}년)</span></li>{% endif %}
+    {% if cl and cl.ratio %}<li><span>교원 1인당 학생 수</span><span class="sp-list-value">{{ cl.ratio }}명 ({{ cl.year }}년)</span></li>{% endif %}
+    {% if disclosure.enroll %}<li><span>입학생</span><span class="sp-list-value">{{ '{:,}'.format(disclosure.enroll.total) }}명 ({{ disclosure.enroll.year }}년)</span></li>{% endif %}
+    {% if disclosure.moves %}<li><span>전입 학생</span><span class="sp-list-value">{{ disclosure.moves.move_in }}명 ({{ disclosure.moves.year }}년)</span></li><li><span>전출 학생</span><span class="sp-list-value">{{ disclosure.moves.move_out }}명 ({{ disclosure.moves.year }}년)</span></li>{% endif %}
+  </ul>
+  {% endif %}
   <a class="sp-link" href="{{ url_for('school_classes_page', code=profile.code) }}">학급 및 학과 자세히 보기{{ icon('chevron-right', 16) }}</a>
 </section>
 
+{% if disclosure and disclosure.teachers %}
+{% set tc = disclosure.teachers %}
+<section class="sp-sec" id="teachers">
+  <h2>교원 현황</h2>
+  <p class="sp-label">{{ tc.year }}년 공시</p>
+  <div class="sp-stats">
+    <div class="sp-stat"><div class="sp-stat-label">전체</div><div class="sp-stat-value">{{ '{:,}'.format(tc.total) }}명</div></div>
+    <div class="sp-stat"><div class="sp-stat-label">남자</div><div class="sp-stat-value">{{ '{:,}'.format(tc.men) }}명</div></div>
+    <div class="sp-stat"><div class="sp-stat-label">여자</div><div class="sp-stat-value">{{ '{:,}'.format(tc.women) }}명</div></div>
+  </div>
+  <ul class="sp-list">
+    {% for item in tc.positions %}<li><span>{{ item.label }}</span><span class="sp-list-value">{{ item.count }}명</span></li>{% endfor %}
+    {% if tc.leave %}<li><span>휴직 교원 (별도 집계)</span><span class="sp-list-value">{{ tc.leave }}명</span></li>{% endif %}
+  </ul>
+</section>
+{% endif %}
+{% if disclosure and disclosure.activities %}
+{% set ac = disclosure.activities %}
+<section class="sp-sec" id="activities">
+  <h2>방과후학교와 동아리</h2>
+  {% if ac.after %}
+  <p class="sp-label">방과후학교, {{ ac.after_year }}년 공시</p>
+  <ul class="sp-list">
+    {% if ac.after.p %}<li><span>참여 학생</span><span class="sp-list-value">{{ '{:,}'.format(ac.after.p) }}명</span></li>{% endif %}
+    {% if ac.after.g %}<li><span>프로그램</span><span class="sp-list-value">{{ ac.after.g }}개 (교과 {{ ac.after.c }}개, 특기적성 {{ ac.after.sp }}개)</span></li>{% endif %}
+    {% if ac.after.pm %}<li><span>오후 돌봄교실</span><span class="sp-list-value">{{ ac.after.pm }}개 (참여 {{ ac.after.pms }}명)</span></li>{% endif %}
+    {% if ac.after.dn %}<li><span>저녁 돌봄교실</span><span class="sp-list-value">{{ ac.after.dn }}개 (참여 {{ ac.after.dns }}명)</span></li>{% endif %}
+  </ul>
+  {% endif %}
+  {% if ac.club %}
+  <p class="sp-label">동아리, {{ ac.club_year }}년 공시</p>
+  <ul class="sp-list">
+    {% if ac.club.a %}<li><span>학생 자율 동아리</span><span class="sp-list-value">{{ ac.club.a }}개 (참여 {{ ac.club.an }}명)</span></li>{% endif %}
+    {% if ac.club.c %}<li><span>창의적 체험활동 동아리</span><span class="sp-list-value">{{ ac.club.c }}개 (참여 {{ ac.club.cn }}명)</span></li>{% endif %}
+  </ul>
+  {% endif %}
+</section>
+{% endif %}
+{% if disclosure and disclosure.uniform %}
+<section class="sp-sec" id="uniform">
+  <h2>교복</h2>
+  <p class="sp-label">{{ disclosure.uniform.year }}년 공시</p>
+  <ul class="sp-list">
+    {% for label, text in disclosure.uniform.lines %}<li><span>{{ label }}</span><span class="sp-list-value">{{ text }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% if disclosure and disclosure.safety %}
+{% set sf = disclosure.safety %}
+<section class="sp-sec" id="safety">
+  <h2>시설 안전 점검</h2>
+  <p class="sp-label">{{ sf.year }}년 공시</p>
+  <ul class="sp-list">
+    <li><span>점검 대장</span><span class="sp-list-value">{{ sf.total }}종 중 {{ sf.managed }}종 관리</span></li>
+    {% if sf.date %}<li><span>최종 점검일</span><span class="sp-list-value">{{ sf.date }}</span></li>{% endif %}
+    {% if sf.unmanaged %}<li><span>관리하지 않는 대장</span><span class="sp-list-value">{{ sf.unmanaged | join(', ') }}</span></li>{% endif %}
+  </ul>
+</section>
+{% endif %}
 <section class="sp-sec" id="schedule">
   <h2>다가오는 학사일정</h2>
   {% if upcoming %}

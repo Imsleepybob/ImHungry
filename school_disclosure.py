@@ -7,6 +7,12 @@ DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'disclosu
 SHARD_LIMIT = 24
 KIND_LABELS = {'02': '초등학교', '03': '중학교', '04': '고등학교', '05': '특수학교'}
 PLACE_LABELS = {4: '식당', 5: '교실', 6: '식당과 교실', 7: '기타'}
+POSITION_LABELS = (
+    ('1', '교장'), ('2', '교감'), ('15', '수석교사'), ('3', '보직교사'), ('4', '일반교사'), ('5', '특수교사'),
+    ('6', '전문상담교사'), ('7', '사서교사'), ('8', '실기교사'), ('9', '보건교사'), ('10', '영양교사'),
+    ('11', '기간제교사'), ('13', '강사'), ('14', '원어민강사'),
+)
+METHOD_LABELS = {1: '학교 주관 구매', 2: '공동 구매', 3: '개별 구매', 4: '기타', 6: '해당 없음'}
 
 _lock = threading.Lock()
 _state = {'loaded': False, 'map': {}, 'built': '', 'years': []}
@@ -105,6 +111,91 @@ def _meal(school):
     }
 
 
+def _pick(school, key):
+    by_year = school.get(key) or {}
+    years = _latest(by_year)
+    if not years:
+        return None, None
+    return int(years[0]), by_year[years[0]]
+
+
+def _classes(school):
+    year, row = _pick(school, 'cl')
+    if not row or not (row.get('a') or row.get('p')):
+        return None
+    return {'year': year, 'count': row.get('c'), 'avg': row.get('a'), 'ratio': row.get('p'), 'teachers': row.get('t')}
+
+
+def _moves(school):
+    year, row = _pick(school, 'mv')
+    if not row:
+        return None
+    return {'year': year, 'move_in': row.get('in', 0), 'move_out': row.get('out', 0)}
+
+
+def _enroll(school):
+    year, row = _pick(school, 'en')
+    if not row or not row.get('t'):
+        return None
+    return {'year': year, 'total': row['t']}
+
+
+def _teachers(school):
+    year, row = _pick(school, 'tc')
+    if not row or not row.get('t'):
+        return None
+    positions = [{'label': label, 'count': row['p'][key]} for key, label in POSITION_LABELS if row.get('p', {}).get(key)]
+    return {'year': year, 'total': row['t'], 'men': row.get('m', 0), 'women': row.get('w', 0), 'leave': row.get('r', 0), 'positions': positions}
+
+
+def _activities(school):
+    club_year, club = _pick(school, 'cb')
+    after_year, after = _pick(school, 'af')
+    if not club and not after:
+        return None
+    return {'club_year': club_year, 'club': club, 'after_year': after_year, 'after': after}
+
+
+def _format_day(day):
+    return f'{day[0:4]}.{day[4:6]}.{day[6:8]}' if len(day) == 8 else ''
+
+
+def _safety(school):
+    year, row = _pick(school, 'sf')
+    if not row or not row.get('n'):
+        return None
+    return {'year': year, 'total': row['n'], 'managed': row.get('o', 0), 'date': _format_day(row.get('d', '')), 'unmanaged': row.get('x', [])}
+
+
+def _uniform(school):
+    year, row = _pick(school, 'un')
+    if not row:
+        return None
+    lines = []
+    if 'ty' in row or 'su' in row or 'lf' in row or 'gw' in row:
+        if row.get('ty'):
+            lines.append(('교복 유형', row['ty']))
+        for label, amount, method in (('정장형', row.get('su'), row.get('sm')), ('생활형', row.get('lf'), row.get('lm')), ('체육복', row.get('gw'), row.get('gm'))):
+            if amount:
+                lines.append((f'{label} 낙찰가', f'{amount:,}원' + (f' ({method})' if method else '')))
+        if row.get('sp'):
+            lines.append(('학생 1인당 구입 지원금', f'{row["sp"]:,}원'))
+    else:
+        winter = [METHOD_LABELS.get(code, '') for code in row.get('dm', [])]
+        summer = [METHOD_LABELS.get(code, '') for code in row.get('hm', [])]
+        if winter and winter != ['해당 없음']:
+            lines.append(('동복 구매 방식', ', '.join(winter)))
+        if row.get('dp'):
+            lines.append(('동복 평균 가격', f'{row["dp"]:,}원'))
+        if summer and summer != ['해당 없음']:
+            lines.append(('하복 구매 방식', ', '.join(summer)))
+        if row.get('hp'):
+            lines.append(('하복 평균 가격', f'{row["hp"]:,}원'))
+    if not lines:
+        return None
+    return {'year': year, 'lines': lines}
+
+
 def lookup(code):
     if not _state['loaded']:
         _load_index()
@@ -122,10 +213,14 @@ def lookup(code):
     peers = list(peers_map.values())
     students = _students(school, peers)
     meal = _meal(school)
-    if not students and not meal:
+    extra = {
+        'classes': _classes(school), 'moves': _moves(school), 'enroll': _enroll(school), 'teachers': _teachers(school),
+        'activities': _activities(school), 'safety': _safety(school), 'uniform': _uniform(school),
+    }
+    if not students and not meal and not any(extra.values()):
         return None
     area = shard.get('area') or ''
     if students:
         students['area'] = area
         students['kind'] = KIND_LABELS.get(kind, '')
-    return {'students': students, 'meal': meal, 'built': _state['built']}
+    return {'students': students, 'meal': meal, 'built': _state['built'], **extra}
