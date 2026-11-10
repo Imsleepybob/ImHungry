@@ -773,6 +773,20 @@ body {
         </div>
       </div>
       <div class="btn-stat">
+        <div class="btn-stat-icon">{{ icon('map-pin', 20) }}</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">지도 불러오기 성공</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.school_map_load) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
+        <div class="btn-stat-icon">{{ icon('map-pin', 20) }}</div>
+        <div class="btn-stat-info">
+          <div class="btn-stat-label">지도 불러오기 실패</div>
+          <div class="btn-stat-count">{{ "{:,}".format(stats.events.school_map_fail) }}</div>
+        </div>
+      </div>
+      <div class="btn-stat">
         <div class="btn-stat-icon">{{ icon('eye', 20) }}</div>
         <div class="btn-stat-info">
           <div class="btn-stat-label">학교 페이지 조회 (이용자)</div>

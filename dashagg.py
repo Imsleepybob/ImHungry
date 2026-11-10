@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 SCHOOL_PATH_RE = re.compile(r'^/meal/(\w+)$')
 SCHOOL_PAGE_RE = re.compile(r'^/school/(\w+)(?:/(schedule|classes|timetable))?$')
 REFERRER_RE = re.compile(r'https?://([^/]+)')
-EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable', 'school_geo_hit', 'school_geo_miss')
+EVENT_COUNTERS = ('btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable', 'school_geo_hit', 'school_geo_miss', 'school_map_load', 'school_map_fail')
 ANN_EVENTS = {'ann_view': 0, 'ann_close': 1}
 EGG_MAPS = ('devices', 'os', 'browsers', 'haptics', 'input', 'mode')
 
@@ -454,6 +454,8 @@ def finalize(day_aggs, today, days, school_name, cache_stats, security_stats):
             'btn_school_timetable': total['ev'].get('btn_school_timetable', 0),
             'school_geo_hit': total['ev'].get('school_geo_hit', 0),
             'school_geo_miss': total['ev'].get('school_geo_miss', 0),
+            'school_map_load': total['ev'].get('school_map_load', 0),
+            'school_map_fail': total['ev'].get('school_map_fail', 0),
             'ann': {key: {'views': counts[0], 'closes': counts[1]} for key, counts in total['ev'].get('ann', {}).items()},
             'egg': _egg_stats(total['ev'].get('egg')),
         },

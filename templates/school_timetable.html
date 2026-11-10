@@ -2,7 +2,7 @@
 {% from '_icons.html' import icon %}
 {% block h1 %}{{ profile.name }} 시간표{% endblock %}
 {% block content %}
-<section class="sp-card">
+<section class="sp-sec">
   {% if not supported %}
     <p class="sp-empty">이 학교 유형은 NEIS 시간표 조회를 지원하지 않아요.</p>
   {% elif not groups %}
@@ -37,7 +37,7 @@
 </section>
 
 {% if selected_value and supported %}
-<section class="sp-card">
+<section class="sp-sec">
   <div class="sp-monthbar">
     <a class="sp-iconbtn" href="{{ url_for('school_timetable_page', code=profile.code, sel=selected_value, d=prev_week, view=(view if view == 'room' else None)) }}" rel="nofollow" aria-label="이전 주">{{ icon('chevron-left', 20) }}</a>
     <h2>{{ week_label }}</h2>

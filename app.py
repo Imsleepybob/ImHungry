@@ -2091,7 +2091,7 @@ def track_event():
         return '', 204
     event = data.get('event', '')
     value = str(data.get('value', ''))[:50]
-    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close', 'egg_open', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable'}
+    allowed = {'theme', 'search_method', 'btn_month', 'btn_nearby', 'btn_share', 'btn_notification', 'pwa_visit', 'ann_view', 'ann_close', 'egg_open', 'btn_school_info', 'btn_school_meal', 'btn_school_timetable', 'school_map_load', 'school_map_fail'}
     if event not in allowed:
         return '', 204
     if event in ('ann_view', 'ann_close'):

@@ -351,6 +351,9 @@ def init_school_pages(app, ctx):
             [school_ld(profile, parsed, region_name), breadcrumbs(profile, parsed, region_name)],
         )
         geo = school_geo.lookup(code)
+        kakao_map_key = (os.environ.get('KAKAO_MAP_APP_KEY') or '').strip()
+        if not kakao_map_key.isalnum():
+            kakao_map_key = ''
         record_geo_event(code, geo is not None)
         siblings = []
         try:
@@ -363,6 +366,7 @@ def init_school_pages(app, ctx):
             'meal': meal,
             'siblings': siblings,
             'geo': geo,
+            'kakao_key': kakao_map_key,
             'level': level,
             'has_timetable': level in sd.KIND_TO_TIMETABLE,
             'anniversary': sd.format_anniversary(profile['anniversary']),

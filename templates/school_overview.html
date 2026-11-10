@@ -2,10 +2,14 @@
 {% from '_school_card.html' import school_card %}
 {% from '_icons.html' import icon %}
 {% block h1 %}{{ profile.name }} 학교 정보{% endblock %}
-{% block content %}
+{% block page_class %} is-split{% endblock %}
+{% block page %}
 {% set kinds = [level, profile.founding, profile.coedu] %}
 {% if level == '고등학교' %}{% set kinds = kinds + [profile.hs_type, profile.special] %}{% endif %}
-<section class="sp-card" id="basic">
+{% set has_aside = geo or profile.address %}
+<div class="sp-split{% if not has_aside %} no-aside{% endif %}">
+<div class="sp-panel sp-main">
+<section class="sp-sec" id="basic">
   <h2>기본 정보</h2>
   <dl class="sp-rows">
     <div class="sp-row"><dt>학교 구분</dt><dd>{{ kinds|select|join(', ') }}</dd></div>
@@ -28,7 +32,7 @@
   {% if profile.planned %}<p class="sp-note">아직 개교하지 않았거나 개교 예정인 학교예요. 개교 후 정보가 달라질 수 있어요.</p>{% endif %}
 </section>
 
-<section class="sp-card" id="meal">
+<section class="sp-sec" id="meal">
   <h2>오늘 급식, {{ today_label }}</h2>
   {% if meal and meal['items'] %}
     {% for item in meal['items'] %}
@@ -44,7 +48,7 @@
   <a class="sp-link" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">이번 주 급식과 영양 정보 보기{{ icon('chevron-right', 16) }}</a>
 </section>
 
-<section class="sp-card" id="classes">
+<section class="sp-sec" id="classes">
   <h2>학급 현황</h2>
   {% if class_summary.total %}
     <p class="sp-lead">학급은 모두 <strong>{{ class_summary.total }}개</strong>예요.</p>
@@ -63,7 +67,7 @@
   <a class="sp-link" href="{{ url_for('school_classes_page', code=profile.code) }}">학급 및 학과 자세히 보기{{ icon('chevron-right', 16) }}</a>
 </section>
 
-<section class="sp-card" id="schedule">
+<section class="sp-sec" id="schedule">
   <h2>다가오는 학사일정</h2>
   {% if upcoming %}
   <ul class="sp-events">
@@ -81,7 +85,7 @@
 </section>
 
 {% if has_timetable %}
-<section class="sp-card" id="timetable">
+<section class="sp-sec" id="timetable">
   <h2>시간표</h2>
   <p class="sp-lead">학년과 반을 고르면 이번 주 시간표를 바로 볼 수 있어요.</p>
   <a class="sp-btn sp-btn-secondary sp-btn-block" href="{{ url_for('school_timetable_page', code=profile.code) }}" data-track="btn_school_timetable" data-track-value="{{ profile.code }}">{{ icon('clock', 20) }}시간표 보기</a>
@@ -89,11 +93,36 @@
 {% endif %}
 
 {% if siblings %}
-<section class="sp-card" id="nearby">
+<section class="sp-sec" id="nearby">
   <h2>{% if parsed.district %}{{ parsed.district }} {% endif %}{{ level }} 더 보기</h2>
   <div class="school-list">
     {% for school in siblings %}{{ school_card(school) }}{% endfor %}
   </div>
 </section>
 {% endif %}
+</div>
+{% if has_aside %}
+<aside class="sp-aside" id="location" aria-label="학교 위치">
+  <div class="sp-aside-inner">
+    {% if geo and kakao_key %}
+    <div class="sp-map" id="sp-map" data-key="{{ kakao_key }}" data-lat="{{ geo.lat }}" data-lng="{{ geo.lng }}" data-code="{{ profile.code }}"><p class="sp-map-state">지도를 불러오는 중이에요.</p></div>
+    {% endif %}
+    <div class="sp-map-body">
+      <h2>위치</h2>
+      {% if profile.address %}<p class="sp-map-address">{% if profile.zip %}({{ profile.zip }}) {% endif %}{{ profile.address }}</p>{% endif %}
+      <div class="sp-map-links">
+        {% if geo %}
+        <a class="sp-btn sp-btn-secondary sp-btn-sm sp-map-wide" href="https://map.kakao.com/link/map/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
+        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/to/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">길찾기</a>
+        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/roadview/{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">로드뷰</a>
+        {% else %}
+        <a class="sp-btn sp-btn-secondary sp-btn-sm sp-map-wide" href="https://map.kakao.com/link/search/{{ (profile.address ~ ' ' ~ profile.name)|urlencode }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</aside>
+{% endif %}
+</div>
 {% endblock %}
+{% block scripts %}{% if geo and kakao_key %}<script src="{{ url_for('static', filename='school-map.js', v='20261110') }}" defer></script>{% endif %}{% endblock %}

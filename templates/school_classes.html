@@ -1,7 +1,7 @@
 {% extends 'school_layout.html' %}
 {% block h1 %}{{ profile.name }} 학급 및 학과{% endblock %}
 {% block content %}
-<section class="sp-card">
+<section class="sp-sec">
   <h2>{{ academic_year }}학년도 학급 현황</h2>
   {% if load_failed %}
     <p class="sp-empty">학급 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
@@ -28,7 +28,7 @@
 </section>
 
 {% if with_departments and (majors or tracks) %}
-<section class="sp-card">
+<section class="sp-sec">
   <h2>학과와 계열</h2>
   {% if tracks %}
   <p class="sp-label sp-label-first">계열</p>
