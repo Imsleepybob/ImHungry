@@ -47,8 +47,11 @@
         var mine = get();
         var active = !!mine && mine.code === button.getAttribute('data-code');
         var label = button.querySelector('[data-my-school-label]');
+        var text = active ? '내 학교로 설정됨' : '내 학교로 설정';
         button.classList.toggle('is-set', active);
-        if (label) label.textContent = active ? '내 학교로 설정됨' : '내 학교로 설정';
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        button.setAttribute('aria-label', text);
+        if (label) label.textContent = text;
         button.setAttribute('title', active ? '누르면 내 학교 설정이 해제돼요' : '홈에서 바로 이 학교의 급식이 열려요');
     }
 

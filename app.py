@@ -1856,6 +1856,40 @@ def get_nearby_schools(current_school_info):
         app.logger.error(f"Error getting nearby schools: {e}")
         return []
 
+MEAL_NONE = "급식 정보 없음"
+MEAL_WEEKDAYS = ('일', '월', '화', '수', '목', '금', '토')
+MEAL_ALLERGEN_TAIL = re.compile(r'\s*\([\d.,\s]+\)\s*$')
+
+
+def build_meal_calendar(month_meals, today):
+    weeks = []
+    for week in calendar.Calendar(firstweekday=6).monthdayscalendar(today.year, today.month):
+        row = []
+        for weekday, day in enumerate(week):
+            if not day:
+                row.append(None)
+                continue
+            ymd = f'{today.year}{today.month:02d}{day:02d}'
+            meal = month_meals.get(ymd) or {}
+            has_meal = any(meal.get(key, MEAL_NONE) != MEAL_NONE for key in ('breakfast', 'lunch', 'dinner'))
+            items = []
+            if has_meal:
+                text = next((meal[key] for key in ('lunch', 'breakfast', 'dinner') if meal.get(key, MEAL_NONE) != MEAL_NONE), '')
+                items = [MEAL_ALLERGEN_TAIL.sub('', line.strip()) for line in text.split('\n') if line.strip()]
+            row.append({
+                'day': day,
+                'ymd': ymd,
+                'weekday': weekday,
+                'is_today': day == today.day,
+                'has_meal': has_meal,
+                'preview': items[:2],
+                'more': max(len(items) - 2, 0),
+                'title': f'{today.month}월 {day}일 ({MEAL_WEEKDAYS[weekday]}) 급식',
+            })
+        weeks.append(row)
+    return weeks
+
+
 def get_week_dates():
     today = datetime.now(KST).date()
     start_of_week = today - timedelta(days=(today.weekday() + 1) % 7)
@@ -1994,6 +2028,16 @@ def school_meal_view(school_code):
     area_text = ' '.join(part for part in (region_full_name(region_name) if region_name else '', school_info.get('district')) if part)
     seo_title, seo_description = school_data.meal_seo(school_info['school_name'], area_text, today_str, today_meal, meal_details_data.get(today_str, {}))
 
+    meal_tabs = [
+        {
+            'key': key,
+            'label': label,
+            'url': url_for(endpoint, **{('school_code' if endpoint == 'school_meal_view' else 'code'): school_code}),
+            'active': key == 'meal',
+        }
+        for key, label, endpoint in school_pages.TABS
+    ]
+
     resp = make_response(render_template(
         'school_meal.html',
         regions=regions,
@@ -2009,6 +2053,10 @@ def school_meal_view(school_code):
         region=region_name,
         meal_details=meal_details_data,
         today_detail=meal_details_data.get(today_str, {}),
+        tabs=meal_tabs,
+        area=area_text,
+        meal_calendar=build_meal_calendar(full_month_meals_data, datetime.now(KST).date()),
+        weekdays=MEAL_WEEKDAYS,
         page_title=seo_title,
         page_description=seo_description,
         canonical_url=f"{SITE_URL}/meal/{school_info['school_code']}"

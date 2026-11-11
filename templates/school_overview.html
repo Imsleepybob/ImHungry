@@ -188,9 +188,17 @@
 
 {% if siblings %}
 <section class="sp-sec" id="nearby">
-  <h2>{% if parsed.district %}{{ parsed.district }} {% endif %}{{ level }} 더 보기</h2>
-  <div class="school-list">
-    {% for school in siblings %}{{ school_card(school) }}{% endfor %}
+  <button type="button" class="school-finder-link" id="toggleNearbyBtn" aria-expanded="false" aria-controls="nearbySchoolsContainer">
+    <span>
+      <span class="school-finder-title">{% if parsed.district %}{{ parsed.district }} {% endif %}{{ level }} 더 보기</span>
+      <span class="school-finder-sub">{{ siblings|length }}개교를 바로 볼 수 있어요.</span>
+    </span>
+    <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
+  </button>
+  <div class="nearby-list" id="nearbySchoolsContainer" hidden>
+    <div class="school-list">
+      {% for school in siblings %}{{ school_card(school) }}{% endfor %}
+    </div>
   </div>
 </section>
 {% endif %}
@@ -206,11 +214,11 @@
       {% if profile.address %}<p class="sp-map-address">{% if profile.zip %}({{ profile.zip }}) {% endif %}{{ profile.address }}</p>{% endif %}
       <div class="sp-map-links">
         {% if geo %}
-        <a class="sp-btn sp-btn-secondary sp-btn-sm sp-map-wide" href="https://map.kakao.com/link/map/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
-        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/to/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">길찾기</a>
-        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/roadview/{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">로드뷰</a>
+        <a class="submit-btn sp-map-wide" href="https://map.kakao.com/link/map/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
+        <a class="submit-btn" href="https://map.kakao.com/link/to/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">길찾기</a>
+        <a class="submit-btn" href="https://map.kakao.com/link/roadview/{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">로드뷰</a>
         {% else %}
-        <a class="sp-btn sp-btn-secondary sp-btn-sm sp-map-wide" href="https://map.kakao.com/link/search/{{ (profile.address ~ ' ' ~ profile.name)|urlencode }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
+        <a class="submit-btn sp-map-wide" href="https://map.kakao.com/link/search/{{ (profile.address ~ ' ' ~ profile.name)|urlencode }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
         {% endif %}
       </div>
     </div>
@@ -219,4 +227,17 @@
 {% endif %}
 </div>
 {% endblock %}
-{% block scripts %}{% if geo and kakao_key %}<script src="{{ url_for('static', filename='school-map.js', v='20261110') }}" defer></script>{% endif %}{% endblock %}
+{% block scripts %}{% if geo and kakao_key %}<script src="{{ url_for('static', filename='school-map.js', v='20261110') }}" defer></script>{% endif %}
+<script>
+(function () {
+    var button = document.getElementById('toggleNearbyBtn');
+    var list = document.getElementById('nearbySchoolsContainer');
+    if (!button || !list) return;
+    button.addEventListener('click', function () {
+        var opening = list.hidden;
+        list.hidden = !opening;
+        button.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        if (opening) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+})();
+</script>{% endblock %}

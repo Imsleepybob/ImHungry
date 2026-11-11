@@ -1,4 +1,5 @@
 {% from '_icons.html' import icon -%}
+{% from '_school_head.html' import sp_actions, sp_tabs -%}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -17,7 +18,7 @@
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.7">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.8">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <script>
@@ -31,7 +32,9 @@
 })();
 </script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
-<script src="{{ url_for('static', filename='my-school.js', v='20261109') }}"></script>
+<script src="{{ url_for('static', filename='my-school.js', v='20261111') }}"></script>
+<script src="{{ url_for('static', filename='share.js', v='20261111') }}" defer></script>
+<script src="{{ url_for('static', filename='school-search.js', v='20261111') }}" defer></script>
 {% for block in ld_blocks %}<script type="application/ld+json">{{ block | tojson }}</script>
 {% endfor %}
 </head>
@@ -45,20 +48,13 @@
 </div>
 <div class="container">
   <div class="school-page{% block page_class %}{% endblock %}">
-    <nav class="sp-crumbs" aria-label="현재 위치">
-      <a href="{{ url_for('schools_index') }}">학교 목록</a>
-      {% if region_name %}{{ icon('chevron-right', 14) }}<a href="{{ url_for('schools_by_region', region_name=region_name) }}">{{ region_name|region_full }}</a>{% endif %}
-      {% if parsed.school_level and region_name %}{{ icon('chevron-right', 14) }}<a href="{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=parsed.school_level) }}">{{ parsed.school_level }}</a>{% endif %}
-    </nav>
-    <h1 class="sp-title">{% block h1 %}{{ profile.name }}{% endblock %}</h1>
-    {% if area %}<p class="sp-sub">{{ area }}</p>{% endif %}
-    <div class="sp-cta">
-      <a class="sp-btn {{ 'sp-btn-secondary' if cta_secondary else 'sp-btn-primary' }} sp-btn-block" href="{{ meal_url }}" data-track="btn_school_meal" data-track-value="{{ profile.code }}">{{ icon('utensils', 20) }}오늘 급식 보기</a>
-      <button type="button" class="sp-btn sp-btn-secondary sp-btn-block" data-my-school data-code="{{ profile.code }}" data-name="{{ profile.name }}" data-region="{{ profile.region_code }}">{{ icon('map-pin', 20) }}<span data-my-school-label>내 학교로 설정</span></button>
+    {% include '_school_search.html' %}
+    <div class="sp-titlerow">
+      <h1 class="sp-title">{% block h1 %}{{ profile.name }}{% endblock %}</h1>
+      {{ sp_actions(profile.code, profile.name, profile.region_code, canonical_url, profile.name, profile.name ~ '의 학교 정보를 확인하세요!') }}
     </div>
-    <nav class="sp-tabs" aria-label="학교 정보 메뉴">
-      {% for tab in tabs %}<a href="{{ tab.url }}" class="sp-tab{% if tab.active %} active{% endif %}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>{% endfor %}
-    </nav>
+    {% if area %}<p class="sp-sub">{{ area }}</p>{% endif %}
+    {{ sp_tabs(tabs, profile.code) }}
     <div id="bodyad-desktop">
       <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>
     </div>
@@ -66,6 +62,15 @@
       <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
     </div>
     {% block page %}<div class="sp-panel">{% block content %}{% endblock %}</div>{% endblock %}
+    <div class="school-finder-entry">
+      <a class="school-finder-link" href="{% if region_name and parsed.school_level %}{{ url_for('schools_by_region_and_level', region_name=region_name, school_level=parsed.school_level) }}{% else %}{{ url_for('schools_index') }}{% endif %}">
+        <span>
+          <span class="school-finder-title">다른 학교도 찾아볼까요?</span>
+          <span class="school-finder-sub">지역과 학교 유형으로 전국 모든 학교를 찾아보세요.</span>
+        </span>
+        <span class="school-finder-arrow" aria-hidden="true">&rsaquo;</span>
+      </a>
+    </div>
     <p class="sp-source">학교 정보는 교육부 나이스(NEIS) 교육정보 개방 포털 자료를 바탕으로 해요{% if updated_label %}(기준일 {{ updated_label }}){% endif %}.{% if disclosure %} 학생수, 급식 운영, 교원, 방과후학교 등의 공시 정보는 학교알리미(schoolinfo.go.kr) 공시 자료를 바탕으로 해요.{% endif %} 학교 사정에 따라 실제와 다를 수 있으니 정확한 내용은 학교에 확인해주세요.</p>
   </div>
 </div>

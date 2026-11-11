@@ -1,4 +1,4 @@
-{% from '_icons.html' import icon -%}
+{% from '_icons.html' import icon, theme_icon -%}
 <footer class="main-footer">
         <div class="footer-content">
             <p>본 웹사이트는 사용자 경험 개선을 위해 쿠키를 사용합니다. 계속 탐색하시면 쿠키 사용에 동의하는 것으로 간주됩니다.</p>
@@ -14,15 +14,15 @@
     <div id="themePopover" class="theme-popover">
         <div class="theme-option" data-value="light">
             <span>라이트 모드</span>
-            <span>{{ icon('sun', 18) }}</span>
+            <span>{{ theme_icon('light') }}</span>
         </div>
         <div class="theme-option" data-value="dark">
             <span>다크 모드</span>
-            <span>{{ icon('moon', 18) }}</span>
+            <span>{{ theme_icon('dark') }}</span>
         </div>
         <div class="theme-option" data-value="system">
             <span>시스템 설정</span>
-            <span>{{ icon('monitor', 18) }}</span>
+            <span>{{ theme_icon('system') }}</span>
         </div>
     </div>
 

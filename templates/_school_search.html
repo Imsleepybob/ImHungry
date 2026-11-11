@@ -1,0 +1,12 @@
+<form method="POST" action="{{ url_for('index') }}" id="regionForm" class="search-form-compact">
+  <select id="region" name="region" class="step-select">
+    <option value="" disabled{% if not region_name %} selected{% endif %}>지역</option>
+    {% for name, code in regions.items() %}<option value="{{ name }}"{% if name == region_name %} selected{% endif %}>{{ name }}</option>
+    {% endfor %}
+  </select>
+  <div class="autocomplete-container">
+    <input type="text" id="school_name" name="school_name" value="{{ profile.name }}" required autocomplete="off" placeholder="학교명 입력">
+    <div id="autocomplete-results" class="autocomplete-results"></div>
+  </div>
+  <button type="submit" class="submit-btn">검색</button>
+</form>

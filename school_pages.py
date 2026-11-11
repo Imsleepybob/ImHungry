@@ -24,6 +24,7 @@ LEVELS_WITH_DEPARTMENTS = ('고등학교', '특수학교')
 MEAL_LABELS = (('breakfast', '조식'), ('lunch', '중식'), ('dinner', '석식'))
 TABS = (
     ('overview', '학교 정보', 'school_overview'),
+    ('meal', '급식', 'school_meal_view'),
     ('schedule', '학사일정', 'school_schedule_page'),
     ('classes', '학급 및 학과', 'school_classes_page'),
     ('timetable', '시간표', 'school_timetable_page'),
@@ -277,7 +278,7 @@ def init_school_pages(app, ctx):
         profile, parsed = entry['profile'], entry['parsed']
         region_name = region_name_of(profile)
         tabs = [
-            {'key': key, 'label': label, 'url': url_for(endpoint, code=profile['code']), 'active': key == tab}
+            {'key': key, 'label': label, 'url': url_for(endpoint, **{('school_code' if endpoint == 'school_meal_view' else 'code'): profile['code']}), 'active': key == tab}
             for key, label, endpoint in TABS
         ]
         return {
@@ -362,7 +363,7 @@ def init_school_pages(app, ctx):
         record_geo_event(code, geo is not None)
         siblings = []
         try:
-            siblings = nearby(parsed)[:6]
+            siblings = nearby(parsed)
         except Exception as exc:
             app.logger.error(f'주변 학교 조회 실패 ({code}): {exc}')
         context.update({
