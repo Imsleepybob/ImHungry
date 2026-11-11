@@ -215,8 +215,8 @@
       <div class="sp-map-links">
         {% if geo %}
         <a class="submit-btn sp-map-wide" href="https://map.kakao.com/link/map/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
-        <a class="submit-btn" href="https://map.kakao.com/link/to/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">길찾기</a>
-        <a class="submit-btn" href="https://map.kakao.com/link/roadview/{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">로드뷰</a>
+        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/to/{{ profile.name|urlencode }},{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">길찾기</a>
+        <a class="sp-btn sp-btn-secondary sp-btn-sm" href="https://map.kakao.com/link/roadview/{{ geo.lat }},{{ geo.lng }}" target="_blank" rel="noopener noreferrer">로드뷰</a>
         {% else %}
         <a class="submit-btn sp-map-wide" href="https://map.kakao.com/link/search/{{ (profile.address ~ ' ' ~ profile.name)|urlencode }}" target="_blank" rel="noopener noreferrer">카카오맵에서 보기</a>
         {% endif %}

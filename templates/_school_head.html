@@ -1,8 +1,8 @@
 {% from '_icons.html' import icon, share_icon -%}
 {% macro sp_actions(code, name, region_code, share_url, share_title, share_text) -%}
 <div class="sp-acts">
-  <button type="button" class="sp-act" data-my-school data-code="{{ code }}" data-name="{{ name }}" data-region="{{ region_code }}" aria-pressed="false" aria-label="내 학교로 설정" title="홈에서 바로 이 학교의 급식이 열려요">{{ icon('map-pin', 20) }}<span data-my-school-label hidden>내 학교로 설정</span></button>
-  <button type="button" class="sp-act" data-share data-url="{{ share_url }}" data-title="{{ share_title }}" data-text="{{ share_text }}" data-track="btn_share" data-track-value="{{ code }}" aria-label="공유하기" title="공유하기">{{ share_icon(18) }}</button>
+  <button type="button" class="sp-act" data-my-school data-code="{{ code }}" data-name="{{ name }}" data-region="{{ region_code }}" aria-pressed="false" aria-label="내 학교로 설정" title="홈에서 바로 이 학교의 급식이 열려요">{{ icon('map-pin', 16) }}<span class="sp-act-label" data-my-school-label>내 학교로 설정</span></button>
+  <button type="button" class="sp-act" data-share data-url="{{ share_url }}" data-title="{{ share_title }}" data-text="{{ share_text }}" data-track="btn_share" data-track-value="{{ code }}" aria-label="공유하기">{{ share_icon(16) }}<span class="sp-act-label">공유하기</span></button>
 </div>
 {%- endmacro %}
 {% macro sp_tabs(tabs, code) -%}

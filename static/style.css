@@ -755,7 +755,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 }
 
 .ico { display: block; flex-shrink: 0; }
-.theme-option .ico { width: 20px; height: 20px; }
+.theme-option .ico { width: 17px; height: 17px; }
 
 .sp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px; border: 1px solid transparent; border-radius: var(--sp-r-sm); font-family: inherit; font-size: 1rem; font-weight: 600; line-height: 1; text-decoration: none; cursor: pointer; box-sizing: border-box; transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease; -webkit-tap-highlight-color: transparent; }
 .sp-btn-primary { background: var(--primary-color); color: var(--sp-on-primary); }
@@ -764,7 +764,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-btn:focus-visible, .sp-tab:focus-visible, .sp-iconbtn:focus-visible, .sp-act:focus-visible, .pill-tab:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
 @media (hover: hover) {
     .sp-btn-primary:hover { background: var(--sp-primary-hover); text-decoration: none; }
-    .sp-btn-secondary:hover { border-color: var(--primary-color); color: var(--primary-color); text-decoration: none; }
+    .sp-btn-secondary:hover { background: var(--bg-secondary); text-decoration: none; }
 }
 
 .school-item { position: relative; }
@@ -774,17 +774,16 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .school-item-info:hover { text-decoration: underline; }
 
 .school-page { max-width: var(--page-w); margin: 0 auto; padding: 4px 0 40px; }
-.sp-title { margin: 0; text-align: center; font-size: 1.55rem; font-weight: 800; line-height: 1.25; color: var(--text-primary); word-break: keep-all; }
-.sp-sub { margin: 0 0 16px; text-align: center; font-size: 0.9rem; color: var(--text-muted); }
-.sp-titlerow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 4px; }
-.sp-acts { display: flex; gap: 2px; }
-.sp-act { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sp-title { margin: 0 0 6px; text-align: center; font-size: 1.8rem; font-weight: 600; line-height: 1.25; color: var(--text-primary); word-break: keep-all; }
+.sp-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin: 0 0 4px; }
+.sp-act { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: var(--sp-r-sm); background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85rem; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .sp-act.is-set { color: var(--primary-color); }
 .sp-act.is-set .ico path { fill: currentColor; }
 .sp-act.is-set .ico circle { fill: var(--bg-container); }
 @media (hover: hover) {
     .sp-act:hover { background: var(--bg-secondary); color: var(--text-primary); }
     .sp-act.is-set:hover { color: var(--primary-color); }
+    .sp-act:hover .sp-act-label { text-decoration: underline; text-underline-offset: 3px; }
 }
 .sp-tabs { display: flex; margin: 14px 0 16px; border-bottom: 1px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
 .sp-tabs::-webkit-scrollbar { display: none; }
@@ -792,6 +791,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-tab.active { border-bottom-color: var(--primary-color); font-weight: 700; color: var(--primary-color); }
 @media (hover: hover) {
     .sp-tab:hover { color: var(--primary-color); text-decoration: none; }
+    .sp-tab:not(.active):hover { border-bottom-color: var(--text-muted); }
 }
 @media (max-width: 480px) {
     .sp-tab { padding: 12px 2px; font-size: 0.8rem; }
@@ -817,7 +817,6 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-map-wide { grid-column: 1 / -1; }
 .sp-map-links .submit-btn { display: flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; margin-top: 0; padding: 0 12px; font-size: 0.92rem; color: #fff; text-decoration: none; }
 .sp-btn-sm { min-height: 44px; padding: 0 12px; font-size: 0.92rem; }
-.school-page.is-split { max-width: 1080px; }
 @media (min-width: 900px) {
     .sp-split { display: grid; grid-template-columns: minmax(0, 1fr) 380px; align-items: start; gap: 16px; }
     .sp-split.no-aside { display: block; }
@@ -830,7 +829,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-note { margin: 12px 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--text-muted); }
 .sp-source { margin: 16px 2px 0; font-size: 0.78rem; line-height: 1.55; color: var(--text-muted); }
 .sp-label { margin: 16px 0 8px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-.sp-link { position: relative; display: inline-flex; align-items: center; gap: 2px; margin-top: 12px; min-height: 28px; font-size: 0.92rem; font-weight: 500; color: var(--link-color); text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size 0.2s ease; }
+.sp-link { position: relative; display: inline-flex; align-items: center; gap: 2px; margin-top: 12px; min-height: 28px; font-size: 0.92rem; font-weight: 500; color: var(--link-color); text-decoration: none; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; }
 .sp-link .ico { width: 16px; height: 16px; }
 @media (hover: hover) {
     .sp-link:hover { background-size: 100% 1px; }
@@ -880,7 +879,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 .sp-monthbar h2 { margin: 0; text-align: center; font-size: 1.1rem; }
 .sp-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--border-light); border-radius: var(--sp-r-sm); background: var(--bg-container); color: var(--text-primary); text-decoration: none; cursor: pointer; transition: border-color 0.16s ease, color 0.16s ease; -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) {
-    .sp-iconbtn:hover { border-color: var(--primary-color); color: var(--primary-color); }
+    .sp-iconbtn:hover { background: var(--bg-secondary); }
 }
 .sp-today-link { display: inline-block; margin: 0 0 12px; font-size: 0.85rem; color: var(--link-color); text-decoration: none; }
 
@@ -962,7 +961,7 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
 }
 
 @media (max-width: 767px) {
-    .sp-title { font-size: 1.3rem; }
+    .sp-title { font-size: 1.5rem; }
     .sp-row { grid-template-columns: 78px minmax(0, 1fr); }
 }
 .sp-label-first { margin-top: 0; }
@@ -974,13 +973,12 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
     .cal-num { font-size: 0.85rem; }
     .cal-ev { padding-left: 5px; font-size: 0.75rem; }
     .cal-more { font-size: 0.72rem; }
-    .sp-title { font-size: 1.7rem; }
 }
 
 .meal-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 20px; }
 .meal-head .meal-title { margin: 0; }
 .pill-tabs { display: inline-flex; padding: 3px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-secondary); }
-.pill-tab { padding: 6px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.88rem; font-weight: 600; line-height: 1.2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pill-tab { display: inline-flex; align-items: center; justify-content: center; padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.88rem; font-weight: 600; line-height: 1.2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .pill-tab[aria-selected="true"] { background: var(--primary-color); color: var(--sp-on-primary); }
 @media (hover: hover) {
     .pill-tab[aria-selected="false"]:hover { color: var(--text-primary); }
@@ -992,3 +990,23 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
 .main-entry .school-finder-link { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .main-entry .school-finder-link:hover { box-shadow: none; }
 .main-entry .region-quick { margin-top: 0; padding: 0 18px 16px; }
+.toggle-month-btn { display: block; min-height: 48px; margin: 20px auto 0; padding: 0 28px; border: 0; border-radius: var(--sp-r-sm); background: var(--primary-color); color: var(--sp-on-primary); font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.16s ease; }
+@media (hover: hover) {
+    .toggle-month-btn:hover { background: var(--sp-primary-hover); }
+}
+.month-meal { margin-top: 24px; }
+@media (max-width: 767px) {
+    .toggle-month-btn { padding: 0 20px; font-size: 15px; }
+}
+#site-announcements { max-width: 900px; margin: 12px auto; padding: 0 16px; }
+#site-announcements:empty { display: none; }
+.site-announcement { display: flex; align-items: flex-start; gap: 12px; text-align: left; }
+.announcement-content { flex: 1; min-width: 0; }
+.announcement-close { flex: none; border: 0; background: transparent; color: inherit; font-size: 24px; line-height: 1; cursor: pointer; padding: 0 3px; margin: -3px 0; }
+.announcement-content > :first-child { margin-top: 0; }
+.announcement-content > :last-child { margin-bottom: 0; }
+.announcement-content a { color: inherit; }
+@media (max-width: 600px) {
+    #site-announcements { padding: 0 12px; }
+    .site-announcement { padding: 12px; }
+}

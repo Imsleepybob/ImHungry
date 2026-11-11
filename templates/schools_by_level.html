@@ -1,3 +1,4 @@
+{% from '_icons.html' import theme_icon -%}
 {% from '_school_card.html' import school_card -%}
 {% macro chip_group(key, label, options, labels=None) %}
 {% if options|length > 1 %}
@@ -24,7 +25,7 @@
     <title>{{ region_name|region_full }} {{ school_level }} 목록 - 급식알리미</title>
     <link rel="canonical" href="{{ canonical_url }}">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.9">
     <script>
         (function() {
             const savedTheme = localStorage.getItem('theme') || 'system';
@@ -53,6 +54,7 @@
             </svg>
         </button>
     </header>
+{% include '_announcements.html' %}
 <div id="ad-mobile">
     <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
 </div>
@@ -137,15 +139,15 @@
     <div id="themePopover" class="theme-popover">
         <div class="theme-option" data-value="light">
             <span>라이트 모드</span>
-            <span>☀</span>
+            <span>{{ theme_icon('light') }}</span>
         </div>
         <div class="theme-option" data-value="dark">
             <span>다크 모드</span>
-            <span>🌙</span>
+            <span>{{ theme_icon('dark') }}</span>
         </div>
         <div class="theme-option" data-value="system">
             <span>시스템 설정</span>
-            <span>⚙</span>
+            <span>{{ theme_icon('system') }}</span>
         </div>
     </div>
 

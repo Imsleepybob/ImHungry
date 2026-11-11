@@ -1,3 +1,4 @@
+{% from '_icons.html' import theme_icon -%}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -6,7 +7,7 @@
 <title>{% block title %}{% endblock %} - 급식알리미</title>
 <meta name="robots" content="index, follow">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.9">
 <script>
     (function() {
         const savedTheme = localStorage.getItem('theme') || 'system';
@@ -55,6 +56,7 @@
     </button>
   </div>
 </header>
+{% include '_announcements.html' %}
 
 <main class="legal">
   <h1>{% block heading %}{% endblock %}</h1>
@@ -75,9 +77,9 @@
 </footer>
 
 <div id="themePopover" class="theme-popover">
-  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>☀</span></div>
-  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>🌙</span></div>
-  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>⚙</span></div>
+  <div class="theme-option" data-value="light"><span>라이트 모드</span><span>{{ theme_icon('light') }}</span></div>
+  <div class="theme-option" data-value="dark"><span>다크 모드</span><span>{{ theme_icon('dark') }}</span></div>
+  <div class="theme-option" data-value="system"><span>시스템 설정</span><span>{{ theme_icon('system') }}</span></div>
 </div>
 
 <script>

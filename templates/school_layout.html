@@ -40,6 +40,7 @@
 </head>
 <body>
 {% include '_site_header.html' %}
+{% include '_announcements.html' %}
 <div id="ad-mobile">
   <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
 </div>
@@ -49,11 +50,8 @@
 <div class="container">
   <div class="school-page{% block page_class %}{% endblock %}">
     {% include '_school_search.html' %}
-    <div class="sp-titlerow">
-      <h1 class="sp-title">{% block h1 %}{{ profile.name }}{% endblock %}</h1>
-      {{ sp_actions(profile.code, profile.name, profile.region_code, canonical_url, profile.name, profile.name ~ '의 학교 정보를 확인하세요!') }}
-    </div>
-    {% if area %}<p class="sp-sub">{{ area }}</p>{% endif %}
+    <h1 class="sp-title">{% block h1 %}{{ profile.name }}{% endblock %}</h1>
+    {{ sp_actions(profile.code, profile.name, profile.region_code, canonical_url, profile.name, profile.name ~ '의 학교 정보를 확인하세요!') }}
     {{ sp_tabs(tabs, profile.code) }}
     <div id="bodyad-desktop">
       <ins class="kakao_ad_area" data-ad-unit="DAN-ODZjnUToMyS7iXmi" data-ad-width="728" data-ad-height="90"></ins>

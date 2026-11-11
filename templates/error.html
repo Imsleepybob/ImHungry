@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ error_code }} {{ error_badge }} - 급식알리미</title>
 <link rel="icon" href="https://file.imsleepy.xyz/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.3">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.9">
 <style>
 .error-page {
     min-height: calc(100vh - 57px - 100px);
@@ -122,6 +122,7 @@
     <a href="/"><img src="https://file.imsleepy.xyz/favicon.svg" alt="급식알리미" style="height:28px;"></a>
   </div>
 </header>
+{% include '_announcements.html' %}
 
 <div class="error-page">
   <div class="error-box">

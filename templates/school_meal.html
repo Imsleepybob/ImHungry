@@ -1,5 +1,5 @@
 {% from '_school_card.html' import school_card -%}
-{% from '_icons.html' import icon, theme_icon -%}
+{% from '_icons.html' import icon, theme_icon, calendar_icon, list_icon -%}
 {% from '_school_head.html' import sp_actions, sp_tabs -%}
 {% macro meal_meta(detail) -%}
 {%- if detail and (detail.calories or detail.people) -%}
@@ -35,7 +35,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ canonical_url or request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.8">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.9">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -52,7 +52,6 @@
 <meta name="yandex-verification" content="ac2c4472e1221315" />
 <script src="{{ url_for('static', filename='my-school.js', v='20261111') }}"></script>
 <script src="{{ url_for('static', filename='notification.js', v='20261109') }}"></script>
-<script src="{{ url_for('static', filename='announcements.js') }}?v=20261027-closeanim1" defer></script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
 <script src="{{ url_for('static', filename='share.js', v='20261111') }}" defer></script>
 <script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
@@ -75,14 +74,6 @@
     })();
 </script>
 <style>
-#site-announcements{max-width:900px;margin:12px auto;padding:0 16px}
-.site-announcement{display:flex;align-items:flex-start;gap:12px;text-align:left}
-.announcement-content{flex:1;min-width:0}
-.announcement-close{flex:none;border:0;background:transparent;color:inherit;font-size:24px;line-height:1;cursor:pointer;padding:0 3px;margin:-3px 0}
-.announcement-content>:first-child{margin-top:0}
-.announcement-content>:last-child{margin-bottom:0}
-.announcement-content a{color:inherit}
-@media(max-width:600px){\n#site-announcements{padding:0 12px}.site-announcement{padding:12px}}
 </style>
 </head>
 <body>
@@ -118,7 +109,7 @@
     </button>
   </div>
 </header>
-<div id="site-announcements" data-nosnippet aria-live="polite" aria-label="사이트 공지"></div>
+{% include '_announcements.html' %}
 
 <div id="ad-mobile">
   <ins class="kakao_ad_area" data-ad-unit="DAN-dlRqzKV7HUKex1ui" data-ad-width="320" data-ad-height="100"></ins>
@@ -211,11 +202,8 @@
 
   {% if school_name and week_meals %}
   <div class="meal-container">
-    <div class="sp-titlerow">
-      <h1 class="sp-title">{{ school_name }} 급식 정보</h1>
-      {{ sp_actions(school_code, school_name, current_school.region_code, canonical_url, school_name ~ ' 급식 정보', school_name ~ '의 급식을 확인하세요!') }}
-    </div>
-    {% if area %}<p class="sp-sub">{{ area }}</p>{% endif %}
+    <h1 class="sp-title">{{ school_name }} 급식 정보</h1>
+    {{ sp_actions(school_code, school_name, current_school.region_code, canonical_url, school_name ~ ' 급식 정보', school_name ~ '의 급식을 확인하세요!') }}
     {{ sp_tabs(tabs, school_code) }}
     <div class="today-meal-card">
       <h3 class="today-meal-title">오늘 급식 정보 🍽️<br><small style="font-size:0.8em;opacity:0.9;">{{ today_date | format_date }}</small></h3>
@@ -249,8 +237,8 @@
       <div class="meal-head">
         <h3 class="meal-title"><span data-view-title="list">이번 주 급식 정보🍗</span><span data-view-title="calendar" hidden>이번 달 급식 정보🍱</span></h3>
         <div class="pill-tabs" role="tablist" aria-label="급식 보기 방식">
-          <button type="button" class="pill-tab" role="tab" data-view="list" aria-selected="true" aria-controls="mealViewList">리스트</button>
-          <button type="button" class="pill-tab" role="tab" data-view="calendar" aria-selected="false" aria-controls="mealViewCalendar" data-track="btn_month" data-track-value="calendar">달력</button>
+          <button type="button" class="pill-tab" role="tab" data-view="list" aria-selected="true" aria-controls="mealViewList" aria-label="리스트" title="리스트">{{ list_icon(18) }}</button>
+          <button type="button" class="pill-tab" role="tab" data-view="calendar" aria-selected="false" aria-controls="mealViewCalendar" aria-label="달력" title="달력" data-track="btn_month" data-track-value="calendar">{{ calendar_icon(18) }}</button>
         </div>
       </div>
       <div id="mealViewList" role="tabpanel">
@@ -269,6 +257,26 @@
             {% endfor %}
             </tbody>
           </table>
+        </div>
+        <button type="button" class="toggle-month-btn" id="toggleMonthBtn" aria-expanded="false" aria-controls="monthTable">▼ 월간 급식표 보기</button>
+        <div class="month-meal" id="monthTable" hidden>
+          <h3 class="meal-title">이번 달 급식 정보🍱</h3>
+          <div class="meal-table-container">
+            <table class="meal-table">
+              <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
+              <tbody>
+              {% for date, meal in month_meals.items() %}
+                <tr class="meal-row">
+                  <td class="date-cell">{{ date | format_date }}</td>
+                  <td class="menu-cell">
+                    {{ meal_blocks(meal, (meal_details or {}).get(date, {})) }}
+                    {% if meal.breakfast == "급식 정보 없음" and meal.lunch == "급식 정보 없음" and meal.dinner == "급식 정보 없음" %}<div class="no-meal">급식 정보 없음</div>{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div id="mealViewCalendar" role="tabpanel" hidden>
@@ -779,6 +787,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 startLoadingAnimation();
                 loadingDiv.style.display = 'flex';
             }
+        });
+    }
+
+    const toggleMonthBtn = document.getElementById('toggleMonthBtn');
+    const monthTable = document.getElementById('monthTable');
+    if (toggleMonthBtn && monthTable) {
+        toggleMonthBtn.addEventListener('click', function() {
+            trackEvent('btn_month', 'toggle');
+            NotificationManager.triggerHaptic('impact', 'LIGHT');
+            const opening = monthTable.hidden;
+            monthTable.hidden = !opening;
+            toggleMonthBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+            toggleMonthBtn.textContent = opening ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
+            if (opening) monthTable.scrollIntoView({behavior: 'smooth'});
         });
     }
 

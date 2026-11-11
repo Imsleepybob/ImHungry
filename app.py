@@ -2054,7 +2054,6 @@ def school_meal_view(school_code):
         meal_details=meal_details_data,
         today_detail=meal_details_data.get(today_str, {}),
         tabs=meal_tabs,
-        area=area_text,
         meal_calendar=build_meal_calendar(full_month_meals_data, datetime.now(KST).date()),
         weekdays=MEAL_WEEKDAYS,
         page_title=seo_title,
