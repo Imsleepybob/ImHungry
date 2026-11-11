@@ -311,7 +311,7 @@ ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '').strip().strip('"
 KST = timezone(timedelta(hours=9))
 ADMIN_LOGIN_FAIL_LIMIT = 3
 CONTACT_EMAIL = os.environ.get('CONTACT_EMAIL', 'admin@geupsikalimi.com').strip()
-LEGAL_EFFECTIVE_DATE = '2026년 11월 3일'
+LEGAL_EFFECTIVE_DATE = '2026년 11월 25일'
 ADMIN_SESSION_COOKIE = 'admin_session'
 CLIENT_IP_HEADERS = [h.strip() for h in os.environ.get('CLIENT_IP_HEADERS', 'CF-Connecting-IP').split(',') if h.strip()]
 security_watch = secwatch.SecurityWatch(KST)
