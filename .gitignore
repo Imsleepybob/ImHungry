@@ -1,0 +1,7 @@
+.disclosure_cache/
+__pycache__/
+*.py[cod]
+neis_schools.json
+regions.xlsx
+build.log
+disclosure_pilot.json
