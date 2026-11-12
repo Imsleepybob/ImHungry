@@ -6,11 +6,11 @@
 <span class="meal-meta">{% if detail.calories %}<span>열량 {{ detail.calories }}</span>{% endif %}{% if detail.people %}<span>급식 인원 {{ '{:,}'.format(detail.people) }}명</span>{% endif %}</span>
 {%- endif -%}
 {%- if detail and (detail.nutrients or detail.origins or detail.allergens) -%}
-<details class="meal-detail"><summary>영양 정보 및 원산지 자세히 보기</summary><div class="meal-detail-body">
+<details class="meal-detail"><summary>영양 정보 및 원산지 자세히 보기</summary><div class="meal-detail-body"><div class="meal-detail-inner">
 {%- if detail.nutrients %}<p><strong>영양 정보</strong><br>{% for label, value in detail.nutrients %}{{ label }} {{ value }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
 {%- if detail.allergens %}<p><strong>알레르기 유발 성분</strong><br>{% for item in detail.allergens %}{{ item.name }}({{ item.no }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
 {%- if detail.origins %}<p><strong>원산지</strong><br>{% for label, value in detail.origins %}{{ label }} {{ value }}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif -%}
-</div></details>
+</div></div></details>
 {%- endif -%}
 {%- endmacro %}
 {% macro meal_blocks(meal, detail) -%}
@@ -35,7 +35,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ canonical_url or request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2.9">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -53,7 +53,8 @@
 <script src="{{ url_for('static', filename='my-school.js', v='20261111') }}"></script>
 <script src="{{ url_for('static', filename='notification.js', v='20261109') }}"></script>
 <script src="{{ url_for('static', filename='haptics.js') }}?v=2.4"></script>
-<script src="{{ url_for('static', filename='share.js', v='20261111') }}" defer></script>
+<script src="{{ url_for('static', filename='share.js', v='20261112') }}" defer></script>
+<script src="{{ url_for('static', filename='collapse.js', v='20261112') }}" defer></script>
 <script src="{{ url_for('static', filename='food-roller.js') }}" defer></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7986194877222528" crossorigin="anonymous"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ERQ4FS2YTY"></script>
@@ -233,15 +234,17 @@
       <ins class="kakao_ad_area" data-ad-unit="DAN-StDbNq6y1v7xZsfO" data-ad-width="320" data-ad-height="50"></ins>
     </div>
 
-    <div class="meal-card week-meal">
+    <div class="meal-card week-meal" id="weekMeal">
       <div class="meal-head">
         <h3 class="meal-title"><span data-view-title="list">이번 주 급식 정보🍗</span><span data-view-title="calendar" hidden>이번 달 급식 정보🍱</span></h3>
         <div class="pill-tabs" role="tablist" aria-label="급식 보기 방식">
+          <span class="pill-thumb" aria-hidden="true"></span>
           <button type="button" class="pill-tab" role="tab" data-view="list" aria-selected="true" aria-controls="mealViewList" aria-label="리스트" title="리스트">{{ list_icon(18) }}</button>
           <button type="button" class="pill-tab" role="tab" data-view="calendar" aria-selected="false" aria-controls="mealViewCalendar" aria-label="달력" title="달력" data-track="btn_month" data-track-value="calendar">{{ calendar_icon(18) }}</button>
         </div>
       </div>
-      <div id="mealViewList" role="tabpanel">
+      <div class="meal-views" id="mealViews">
+      <div class="meal-view" id="mealViewList" role="tabpanel">
         <div class="meal-table-container">
           <table class="meal-table">
             <thead><tr><th>날짜</th><th>급식 메뉴</th></tr></thead>
@@ -279,7 +282,7 @@
           </div>
         </div>
       </div>
-      <div id="mealViewCalendar" role="tabpanel" hidden>
+      <div class="meal-view is-off" id="mealViewCalendar" role="tabpanel" inert>
         <p class="meal-cal-month">{{ today_date[:4] }}년 {{ today_date[4:6] | int }}월</p>
         <div class="cal" aria-label="{{ today_date[:4] }}년 {{ today_date[4:6] | int }}월 급식 달력">
           <div class="cal-head" aria-hidden="true">{% for name in weekdays %}<span>{{ name }}</span>{% endfor %}</div>
@@ -306,6 +309,7 @@
           {% endfor %}
         </div>
         {% for date, meal in month_meals.items() %}{% if meal.breakfast != "급식 정보 없음" or meal.lunch != "급식 정보 없음" or meal.dinner != "급식 정보 없음" %}<template id="mealTpl{{ date }}">{{ meal_blocks(meal, (meal_details or {}).get(date, {})) }}</template>{% endif %}{% endfor %}
+      </div>
       </div>
     </div>
     <dialog class="cal-dialog" id="mealDialog" aria-labelledby="mealDialogTitle">
@@ -804,17 +808,141 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const viewTabs = document.querySelectorAll('.pill-tab[data-view]');
+    const weekCard = document.getElementById('weekMeal');
+    const viewsBox = document.getElementById('mealViews');
     const listView = document.getElementById('mealViewList');
     const calendarView = document.getElementById('mealViewCalendar');
-    if (viewTabs.length && listView && calendarView) {
-        viewTabs.forEach(tab => tab.addEventListener('click', () => {
-            const view = tab.dataset.view;
-            viewTabs.forEach(item => item.setAttribute('aria-selected', item === tab ? 'true' : 'false'));
-            listView.hidden = view !== 'list';
-            calendarView.hidden = view !== 'calendar';
-            document.querySelectorAll('[data-view-title]').forEach(el => { el.hidden = el.dataset.viewTitle !== view; });
+    const pillTabs = weekCard ? weekCard.querySelector('.pill-tabs') : null;
+    if (weekCard && viewsBox && listView && calendarView && pillTabs) {
+        const pillButtons = Array.from(pillTabs.querySelectorAll('.pill-tab'));
+        const pillThumb = pillTabs.querySelector('.pill-thumb');
+        const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let current = 0;
+        let progress = 0;
+        let dragging = false;
+        let settleTimer = null;
+        let suppressClick = false;
+
+        const heightAt = p => listView.offsetHeight + (calendarView.offsetHeight - listView.offsetHeight) * p;
+        const syncLabels = index => {
+            pillButtons.forEach((button, i) => button.setAttribute('aria-selected', i === index ? 'true' : 'false'));
+            document.querySelectorAll('[data-view-title]').forEach(el => { el.hidden = el.dataset.viewTitle !== (index === 0 ? 'list' : 'calendar'); });
+        };
+        const apply = p => {
+            progress = p;
+            weekCard.style.setProperty('--p', p);
+            viewsBox.style.height = heightAt(p) + 'px';
+            syncLabels(p >= 0.5 ? 1 : 0);
+        };
+        const setOff = index => {
+            listView.classList.toggle('is-off', index !== 0);
+            calendarView.classList.toggle('is-off', index !== 1);
+            listView.inert = index !== 0;
+            calendarView.inert = index !== 1;
+        };
+        const settle = (index, animate) => {
+            current = index;
+            clearTimeout(settleTimer);
+            listView.classList.remove('is-off');
+            calendarView.classList.remove('is-off');
+            const finish = () => {
+                weekCard.classList.remove('is-settling');
+                setOff(index);
+                viewsBox.style.height = heightAt(progress) + 'px';
+            };
+            if (animate && !reducedMotion) {
+                weekCard.classList.add('is-settling');
+                void weekCard.offsetWidth;
+                apply(index);
+                settleTimer = setTimeout(finish, 320);
+            } else {
+                apply(index);
+                finish();
+            }
+        };
+
+        pillButtons.forEach((button, i) => button.addEventListener('click', () => {
+            if (suppressClick) return;
+            if (current === i && progress === i) return;
+            settle(i, true);
         }));
+
+        let pointerId = null;
+        let startX = 0;
+        let startProgress = 0;
+        let travel = 46;
+        let moved = false;
+        let lastX = 0;
+        let lastTime = 0;
+        let velocity = 0;
+        let crossed = 0;
+
+        pillTabs.addEventListener('pointerdown', e => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            pointerId = e.pointerId;
+            startX = lastX = e.clientX;
+            lastTime = e.timeStamp;
+            startProgress = progress;
+            travel = pillThumb ? (pillThumb.getBoundingClientRect().width || 46) : 46;
+            moved = false;
+            velocity = 0;
+            crossed = progress >= 0.5 ? 1 : 0;
+        });
+        pillTabs.addEventListener('pointermove', e => {
+            if (pointerId === null || e.pointerId !== pointerId) return;
+            const dx = e.clientX - startX;
+            if (!moved) {
+                if (Math.abs(dx) < 4) return;
+                moved = true;
+                dragging = true;
+                clearTimeout(settleTimer);
+                weekCard.classList.remove('is-settling');
+                listView.classList.remove('is-off');
+                calendarView.classList.remove('is-off');
+                listView.inert = false;
+                calendarView.inert = false;
+                try { pillTabs.setPointerCapture(pointerId); } catch (err) {}
+            }
+            const dt = e.timeStamp - lastTime;
+            if (dt > 0) velocity = (e.clientX - lastX) / dt;
+            lastX = e.clientX;
+            lastTime = e.timeStamp;
+            const p = Math.min(1, Math.max(0, startProgress + dx / travel));
+            apply(p);
+            const side = p >= 0.5 ? 1 : 0;
+            if (side !== crossed) {
+                crossed = side;
+                if (window.Haptics) window.Haptics.select();
+            }
+        });
+        const endDrag = e => {
+            if (pointerId === null || e.pointerId !== pointerId) return;
+            pointerId = null;
+            if (!moved) return;
+            dragging = false;
+            suppressClick = true;
+            setTimeout(() => { suppressClick = false; }, 0);
+            try { pillTabs.releasePointerCapture(e.pointerId); } catch (err) {}
+            let target = progress >= 0.5 ? 1 : 0;
+            if (Math.abs(velocity) > 0.4) target = velocity > 0 ? 1 : 0;
+            if (target === 1 && current !== 1) trackEvent('btn_month', 'calendar');
+            settle(target, true);
+        };
+        pillTabs.addEventListener('pointerup', endDrag);
+        pillTabs.addEventListener('pointercancel', endDrag);
+        pillTabs.addEventListener('click', e => {
+            if (suppressClick) { e.stopImmediatePropagation(); e.preventDefault(); }
+        }, true);
+
+        if (typeof ResizeObserver === 'function') {
+            const observer = new ResizeObserver(() => {
+                if (dragging || weekCard.classList.contains('is-settling')) return;
+                viewsBox.style.height = heightAt(progress) + 'px';
+            });
+            observer.observe(listView);
+            observer.observe(calendarView);
+        }
+        settle(0, false);
     }
 
     const mealDialog = document.getElementById('mealDialog');

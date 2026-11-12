@@ -18,13 +18,14 @@ SITE_URL = os.environ.get('SITE_URL', 'https://geupsikalimi.com').strip().rstrip
 NEIS_SCHOOL_URL = 'https://open.neis.go.kr/hub/schoolInfo'
 SCHOOL_KINDS = {'초등학교', '중학교', '고등학교', '특수학교'}
 DEFAULT_LEVELS = ['초등학교', '중학교', '고등학교', '특수학교']
-SITEMAP_VERSION = 2
+SITEMAP_VERSION = 3
 REFRESH_SECONDS = 30 * 86400
 RETRY_SECONDS = 300
 CHECK_SECONDS = 6 * 3600
 MISSING_CHECK_SECONDS = 300
 PAGE_SIZE = 1000
 MAX_PAGES = 50
+MAX_URLS_PER_SITEMAP = 50000
 KST = timezone(timedelta(hours=9))
 XML_NS = 'http://www.sitemaps.org/schemas/sitemap/0.9'
 WHO = f'{socket.gethostname()}/{os.getpid()}'
@@ -99,7 +100,11 @@ class SitemapStore:
         for code in sorted(school_items or {}):
             school_lastmod = (school_items or {})[code] or lastmod
             lines.append(f'  <url><loc>{SITE_URL}/school/{escape(code)}</loc><lastmod>{school_lastmod}</lastmod></url>')
+            lines.append(f'  <url><loc>{SITE_URL}/school/{escape(code)}/schedule</loc><lastmod>{lastmod}</lastmod></url>')
+            lines.append(f'  <url><loc>{SITE_URL}/school/{escape(code)}/classes</loc><lastmod>{school_lastmod}</lastmod></url>')
         lines.append('</urlset>')
+        if len(lines) - 3 > MAX_URLS_PER_SITEMAP:
+            self.logger.warning(f'[sitemap] URL 수가 한도를 넘었습니다 ({len(lines) - 3}/{MAX_URLS_PER_SITEMAP})')
         return '\n'.join(lines) + '\n'
 
     def main_urls(self):

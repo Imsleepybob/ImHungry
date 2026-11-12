@@ -358,7 +358,7 @@ input[type="text"]:focus {
 .meal-row { transition: background-color 0.15s ease; }
 .meal-row:hover { background-color: var(--bg-hover); }
 .date-cell { padding: 16px; font-weight: 500; color: var(--primary-color); border-bottom: 1px solid var(--table-border); }
-.menu-cell { padding: 16px; line-height: 1.6; border-bottom: 1px solid var(--table-border); color: var(--text-primary); }
+.menu-cell { padding: 16px; overflow-wrap: anywhere; line-height: 1.6; border-bottom: 1px solid var(--table-border); color: var(--text-primary); }
 
 .meal-type strong {
     display: inline-block; background-color: var(--accent-color); color: white;
@@ -702,7 +702,7 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
     .region-grid { grid-template-columns: 1fr 1fr; }
     .finder-title { font-size: 1.2rem; }
     .allergy-info { padding: 12px 16px; }
-    .allergy-info-grid { grid-template-columns: repeat(3, 1fr); }
+    .allergy-info .allergy-info-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #loading-text { font-size: 1.5rem; }
 }
 
@@ -775,9 +775,9 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
 
 .school-page { max-width: var(--page-w); margin: 0 auto; padding: 4px 0 40px; }
 .sp-title { margin: 0 0 6px; text-align: center; font-size: 1.8rem; font-weight: 600; line-height: 1.25; color: var(--text-primary); word-break: keep-all; }
-.sp-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin: 0 0 4px; }
-.sp-act { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 0; border-radius: var(--sp-r-sm); background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.85rem; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.sp-act.is-set { color: var(--primary-color); }
+.sp-acts { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+.sp-act { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-container); color: var(--text-secondary); font: inherit; font-size: 0.82rem; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sp-act.is-set { border-color: var(--primary-color); color: var(--primary-color); }
 .sp-act.is-set .ico path { fill: currentColor; }
 .sp-act.is-set .ico circle { fill: var(--bg-container); }
 @media (hover: hover) {
@@ -785,9 +785,9 @@ button.school-finder-link[aria-expanded="true"] .school-finder-arrow { transform
     .sp-act.is-set:hover { color: var(--primary-color); }
     .sp-act:hover .sp-act-label { text-decoration: underline; text-underline-offset: 3px; }
 }
-.sp-tabs { display: flex; margin: 14px 0 16px; border-bottom: 1px solid var(--border-color); overflow-x: auto; scrollbar-width: none; }
+.sp-tabs { display: flex; margin: 14px 0 16px; box-shadow: inset 0 -1px 0 var(--border-color); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .sp-tabs::-webkit-scrollbar { display: none; }
-.sp-tab { flex: 1 1 0; min-width: max-content; box-sizing: border-box; margin-bottom: -1px; padding: 12px 8px; border-bottom: 2px solid transparent; font-size: 0.95rem; font-weight: 500; text-align: center; text-decoration: none; white-space: nowrap; color: var(--text-secondary); }
+.sp-tab { flex: 1 1 0; min-width: max-content; box-sizing: border-box; padding: 12px 8px; border-bottom: 2px solid transparent; font-size: 0.95rem; font-weight: 500; text-align: center; text-decoration: none; white-space: nowrap; color: var(--text-secondary); }
 .sp-tab.active { border-bottom-color: var(--primary-color); font-weight: 700; color: var(--primary-color); }
 @media (hover: hover) {
     .sp-tab:hover { color: var(--primary-color); text-decoration: none; }
@@ -951,10 +951,11 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
 .meal-detail { margin-top: 6px; font-size: 0.8rem; }
 .meal-detail summary { cursor: pointer; color: var(--link-color); list-style: none; }
 .meal-detail summary::-webkit-details-marker { display: none; }
-.meal-detail-body { margin-top: 6px; padding: 10px 12px; border-radius: var(--sp-r-sm); background: var(--bg-secondary); color: var(--text-secondary); line-height: 1.6; text-align: left; }
-.meal-detail-body strong { color: var(--text-primary); }
-.meal-detail-body p { margin: 0 0 6px; }
-.meal-detail-body p:last-child { margin-bottom: 0; }
+.meal-detail-body { overflow: hidden; }
+.meal-detail-inner { margin-top: 6px; padding: 10px 12px; border-radius: var(--sp-r-sm); background: var(--bg-secondary); color: var(--text-secondary); line-height: 1.6; text-align: left; overflow-wrap: anywhere; }
+.meal-detail-inner strong { color: var(--text-primary); }
+.meal-detail-inner p { margin: 0 0 6px; }
+.meal-detail-inner p:last-child { margin-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {
     .sp-btn, .sp-link, .sp-iconbtn, .cal-btn { transition: none; }
@@ -977,9 +978,21 @@ input[type="date"].sp-input::-webkit-date-and-time-value { min-height: 1.4em; te
 
 .meal-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 20px; }
 .meal-head .meal-title { margin: 0; }
-.pill-tabs { display: inline-flex; padding: 3px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-secondary); }
-.pill-tab { display: inline-flex; align-items: center; justify-content: center; padding: 7px 14px; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.88rem; font-weight: 600; line-height: 1.2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.pill-tab[aria-selected="true"] { background: var(--primary-color); color: var(--sp-on-primary); }
+.week-meal { --p: 0; }
+.pill-tabs { position: relative; display: inline-grid; grid-template-columns: repeat(2, 46px); padding: 3px; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-secondary); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.pill-thumb { position: absolute; top: 3px; bottom: 3px; left: 3px; width: 46px; border-radius: 999px; background: var(--primary-color); transform: translateX(calc(var(--p) * 100%)); pointer-events: none; }
+.pill-tab { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 46px; padding: 7px 0; border: 0; border-radius: 999px; background: transparent; color: var(--text-secondary); font: inherit; line-height: 1.2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pill-tab[aria-selected="true"] { color: var(--sp-on-primary); }
+.meal-views { display: grid; overflow: hidden; }
+.meal-view { grid-area: 1 / 1; align-self: start; min-width: 0; }
+#mealViewList { transform: translateX(calc(var(--p) * -100%)); }
+#mealViewCalendar { transform: translateX(calc((1 - var(--p)) * 100%)); }
+.meal-view.is-off { visibility: hidden; }
+.week-meal.is-settling .pill-thumb, .week-meal.is-settling .meal-view { transition: transform 0.3s cubic-bezier(0.22, 0.8, 0.3, 1); }
+.week-meal.is-settling .meal-views { transition: height 0.3s cubic-bezier(0.22, 0.8, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+    .week-meal.is-settling .pill-thumb, .week-meal.is-settling .meal-view, .week-meal.is-settling .meal-views { transition: none; }
+}
 @media (hover: hover) {
     .pill-tab[aria-selected="false"]:hover { color: var(--text-primary); }
 }

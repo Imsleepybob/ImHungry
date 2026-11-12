@@ -45,7 +45,10 @@
             item.className = 'autocomplete-item';
             item.textContent = school.name;
             item.setAttribute('data-code', school.code);
-            item.addEventListener('click', function () { go(school.code); });
+            item.addEventListener('click', function () {
+                if (window.Haptics) window.Haptics.select();
+                go(school.code);
+            });
             results.appendChild(item);
         });
         results.style.display = 'block';

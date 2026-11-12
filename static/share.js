@@ -5,9 +5,6 @@
         var url = button.getAttribute('data-url') || window.location.href;
         var title = button.getAttribute('data-title') || document.title;
         var text = button.getAttribute('data-text') || '';
-        if (window.NotificationManager && typeof NotificationManager.triggerHaptic === 'function') {
-            try { NotificationManager.triggerHaptic('impact', 'LIGHT'); } catch (e) {}
-        }
         if (navigator.share) {
             try { await navigator.share({ title: title, text: text, url: url }); } catch (e) {}
             return;
