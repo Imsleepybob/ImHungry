@@ -274,7 +274,7 @@ def init_school_pages(app, ctx):
             data['sameAs'] = profile['homepage']
         return data
 
-    def base_context(entry, tab, canonical_path, robots_index, title, description, extra_ld=None):
+    def base_context(entry, tab, canonical_path, title, description, extra_ld=None):
         profile, parsed = entry['profile'], entry['parsed']
         region_name = region_name_of(profile)
         tabs = [
@@ -289,7 +289,7 @@ def init_school_pages(app, ctx):
             'tabs': tabs,
             'meal_url': url_for('school_meal_view', school_code=profile['code']),
             'canonical_url': f'{site_url}{canonical_path}',
-            'robots': 'index,follow' if robots_index else 'noindex,follow',
+            'robots': 'index,follow',
             'page_title': title,
             'page_description': shorten(description, 160),
             'ld_blocks': extra_ld or [],
@@ -298,11 +298,9 @@ def init_school_pages(app, ctx):
             'updated_label': sd.format_ymd(profile['updated_ymd']),
         }
 
-    def respond(template, context, indexable, max_age=600):
+    def respond(template, context, max_age=600):
         response = make_response(render_template(template, **context))
         response.headers['Cache-Control'] = f'public, max-age={max_age}'
-        if not indexable:
-            response.headers['X-Robots-Tag'] = 'noindex, follow'
         return response
 
     def lookup_or_error(code):
@@ -349,7 +347,7 @@ def init_school_pages(app, ctx):
         title = f"{title_with_names(profile)} 학교 정보 - {area} {level} | 급식알리미".replace('  ', ' ')
         region_name = region_name_of(profile)
         context = base_context(
-            entry, 'overview', url_for('school_overview', code=code), indexing_allowed(profile), title, description,
+            entry, 'overview', url_for('school_overview', code=code), title, description,
             [school_ld(profile, parsed, region_name), breadcrumbs(profile, parsed, region_name)],
         )
         geo = school_geo.lookup(code)
@@ -380,7 +378,7 @@ def init_school_pages(app, ctx):
             'founded_label': sd.format_ymd(profile['founded_ymd']),
             'tab': 'overview',
         })
-        return respond('school_overview.html', context, context['robots'].startswith('index'))
+        return respond('school_overview.html', context)
 
     def parse_month_arg(value):
         text = (value or '').strip()
@@ -414,11 +412,10 @@ def init_school_pages(app, ctx):
         if visible:
             names = ', '.join(dict.fromkeys(event['name'] for event in visible[:4]))
             description = f"{profile['name']} {year}년 {month}월 학사일정에는 {names} 등이 있어요. 시험, 방학, 학교 행사를 날짜별로 확인하세요."
-        indexable = indexing_allowed(profile) and is_current and bool(visible)
         canonical = url_for('school_schedule_page', code=code)
         region_name = region_name_of(profile)
         context = base_context(
-            entry, 'schedule', canonical, indexable, title, description,
+            entry, 'schedule', canonical, title, description,
             [breadcrumbs(profile, parsed, region_name, '학사일정', f'{site_url}{canonical}')],
         )
         context.update({
@@ -435,7 +432,7 @@ def init_school_pages(app, ctx):
             'is_current': is_current,
             'tab': 'schedule',
         })
-        return respond('school_schedule.html', context, indexable, max_age=300)
+        return respond('school_schedule.html', context, max_age=300)
 
     @app.route('/school/<code>/classes')
     @gated
@@ -478,11 +475,10 @@ def init_school_pages(app, ctx):
         description = f"{area} {profile['name']}의 학년별 학급 수와 학과, 계열 정보예요."
         if summary['total']:
             description = f"{profile['name']}의 학급은 모두 {summary['total']}개예요. 학년별 학급 수와 학과, 계열 정보를 확인하세요."
-        indexable = indexing_allowed(profile) and bool(summary['total'])
         canonical = url_for('school_classes_page', code=code)
         region_name = region_name_of(profile)
         context = base_context(
-            entry, 'classes', canonical, indexable, title, description,
+            entry, 'classes', canonical, title, description,
             [breadcrumbs(profile, parsed, region_name, '학급과 학과', f'{site_url}{canonical}')],
         )
         context.update({
@@ -494,7 +490,7 @@ def init_school_pages(app, ctx):
             'academic_year': sd.academic_year_and_semester(now().date())[0],
             'tab': 'classes',
         })
-        return respond('school_classes.html', context, indexable, max_age=1800)
+        return respond('school_classes.html', context, max_age=1800)
 
     def parse_selection(raw, options, keys):
         parts = (raw or '').split('|')
@@ -573,7 +569,7 @@ def init_school_pages(app, ctx):
         canonical = url_for('school_timetable_page', code=code)
         region_name = region_name_of(profile)
         context = base_context(
-            entry, 'timetable', canonical, False, title, description,
+            entry, 'timetable', canonical, title, description,
             [breadcrumbs(profile, parsed, region_name, '시간표', f'{site_url}{canonical}')],
         )
         selected_value = ''
@@ -603,7 +599,7 @@ def init_school_pages(app, ctx):
             'next_week': (monday + timedelta(days=7)).strftime('%Y-%m-%d'),
             'tab': 'timetable',
         })
-        return respond('school_timetable.html', context, False, max_age=60)
+        return respond('school_timetable.html', context, max_age=60)
 
     def saved_school_redirect(target):
         for cookie_name in ('my_school_code', 'school_code'):
