@@ -22,8 +22,8 @@
           {% if cell.events %}
           <button type="button" class="cal-btn" data-title="{{ cell.title }}" data-events='{{ cell.payload|tojson }}' aria-label="{{ cell.title }}, 일정 {{ cell.events|length }}개 보기">
             <span class="cal-num">{{ cell.day }}</span>
-            {% for item in cell.events[:2] %}<span class="cal-ev{% if item.holiday %} is-holiday{% endif %}">{{ item.name }}</span>{% endfor %}
-            {% if cell.events|length > 2 %}<span class="cal-more">+{{ cell.events|length - 2 }}</span>{% endif %}
+            {% for item in cell.events[:3] %}<span class="cal-ev{% if item.holiday %} is-holiday{% endif %}">{{ item.name }}</span>{% endfor %}
+            {% if cell.events|length > 3 %}<span class="cal-more cal-more-wide">+{{ cell.events|length - 3 }}</span>{% endif %}{% if cell.events|length > 2 %}<span class="cal-more cal-more-narrow">+{{ cell.events|length - 2 }}</span>{% endif %}
           </button>
           {% else %}
           <div class="cal-plain"><span class="cal-num">{{ cell.day }}</span></div>

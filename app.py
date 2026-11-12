@@ -1882,8 +1882,9 @@ def build_meal_calendar(month_meals, today):
                 'weekday': weekday,
                 'is_today': day == today.day,
                 'has_meal': has_meal,
-                'preview': items[:2],
-                'more': max(len(items) - 2, 0),
+                'preview': items[:3],
+                'more': max(len(items) - 3, 0),
+                'more_narrow': max(len(items) - 2, 0),
                 'title': f'{today.month}월 {day}일 ({MEAL_WEEKDAYS[weekday]}) 급식',
             })
         weeks.append(row)

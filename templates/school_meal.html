@@ -35,7 +35,7 @@
 <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon-180x180.png', _external=True) }}">
 <meta property="og:url" content="{{ canonical_url or request.url }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3.1">
 <link rel="manifest" href="{{ url_for('manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 <link rel="apple-touch-icon" sizes="57x57" href="{{ url_for('static', filename='apple-touch-icon-57x57.png') }}">
@@ -295,7 +295,7 @@
                 <button type="button" class="cal-btn" data-date="{{ cell.ymd }}" data-title="{{ cell.title }}" aria-label="{{ cell.title }} 보기">
                   <span class="cal-num">{{ cell.day }}</span>
                   {% for item in cell.preview %}<span class="cal-ev">{{ item }}</span>{% endfor %}
-                  {% if cell.more %}<span class="cal-more">+{{ cell.more }}</span>{% endif %}
+                  {% if cell.more %}<span class="cal-more cal-more-wide">+{{ cell.more }}</span>{% endif %}{% if cell.more_narrow %}<span class="cal-more cal-more-narrow">+{{ cell.more_narrow }}</span>{% endif %}
                 </button>
                 {% else %}
                 <div class="cal-plain"><span class="cal-num">{{ cell.day }}</span></div>
@@ -802,6 +802,7 @@ document.addEventListener('DOMContentLoaded', function() {
             NotificationManager.triggerHaptic('impact', 'LIGHT');
             const opening = monthTable.hidden;
             monthTable.hidden = !opening;
+            if (viewsBox && listView) viewsBox.style.height = listView.offsetHeight + 'px';
             toggleMonthBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
             toggleMonthBtn.textContent = opening ? '▲ 월간 급식표 접기' : '▼ 월간 급식표 보기';
             if (opening) monthTable.scrollIntoView({behavior: 'smooth'});

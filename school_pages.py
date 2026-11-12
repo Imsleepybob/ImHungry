@@ -24,8 +24,8 @@ LEVELS_WITH_DEPARTMENTS = ('고등학교', '특수학교')
 MEAL_LABELS = (('breakfast', '조식'), ('lunch', '중식'), ('dinner', '석식'))
 TABS = (
     ('overview', '학교 정보', 'school_overview'),
-    ('meal', '급식', 'school_meal_view'),
     ('schedule', '학사일정', 'school_schedule_page'),
+    ('meal', '급식', 'school_meal_view'),
     ('classes', '학급 및 학과', 'school_classes_page'),
     ('timetable', '시간표', 'school_timetable_page'),
 )
