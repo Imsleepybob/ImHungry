@@ -29,6 +29,7 @@ TABS = (
     ('classes', '학급 및 학과', 'school_classes_page'),
     ('timetable', '시간표', 'school_timetable_page'),
 )
+TAB_SHORT_LABELS = {'classes': '학급·학과'}
 
 
 class LookupFailed(Exception):
@@ -278,7 +279,7 @@ def init_school_pages(app, ctx):
         profile, parsed = entry['profile'], entry['parsed']
         region_name = region_name_of(profile)
         tabs = [
-            {'key': key, 'label': label, 'url': url_for(endpoint, **{('school_code' if endpoint == 'school_meal_view' else 'code'): profile['code']}), 'active': key == tab}
+            {'key': key, 'label': label, 'short': TAB_SHORT_LABELS.get(key), 'url': url_for(endpoint, **{('school_code' if endpoint == 'school_meal_view' else 'code'): profile['code']}), 'active': key == tab}
             for key, label, endpoint in TABS
         ]
         return {

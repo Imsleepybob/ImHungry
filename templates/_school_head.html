@@ -9,7 +9,7 @@
 {% set tracks = {'overview': 'btn_school_info', 'schedule': 'btn_school_info', 'timetable': 'btn_school_timetable', 'meal': 'btn_school_meal'} -%}
 <nav class="sp-tabs" aria-label="학교 메뉴">
 {%- for tab in tabs -%}
-<a href="{{ tab.url }}" class="sp-tab{% if tab.active %} active{% endif %}"{% if tab.active %} aria-current="page"{% endif %}{% if not tab.active and tab.key in tracks %} data-track="{{ tracks[tab.key] }}" data-track-value="{{ code }}"{% endif %}>{{ tab.label }}</a>
+<a href="{{ tab.url }}" class="sp-tab{% if tab.active %} active{% endif %}"{% if tab.active %} aria-current="page"{% endif %}{% if tab.short %} data-long="{{ tab.label }}" data-short="{{ tab.short }}"{% endif %}{% if not tab.active and tab.key in tracks %} data-track="{{ tracks[tab.key] }}" data-track-value="{{ code }}"{% endif %}>{{ tab.label }}</a>
 {%- endfor -%}
 </nav>
 {%- endmacro %}

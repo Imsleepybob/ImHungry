@@ -2033,6 +2033,7 @@ def school_meal_view(school_code):
         {
             'key': key,
             'label': label,
+            'short': school_pages.TAB_SHORT_LABELS.get(key),
             'url': url_for(endpoint, **{('school_code' if endpoint == 'school_meal_view' else 'code'): school_code}),
             'active': key == 'meal',
         }
